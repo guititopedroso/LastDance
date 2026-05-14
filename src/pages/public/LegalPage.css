@@ -1,0 +1,117 @@
+.legal-page {
+  background: radial-gradient(circle at top right, rgba(212, 175, 55, 0.05), transparent 40%),
+              radial-gradient(circle at bottom left, rgba(212, 175, 55, 0.03), transparent 40%);
+  min-height: 80vh;
+}
+
+.legal-header {
+  text-align: center;
+  margin-bottom: 60px;
+}
+
+.legal-header .subtitle {
+  display: block;
+  color: #d4af37;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+}
+
+.legal-header h1 {
+  font-size: 3.5rem;
+  margin-bottom: 20px;
+}
+
+.legal-header .last-updated {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.9rem;
+}
+
+.legal-content {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 60px !important;
+}
+
+.legal-content section {
+  margin-bottom: 50px;
+}
+
+.legal-content section:last-child {
+  margin-bottom: 0;
+}
+
+.legal-content h2 {
+  font-size: 1.8rem;
+  margin-bottom: 25px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.legal-content h2::after {
+  content: '';
+  flex-grow: 1;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(212, 175, 55, 0.3), transparent);
+}
+
+.legal-content p {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.1rem;
+  line-height: 1.8;
+  margin-bottom: 20px;
+}
+
+.cookie-types {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 30px;
+  margin-top: 30px;
+}
+
+.cookie-type-item {
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 3px solid #d4af37;
+  padding: 25px;
+  border-radius: 0 12px 12px 0;
+}
+
+.cookie-type-item h3 {
+  color: #fff;
+  font-size: 1.1rem;
+  margin-bottom: 10px;
+}
+
+.cookie-type-item p {
+  font-size: 1rem;
+  margin-bottom: 0;
+}
+
+.legal-content a {
+  color: #d4af37;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.legal-content a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .legal-header h1 {
+    font-size: 2.5rem;
+  }
+  
+  .legal-content {
+    padding: 30px !important;
+  }
+  
+  .legal-content h2 {
+    font-size: 1.5rem;
+  }
+}

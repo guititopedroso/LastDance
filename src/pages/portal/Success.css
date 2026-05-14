@@ -1,0 +1,111 @@
+.success-layout {
+  max-width: 700px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.success-message {
+  margin-bottom: 50px;
+}
+
+.status-icon {
+  margin-bottom: 24px;
+}
+
+.success-message h1 {
+  font-size: 2.5rem;
+  margin-bottom: 16px;
+}
+
+.success-message p {
+  color: var(--color-gray-400);
+  font-size: 1.1rem;
+}
+
+.payment-card {
+  text-align: left;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+.payment-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 30px;
+}
+
+.payment-header h3 {
+  font-size: 1.2rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.mb-logo {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.mb-logo img {
+  height: 40px;
+  filter: brightness(0) invert(1);
+}
+
+.payment-details {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.detail-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 40px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row span {
+  font-size: 0.85rem;
+  color: var(--color-gray-400);
+}
+
+.detail-row strong {
+  font-size: 1.2rem;
+  font-family: monospace;
+}
+
+.detail-row button {
+  background: none;
+  border: none;
+  color: var(--color-gray-400);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.detail-row button:hover {
+  color: var(--color-gold);
+}
+
+.info-box {
+  display: flex;
+  gap: 12px;
+  background: rgba(212, 175, 55, 0.05);
+  padding: 16px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: var(--color-gold-light);
+  margin-bottom: 24px;
+}
+
+.btn-secondary {
+  display: block;
+  text-align: center;
+  color: var(--color-gray-400);
+  font-size: 0.9rem;
+  text-decoration: underline;
+}
