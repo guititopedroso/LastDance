@@ -133,7 +133,7 @@ const CodeManager = () => {
   const [codes, setCodes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [newSchool, setNewSchool] = useState({ name: '', location: '' });
+  const [newSchool, setNewSchool] = useState({ name: '', location: '', ballDate: '' });
   const [toast, setToast] = useState(null);
 
   const showToast = (message) => {
@@ -159,7 +159,7 @@ const CodeManager = () => {
 
   const handleCreateCode = async (e) => {
     e.preventDefault();
-    if (!newSchool.name || !newSchool.location) return;
+    if (!newSchool.name || !newSchool.location || !newSchool.ballDate) return;
 
     // Alphanumeric code generator (8 chars)
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -169,8 +169,8 @@ const CodeManager = () => {
     }
 
     try {
-      await addSchoolCode(newCode, newSchool.name, newSchool.location);
-      setNewSchool({ name: '', location: '' });
+      await addSchoolCode(newCode, newSchool.name, newSchool.location, newSchool.ballDate);
+      setNewSchool({ name: '', location: '', ballDate: '' });
       setShowForm(false);
       fetchCodes();
       showToast('Código criado com sucesso');
@@ -206,8 +206,8 @@ const CodeManager = () => {
           className="glass-card admin-form-card"
           style={{ marginBottom: '30px', padding: '30px' }}
         >
-          <form onSubmit={handleCreateCode} style={{ display: 'flex', gap: '20px', alignItems: 'flex-end' }}>
-            <div className="input-group-simple" style={{ flex: 1 }}>
+          <form onSubmit={handleCreateCode} style={{ display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div className="input-group-simple" style={{ flex: 1, minWidth: '180px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--color-gray-400)' }}>Nome da Escola</label>
               <input 
                 type="text" 
@@ -217,7 +217,7 @@ const CodeManager = () => {
                 required 
               />
             </div>
-            <div className="input-group-simple" style={{ flex: 1 }}>
+            <div className="input-group-simple" style={{ flex: 1, minWidth: '140px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--color-gray-400)' }}>Localização</label>
               <input 
                 type="text" 
@@ -227,7 +227,17 @@ const CodeManager = () => {
                 required 
               />
             </div>
-            <button type="submit" className="btn-premium" style={{ height: '48px' }}>Criar Agora</button>
+            <div className="input-group-simple" style={{ flex: 1, minWidth: '160px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--color-gray-400)' }}>Data do Baile</label>
+              <input 
+                type="date" 
+                value={newSchool.ballDate}
+                onChange={(e) => setNewSchool({...newSchool, ballDate: e.target.value})}
+                required 
+                style={{ colorScheme: 'dark' }}
+              />
+            </div>
+            <button type="submit" className="btn-premium" style={{ height: '48px', whiteSpace: 'nowrap' }}>Criar Agora</button>
           </form>
         </motion.div>
       )}
@@ -239,6 +249,7 @@ const CodeManager = () => {
               <tr>
                 <th>Escola</th>
                 <th>Localização</th>
+                <th>Data do Baile</th>
                 <th>Código</th>
                 <th>Ações</th>
               </tr>
@@ -248,6 +259,12 @@ const CodeManager = () => {
                 <tr key={c.id}>
                   <td>{c.schoolName}</td>
                   <td>{c.location || 'N/A'}</td>
+                  <td>
+                    {c.ballDate
+                      ? new Date(c.ballDate + 'T00:00:00').toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })
+                      : <span style={{ color: 'var(--color-gray-400)', fontSize: '0.85rem' }}>Sem data</span>
+                    }
+                  </td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <code className="code-badge">{c.code}</code>
@@ -394,7 +411,7 @@ const AttendeeManager = () => {
             <div className="form-row">
               <select value={newAttendee.paymentPlan} onChange={e => setNewAttendee({...newAttendee, paymentPlan: e.target.value})}>
                 <option value="full">Pagamento Total</option>
-                <option value="installments">3 Prestações</option>
+                <option value="installments">5 Prestações</option>
               </select>
               <button type="submit" className="btn-premium">Adicionar Aluno</button>
             </div>
@@ -417,7 +434,7 @@ const AttendeeManager = () => {
                 <tr key={a.id} onClick={() => setSelectedAttendee(a)}>
                   <td>{a.firstName} {a.lastName}</td>
                   <td>{a.schoolCode}</td>
-                  <td>{a.paymentPlan === 'installments' ? '3 Prestações' : 'Total'}</td>
+                  <td>{a.paymentPlan === 'installments' ? '5 Prestações' : 'Total'}</td>
                   <td>{getStatusBadge(a.status)}</td>
                 </tr>
               ))}
@@ -455,22 +472,21 @@ const AttendeeManager = () => {
                 <div className="payment-summary">
                   <div className="plan-info detail-row-inline">
                     <span>Plano Escolhido:</span>
-                    <strong>{selectedAttendee.paymentPlan === 'installments' ? '3 Prestações (3x 18.34€)' : 'Pagamento Total (55€)'}</strong>
+                    <strong>{selectedAttendee.paymentPlan === 'installments' ? '5 Prestações (5x 11.00€)' : 'Pagamento Total (55€)'}</strong>
                   </div>
                   <div className="progress-info detail-row-inline">
                     <span>Progresso:</span>
                     <div className="payment-pills" style={{ marginTop: 0 }}>
                       {selectedAttendee.paymentPlan === 'installments' ? (
                         <>
-                          <span className={`pill ${selectedAttendee.paidInstallments >= 1 ? 'paid' : ''}`}>
-                            1ª Prest. {selectedAttendee.paidInstallments >= 1 ? ' (Paga)' : ' (Pendente)'}
-                          </span>
-                          <span className={`pill ${selectedAttendee.paidInstallments >= 2 ? 'paid' : ''}`}>
-                            2ª Prest. {selectedAttendee.paidInstallments >= 2 ? ' (Paga)' : ' (Pendente)'}
-                          </span>
-                          <span className={`pill ${selectedAttendee.paidInstallments >= 3 ? 'paid' : ''}`}>
-                            3ª Prest. {selectedAttendee.paidInstallments >= 3 ? ' (Paga)' : ' (Pendente)'}
-                          </span>
+                          {[...Array(5)].map((_, i) => (
+                            <span
+                              key={i}
+                              className={`pill ${selectedAttendee.paidInstallments > i ? 'paid' : ''}`}
+                            >
+                              {i + 1}ª Prest. {selectedAttendee.paidInstallments > i ? '(Paga)' : '(Pendente)'}
+                            </span>
+                          ))}
                         </>
                       ) : (
                         <span className={`pill ${selectedAttendee.status === 'paid' ? 'paid' : ''}`}>

@@ -37,7 +37,11 @@ const Navbar = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2, duration: 0.5 }}
         >
-          <Link to="/" className="navbar-logo">
+          <Link
+            to="/"
+            className="navbar-logo"
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
             <img src="/logo_transparent.png" alt="Last Dance" className="navbar-logo-img" />
           </Link>
         </motion.div>
@@ -60,7 +64,9 @@ const Navbar = () => {
                 if (link.path.startsWith('#')) {
                   e.preventDefault();
                   if (location.pathname !== '/') {
-                    window.location.href = '/' + link.path;
+                    window.location.href = '/';
+                  } else if (link.path === '#') {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                   } else {
                     document.querySelector(link.path)?.scrollIntoView({ behavior: 'smooth' });
                   }
@@ -88,7 +94,7 @@ const Navbar = () => {
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5, duration: 0.5 }}
         >
-          <Link to="/area-cliente" className="btn-login-nav">
+          <Link to="/area-cliente" className="btn-premium">
             <User size={18} /> Área de Aluno
           </Link>
           <button className="mobile-toggle" onClick={() => setIsOpen(!isOpen)}>

@@ -369,25 +369,29 @@
 
 .event-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 10px;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .event-item:last-child {
   border-bottom: none;
+  padding-bottom: 0;
 }
 
 .event-item strong {
   color: var(--color-gray-400);
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .event-item span {
   font-weight: 600;
   color: #fff;
+  font-size: 0.95rem;
 }
 
 /* Modal de Pagamento */

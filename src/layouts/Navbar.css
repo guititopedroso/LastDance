@@ -85,15 +85,18 @@
   padding: 10px 24px;
   border: 1px solid var(--color-accent);
   border-radius: 50px;
-  color: var(--color-accent) !important;
+  background: var(--color-accent);
+  color: #fff !important;
   font-weight: 600 !important;
   font-size: 0.85rem !important;
+  transition: background 0.2s, box-shadow 0.2s;
 }
 
 .btn-login-nav:hover {
-  background: var(--color-accent);
-  color: var(--color-black) !important;
-  box-shadow: 0 0 15px rgba(255, 140, 0, 0.3);
+  background: #e07800;
+  border-color: #e07800;
+  color: #fff !important;
+  box-shadow: 0 0 20px rgba(255, 140, 0, 0.4);
 }
 
 .mobile-login-link {

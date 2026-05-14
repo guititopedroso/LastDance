@@ -8,55 +8,81 @@ const CookiePolicy = () => {
         <header className="legal-header">
           <span className="subtitle">Transparência & Segurança</span>
           <h1 className="text-gold">Política de Cookies</h1>
-          <p className="last-updated">Última atualização: 13 de Maio de 2026</p>
+          <p className="last-updated">Última atualização: 14 de Maio de 2026</p>
         </header>
 
         <div className="legal-content glass-card">
           <section>
-            <h2>O que são Cookies?</h2>
+            <h2>O que são Cookies e Armazenamento Local?</h2>
             <p>
-              Os cookies são pequenos ficheiros de texto que são armazenados no seu computador ou dispositivo móvel através do navegador (browser), retendo apenas informação relacionada com as suas preferências, não incluindo, como tal, os seus dados pessoais.
+              Os cookies são pequenos ficheiros de texto guardados no seu dispositivo pelo navegador. O armazenamento local (<em>localStorage</em> e <em>sessionStorage</em>) é uma tecnologia semelhante, integrada nos browsers modernos, que permite guardar informação diretamente no seu dispositivo sem necessidade de a enviar para servidores externos.
             </p>
             <p>
-              A colocação de cookies ajudará o website a reconhecer o seu dispositivo na próxima vez que o utilizador o visita.
+              O website da LastDance utiliza exclusivamente armazenamento local para garantir o funcionamento das suas funcionalidades essenciais. <strong>Não utilizamos cookies de rastreamento, publicidade ou de terceiros.</strong>
             </p>
           </section>
 
           <section>
-            <h2>Como utilizamos os Cookies?</h2>
-            <p>
-              Utilizamos cookies para garantir o funcionamento correto do nosso site, personalizar conteúdo e anúncios, fornecer funcionalidades de redes sociais e analisar o nosso tráfego.
-            </p>
+            <h2>O que armazenamos e porquê?</h2>
             <div className="cookie-types">
               <div className="cookie-type-item">
-                <h3>Cookies Estritamente Necessários</h3>
-                <p>Estes cookies são essenciais para lhe permitir navegar no website e utilizar as suas funcionalidades. Sem estes cookies, os serviços que solicitou não podem ser fornecidos.</p>
+                <h3>Sessão do Aluno</h3>
+                <p>
+                  Após iniciar sessão na Área do Aluno, guardamos os seus dados de sessão no <em>localStorage</em> do seu dispositivo (<code>student_session</code>). Isto permite-lhe manter a sessão ativa sem precisar de iniciar sessão novamente a cada visita. Estes dados são eliminados quando termina sessão.
+                </p>
               </div>
               <div className="cookie-type-item">
-                <h3>Cookies de Desempenho</h3>
-                <p>Estes cookies recolhem informações sobre como os visitantes utilizam um website, por exemplo, quais as páginas que os visitantes acedem com mais frequência. Estes cookies não recolhem informações que identifiquem um visitante.</p>
+                <h3>Dados de Registo Temporários</h3>
+                <p>
+                  Durante o processo de inscrição, guardamos temporariamente os seus dados no <em>localStorage</em> (<code>temp_reg_data</code>) para não perder o progresso caso navegue entre as etapas do formulário. Estes dados são apagados automaticamente após a conclusão ou cancelamento do registo.
+                </p>
               </div>
               <div className="cookie-type-item">
-                <h3>Cookies de Funcionalidade</h3>
-                <p>Estes cookies permitem que o website se lembre das escolhas que faz (como o seu nome de utilizador, idioma ou a região em que se encontra) e forneça funcionalidades melhoradas e mais pessoais.</p>
+                <h3>Preferências do Site</h3>
+                <p>
+                  Guardamos a sua resposta ao aviso de cookies (<code>cookieConsent</code>) e se já visualizou a animação de carregamento inicial (<code>preloaderShown</code>) para não repetir elementos desnecessários nas suas visitas. Estes dados não contêm informação pessoal.
+                </p>
+              </div>
+              <div className="cookie-type-item">
+                <h3>Sessão Administrativa</h3>
+                <p>
+                  Para os administradores do sistema, é guardada uma chave de autenticação temporária no <em>sessionStorage</em> (<code>adminAuth</code>). Esta informação é apagada automaticamente quando o browser é fechado.
+                </p>
               </div>
             </div>
           </section>
 
           <section>
-            <h2>Como pode gerir os Cookies?</h2>
+            <h2>O que NÃO fazemos</h2>
+            <p>Para total transparência, confirmamos que o website da LastDance:</p>
+            <ul style={{ marginTop: '12px', paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '8px', color: 'var(--color-gray-400)' }}>
+              <li>❌ Não utiliza cookies de rastreamento ou analítica (Google Analytics, etc.)</li>
+              <li>❌ Não utiliza cookies de publicidade ou retargeting</li>
+              <li>❌ Não partilha dados com redes sociais através de cookies</li>
+              <li>❌ Não utiliza cookies de terceiros de qualquer natureza</li>
+              <li>❌ Não recolhe dados de navegação ou comportamento</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2>Como pode gerir ou apagar os seus dados?</h2>
             <p>
-              Todos os browsers permitem ao utilizador aceitar, recusar ou apagar cookies, nomeadamente através da seleção das definições apropriadas no respetivo navegador. Pode configurar os cookies no menu "opções" ou "preferências" do seu browser.
+              Pode apagar todos os dados guardados pelo nosso site a qualquer momento através das ferramentas do seu browser:
             </p>
-            <p>
-              Note-se, no entanto, que, ao desativar cookies, pode impedir que alguns serviços da web funcionem corretamente, afetando, parcial ou totalmente, a navegação no website.
+            <p style={{ marginTop: '12px' }}>
+              <strong>Chrome/Edge:</strong> Definições → Privacidade e segurança → Limpar dados de navegação → Imagens e ficheiros em cache + Dados de sites.<br /><br />
+              <strong>Safari:</strong> Definições → Avançado → Dados dos websites → Remover todos os dados.<br /><br />
+              <strong>Firefox:</strong> Definições → Privacidade e Segurança → Cookies e dados de sites → Limpar dados.
+            </p>
+            <p style={{ marginTop: '12px' }}>
+              Note que ao apagar estes dados, irá terminar a sua sessão na Área do Aluno e perder as preferências guardadas.
             </p>
           </section>
 
           <section>
-            <h2>Mais informações</h2>
+            <h2>Contacto</h2>
             <p>
-              Se tiver alguma dúvida sobre a nossa Política de Cookies, por favor contacte-nos através do e-mail: <a href="mailto:geral@lastdance.pt">geral@lastdance.pt</a>.
+              Se tiver alguma dúvida sobre a nossa Política de Cookies ou sobre os dados que armazenamos, contacte-nos através do e-mail: <a href="mailto:geral@lastdance.pt">geral@lastdance.pt</a> ou pelo telefone <a href="tel:+351969037376">+351 969 037 376</a>.
             </p>
           </section>
         </div>

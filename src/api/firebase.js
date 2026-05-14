@@ -79,11 +79,12 @@ export const getAllCodes = async () => {
   return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
-export const addSchoolCode = async (code, schoolName, location) => {
+export const addSchoolCode = async (code, schoolName, location, ballDate) => {
   await addDoc(collection(db, "codes"), {
     code: code.toUpperCase(),
     schoolName,
     location,
+    ballDate: ballDate || null,
     createdAt: new Date().toISOString()
   });
 };

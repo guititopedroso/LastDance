@@ -63,14 +63,19 @@ const ClientArea = () => {
     if (tempData.password === password) {
       // Fetch school name
       let schoolName = 'Escola não especificada';
+      let ballDate = null;
       if (tempData.schoolCode) {
         const schoolData = await validateSchoolCode(tempData.schoolCode);
-        if (schoolData) schoolName = schoolData.schoolName;
+        if (schoolData) {
+          schoolName = schoolData.schoolName;
+          ballDate = schoolData.ballDate || null;
+        }
       }
 
       const sessionData = {
         name: `${tempData.firstName} ${tempData.lastName}`,
         school: schoolName,
+        ballDate: ballDate,
         status: tempData.status || 'pending_payment',
         nif: tempData.nif,
         reference: tempData.paymentReference || 'Gerando...',
@@ -220,15 +225,19 @@ const ClientArea = () => {
                 <div className="event-details-list">
                   <div className="event-item">
                     <strong>Data:</strong>
-                    <span>15 de Junho, 2026</span>
+                    <span>
+                      {registration.ballDate
+                        ? new Date(registration.ballDate + 'T00:00:00').toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' })
+                        : 'A definir'}
+                    </span>
                   </div>
                   <div className="event-item">
                     <strong>Local:</strong>
-                    <span>Palácio de Cristal, Porto</span>
+                    <span>Quinta das Pirâmides, Quinta do Conde</span>
                   </div>
                   <div className="event-item">
                     <strong>Check-in:</strong>
-                    <span>A partir das 21:00</span>
+                    <span>A partir das 16:00</span>
                   </div>
                   <div className="event-item">
                     <strong>Dress Code:</strong>

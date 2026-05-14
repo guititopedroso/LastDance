@@ -3,6 +3,85 @@
   overflow-x: hidden;
 }
 
+/* ============================================
+   PARALLAX DIVIDERS
+   ============================================ */
+.parallax-divider {
+  position: relative;
+  height: 420px;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Removido: @supports iOS fallback já não é necessário */
+
+.parallax-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(5, 5, 5, 0.65) 0%,
+    rgba(0, 0, 0, 0.45) 50%,
+    rgba(5, 5, 5, 0.65) 100%
+  );
+}
+
+.parallax-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 2rem 3rem;
+  max-width: 760px;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid rgba(255, 180, 0, 0.15);
+  border-radius: 16px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 0 60px rgba(255, 140, 0, 0.08);
+}
+
+.parallax-quote {
+  font-family: 'Satisfy', cursive;
+  font-size: 2.2rem;
+  line-height: 1.4;
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.9);
+  background: linear-gradient(
+    90deg,
+    #f5c518,
+    #ff9500,
+    #ffdc80,
+    #e8a000,
+    #fff3b0,
+    #f5c518
+  );
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: goldShift 4s linear infinite;
+}
+
+@keyframes goldShift {
+  0%   { background-position: 0% center; }
+  100% { background-position: 300% center; }
+}
+
+@media (max-width: 768px) {
+  .parallax-divider {
+    height: 280px;
+  }
+  .parallax-quote {
+    font-size: 1.4rem;
+    padding: 1.5rem;
+  }
+}
+
 .hero {
   position: relative;
   min-height: 100vh;
@@ -13,6 +92,7 @@
   isolation: isolate;
 }
 
+/* Camada dos orbs e partículas */
 .hero-bg {
   position: absolute;
   top: 0;
@@ -20,9 +100,9 @@
   width: 100%;
   height: 100%;
   z-index: -1;
-  background-color: #050505; /* Fundo sólido imediato */
-  background: 
-    linear-gradient(to right, rgba(5, 5, 5, 0.75) 0%, rgba(5, 5, 5, 0.45) 60%, rgba(5, 5, 5, 0.2) 100%),
+  background-color: #050505;
+  background:
+    linear-gradient(to right, rgba(5,5,5,0.75) 0%, rgba(5,5,5,0.45) 60%, rgba(5,5,5,0.2) 100%),
     url('/hero-bg.png');
   background-size: cover;
   background-position: center top;
@@ -205,6 +285,42 @@
   background: var(--glass-border);
 }
 
+/* Barra divisória entre Hero e primeiro parallax */
+.hero-divider-bar {
+  overflow: hidden;
+  background: linear-gradient(90deg, #0a0a0a 0%, #111 50%, #0a0a0a 100%);
+  border-top: 1px solid rgba(255, 180, 0, 0.25);
+  border-bottom: 1px solid rgba(255, 180, 0, 0.25);
+  padding: 14px 0;
+  white-space: nowrap;
+}
+
+.divider-track {
+  display: inline-flex;
+  animation: dividerScroll 28s linear infinite;
+}
+
+.divider-inner {
+  display: inline-flex;
+  gap: 0;
+}
+
+.divider-word {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  padding: 0 28px;
+  opacity: 0.85;
+}
+
+@keyframes dividerScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
 /* Features */
 .section-header {
   text-align: center;
@@ -294,13 +410,20 @@
     line-height: 1.5;
   }
   .about-stats {
-    gap: 10px; /* Reduz o espaço entre os números */
+    gap: 8px;
+    padding: 1.2rem; /* Substitui o padding grande do glass-card */
+    grid-template-columns: repeat(2, 1fr); /* 2 colunas mantém-se mas mais compacto */
   }
   .stat-item {
-    padding: 10px;
+    padding: 8px 4px;
   }
   .stat-item h3 {
-    font-size: 1.8rem; /* Números ligeiramente menores */
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+  }
+  .stat-item p {
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
   }
 }
 

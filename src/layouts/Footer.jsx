@@ -76,7 +76,7 @@ const Footer = () => {
           {[
             { Icon: MapPin,  text: 'Quinta das Pirâmides,\nQuinta do Conde, Setúbal' },
             { Icon: Mail,    text: 'geral@lastdance.pt' },
-            { Icon: Phone,   text: '+351 210 000 000' },
+            { Icon: Phone,   text: '+351 969 037 376' },
           ].map(({ Icon, text }, i) => (
             <motion.div key={i} className="contact-item" whileHover={{ x: 4 }}>
               <Icon size={18} className="text-gold" />

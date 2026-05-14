@@ -91,7 +91,6 @@ const Home = () => {
           <div className="orb orb-1"></div>
           <div className="orb orb-2"></div>
           <div className="orb orb-3"></div>
-          {/* CSS-only floating particles */}
           {[...Array(20)].map((_, i) => (
             <div key={i} className="hero-particle" style={{
               left: `${Math.random() * 100}%`,
@@ -194,7 +193,29 @@ const Home = () => {
         >
           <div className="scroll-dot" />
         </motion.div>
+
       </section>
+
+      {/* Barra Divisória */}
+      <div className="hero-divider-bar" aria-hidden="true">
+        <div className="divider-track">
+          {[...Array(4)].map((_, rep) => (
+            <span key={rep} className="divider-inner">
+              {['✦ LastDance 2026', '✦ Baile de Finalistas', '✦ Uma Noite Inesquecível', '✦ Elegância & Glamour', '✦ A Tua Última Dança'].map((word, i) => (
+                <span key={i} className="divider-word">{word}</span>
+              ))}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Parallax Divider 1 - Ballroom */}
+      <div className="parallax-divider" style={{ backgroundImage: 'url(/bg-outdoor-prom.png)' }}>
+        <div className="parallax-overlay" />
+        <div className="parallax-content">
+          <p className="parallax-quote">&ldquo;Uma noite que ficará para sempre na memória&rdquo;</p>
+        </div>
+      </div>
 
       {/* Features Section */}
       <section className="features section-padding">
@@ -263,6 +284,14 @@ const Home = () => {
         </div>
       </div>
 
+      {/* Parallax Divider 2 - Dance */}
+      <div className="parallax-divider" style={{ backgroundImage: 'url(/bg-dance.png)' }}>
+        <div className="parallax-overlay" />
+        <div className="parallax-content">
+          <p className="parallax-quote">&ldquo;Celebra o fim de um ciclo. Começa a maior aventura da tua vida.&rdquo;</p>
+        </div>
+      </div>
+
       {/* Night Timeline Section */}
       <section className="timeline-section section-padding">
         <div className="container">
@@ -314,6 +343,14 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {/* Parallax Divider 3 - Venue */}
+      <div className="parallax-divider" style={{ backgroundImage: 'url(/bg-venue.png)' }}>
+        <div className="parallax-overlay" />
+        <div className="parallax-content">
+          <p className="parallax-quote">&ldquo;O cenário perfeito para a última dança&rdquo;</p>
+        </div>
+      </div>
 
       {/* Floating Confetti Decorators */}
       <div className="confetti-section" aria-hidden="true">
@@ -398,8 +435,8 @@ const Home = () => {
             >
               <span className="badge-premium">A Nossa História</span>
               <h2 className="text-gold">Criamos Memórias <br /> que Duram uma Vida</h2>
-              <p>A LastDance é líder nacional na organização de Bailes de Finalistas. A nossa missão é transformar o final do percurso secundário numa experiência inesquecível, aliando sofisticação, segurança e diversão.</p>
-              <p>Com mais de uma década de experiência, trabalhamos com os locais mais exclusivos e os melhores fornecedores para garantir que cada detalhe do teu baile seja perfeito.</p>
+              <p>A LastDance nasceu da paixão por criar momentos únicos e inesquecíveis. A nossa missão é transformar o final do percurso secundário numa experiência memorável, aliando sofisticação, segurança e diversão.</p>
+              <p>Apesar de jovens, trabalhamos com os locais mais exclusivos e os melhores fornecedores para garantir que cada detalhe do teu baile seja perfeito.</p>
             </motion.div>
 
             <motion.div
@@ -412,7 +449,7 @@ const Home = () => {
               {[
                 { value: count1, suffix: '+', label: 'Alunos Felizes' },
                 { value: count2, suffix: '', label: 'Escolas Parceiras' },
-                { value: count3, suffix: '+', label: 'Anos de Experiência' },
+                { value: 2, suffix: '', label: 'Anos de Paixão' },
                 { value: 100, suffix: '+', label: 'Eventos Realizados' },
               ].map((stat, i) => (
                 <motion.div
@@ -467,7 +504,7 @@ const Home = () => {
               >
                 {[
                   { icon: <Mail className="text-gold" />, title: 'Email', val: 'geral@lastdance.pt' },
-                  { icon: <Phone className="text-gold" />, title: 'Telefone', val: '+351 210 000 000' },
+                  { icon: <Phone className="text-gold" />, title: 'Telefone', val: '+351 969 037 376' },
                   { icon: <Globe className="text-gold" />, title: 'Sede', val: 'Avenida da Liberdade, Lisboa' },
                 ].map((item, i) => (
                   <motion.div
