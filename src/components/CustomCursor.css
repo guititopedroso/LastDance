@@ -13,10 +13,10 @@
   width: 6px;
   height: 6px;
   background: var(--color-accent);
-  box-shadow: 0 0 8px var(--color-accent);
   transition: opacity 0.2s;
   margin-left: -3px;
   margin-top: -3px;
+  transform: translate3d(0,0,0); /* Força aceleração GPU */
 }
 
 .cursor-ring {

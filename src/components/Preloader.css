@@ -11,6 +11,8 @@
   align-items: center;
   z-index: 9999;
   overflow: hidden;
+  /* Nunca bloqueia scroll ou toques no conte\u00fado por baixo */
+  touch-action: none;
 }
 
 .preloader-content {

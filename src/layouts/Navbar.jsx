@@ -106,29 +106,45 @@ const Navbar = () => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            className="mobile-menu open"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+            className="mobile-menu"
+            initial={{ opacity: 0, x: '100%' }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
           >
-            {navLinks.map((link, i) => (
-              <motion.a
-                key={link.path}
-                href={link.path}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: i * 0.07 }}
-                onClick={() => setIsOpen(false)}
+            {/* Botão para fechar no canto superior */}
+            <button className="close-menu-btn" onClick={() => setIsOpen(false)}>
+              <X size={32} />
+            </button>
+
+            <div className="mobile-menu-content">
+              {navLinks.map((link, i) => (
+                <motion.a
+                  key={link.path}
+                  href={link.path}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  onClick={() => setIsOpen(false)}
+                >
+                  {link.name}
+                </motion.a>
+              ))}
+              
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                transition={{ delay: navLinks.length * 0.1 }}
+                className="mobile-menu-footer"
               >
-                {link.name}
-              </motion.a>
-            ))}
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
-              <Link to="/area-cliente" onClick={() => setIsOpen(false)} className="mobile-login-link">
-                <LogIn size={18} /> Área de Cliente
-              </Link>
-            </motion.div>
+                <Link to="/area-cliente" onClick={() => setIsOpen(false)} className="btn-premium-nav">
+                  <User size={18} /> Área de Aluno
+                </Link>
+                <button className="btn-close-text" onClick={() => setIsOpen(false)}>
+                  Voltar ao site
+                </button>
+              </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

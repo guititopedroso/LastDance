@@ -31,7 +31,10 @@
   --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-html {
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+  position: relative;
   scroll-behavior: smooth;
 }
 
@@ -46,8 +49,8 @@ body {
   background-color: var(--color-bg);
   color: var(--color-white);
   line-height: 1.6;
-  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  -webkit-overflow-scrolling: touch; /* Melhora a fluidez do scroll no iOS */
 }
 
 h1, h2, h3, h4 {
@@ -93,12 +96,13 @@ ul {
 
 .glass-card {
   background: var(--glass-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(12px); /* Reduzido de 20px para 12px para fluidez */
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
   border-radius: 24px;
   padding: 2.5rem;
   transition: var(--transition-smooth);
+  transform: translateZ(0);
 }
 
 .glass-card:hover {
@@ -171,6 +175,23 @@ ul {
 .fade-right    { transform: translateX(50px); }
 .scale-in      { transform: scale(0.85); }
 .fade-in       { transform: none; }
+
+/* No mobile, animações mais rápidas e com menos deslocamento */
+@media (max-width: 768px) {
+  .fade-up,
+  .fade-left,
+  .fade-right,
+  .fade-in,
+  .scale-in,
+  .stagger-item {
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .fade-up   { transform: translateY(25px); }
+  .fade-left { transform: translateX(-25px); }
+  .fade-right{ transform: translateX(25px); }
+  .scale-in  { transform: scale(0.92); }
+}
 
 /* Animated-in state */
 .animate-in.fade-up,

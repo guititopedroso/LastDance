@@ -1,5 +1,6 @@
 .home-page {
   width: 100%;
+  overflow-x: hidden;
 }
 
 .hero {
@@ -19,6 +20,7 @@
   width: 100%;
   height: 100%;
   z-index: -1;
+  background-color: #050505; /* Fundo sólido imediato */
   background: 
     linear-gradient(to right, rgba(5, 5, 5, 0.75) 0%, rgba(5, 5, 5, 0.45) 60%, rgba(5, 5, 5, 0.2) 100%),
     url('/hero-bg.png');
@@ -31,6 +33,9 @@
   border-radius: 50%;
   filter: blur(80px);
   opacity: 0.15;
+  will-change: transform;
+  pointer-events: none;
+  transform: translateZ(0); /* Força aceleração por hardware no Safari */
 }
 
 .orb-1 {
@@ -281,7 +286,21 @@
     font-size: 2.2rem;
   }
   .about-text h2 {
-    font-size: 2.2rem;
+    font-size: 1.8rem; /* Reduzido de 2.2rem */
+    margin: 10px 0;
+  }
+  .about-text p {
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+  .about-stats {
+    gap: 10px; /* Reduz o espaço entre os números */
+  }
+  .stat-item {
+    padding: 10px;
+  }
+  .stat-item h3 {
+    font-size: 1.8rem; /* Números ligeiramente menores */
   }
 }
 

@@ -6,15 +6,33 @@ const Preloader = ({ onLoadingComplete }) => {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(false);
-      // Give some time for the exit animation before calling completion callback
-      setTimeout(() => {
-        if (onLoadingComplete) onLoadingComplete();
-      }, 1000);
-    }, 2500); // Animation duration
+    const startTime = Date.now();
+    const minimumWait = 1600; // Tempo mínimo para a animação brilhar (1.6s)
 
-    return () => clearTimeout(timer);
+    const finishLoading = () => {
+      const currentTime = Date.now();
+      const timeElapsed = currentTime - startTime;
+      const remainingTime = Math.max(0, minimumWait - timeElapsed);
+
+      // Espera o tempo restante do mínimo, se necessário
+      setTimeout(() => {
+        setIsVisible(false);
+        setTimeout(() => {
+          if (onLoadingComplete) onLoadingComplete();
+        }, 800);
+      }, remainingTime);
+    };
+
+    if (document.readyState === 'complete') {
+      finishLoading();
+    } else {
+      window.addEventListener('load', finishLoading);
+      const fallback = setTimeout(finishLoading, 4000); // Segurança: máximo 4s
+      return () => {
+        window.removeEventListener('load', finishLoading);
+        clearTimeout(fallback);
+      };
+    }
   }, [onLoadingComplete]);
 
   return (
