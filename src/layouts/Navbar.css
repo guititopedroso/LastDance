@@ -113,6 +113,8 @@
   border: none;
   color: var(--color-white);
   cursor: pointer;
+  padding: 4px;
+  flex-shrink: 0;
 }
 
 .mobile-menu {
@@ -127,6 +129,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
 }
 
 .mobile-menu-content {
@@ -205,8 +210,18 @@
   .nav-links {
     display: none;
   }
+  /* Esconde o bloco de acções (botão Área de Aluno está no dropdown) */
+  .nav-actions {
+    display: none;
+  }
+  .nav-desktop-only {
+    display: none !important;
+  }
+  /* Hamburger — elemento standalone, sempre no canto */
   .mobile-toggle {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     z-index: 1001;
   }
   .btn-login-nav {

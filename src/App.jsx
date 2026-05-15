@@ -18,8 +18,15 @@ const Terms = lazy(() => import('./pages/public/Terms'));
 const StarCanvas = lazy(() => import('./components/StarCanvas'));
 
 function App() {
+  // Detetar se é mobile/touch para desativar o Preloader e o StarCanvas
+  const isMobile = useRef(
+    typeof window !== 'undefined' &&
+    (window.innerWidth <= 768 || 'ontouchstart' in window || navigator.maxTouchPoints > 0)
+  ).current;
+
+  // Em mobile, nunca mostra o preloader
   const [isLoading, setIsLoading] = useState(() => {
-    // Check if preloader has already been shown in this session
+    if (isMobile) return false; // mobile: sem preloader, scroll imediato
     return sessionStorage.getItem('preloaderShown') !== 'true';
   });
 
@@ -27,10 +34,6 @@ function App() {
     sessionStorage.setItem('preloaderShown', 'true');
     setIsLoading(false);
   };
-
-  // Não bloqueia o scroll — o preloader é um overlay em cima do conteúdo
-  // Detetar se é mobile/touch para desativar o StarCanvas
-  const isMobile = useRef(window.innerWidth <= 768 || 'ontouchstart' in window).current;
 
   return (
     <Router>

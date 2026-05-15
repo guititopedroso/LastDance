@@ -15,6 +15,21 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Bloqueia o scroll do body quando o menu mobile está aberto (fix iOS Safari)
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
+  }, [isOpen]);
+
   const navLinks = [
     { name: 'Home', path: '#' },
     { name: 'Quem Somos', path: '#quem-somos' },
@@ -87,25 +102,27 @@ const Navbar = () => {
           </motion.a>
         </motion.div>
 
-        {/* Action Buttons */}
+        {/* Action Buttons — botão Área de Aluno escondido no mobile (está no dropdown) */}
         <motion.div
           className="nav-actions"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5, duration: 0.5 }}
         >
-          <Link to="/area-cliente" className="btn-premium">
+          <Link to="/area-cliente" className="btn-premium nav-desktop-only">
             <User size={18} /> Área de Aluno
           </Link>
-          <button className="mobile-toggle" onClick={() => setIsOpen(!isOpen)}>
-            <AnimatePresence mode="wait">
-              {isOpen
-                ? <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.2 }}><X size={28} /></motion.span>
-                : <motion.span key="menu" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.2 }}><Menu size={28} /></motion.span>
-              }
-            </AnimatePresence>
-          </button>
         </motion.div>
+
+        {/* Hamburger — sempre no canto direito no mobile */}
+        <button className="mobile-toggle" onClick={() => setIsOpen(!isOpen)} aria-label="Abrir menu">
+          <AnimatePresence mode="wait">
+            {isOpen
+              ? <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.2 }}><X size={28} /></motion.span>
+              : <motion.span key="menu" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.2 }}><Menu size={28} /></motion.span>
+            }
+          </AnimatePresence>
+        </button>
       </div>
 
       {/* Mobile Menu */}
@@ -118,11 +135,6 @@ const Navbar = () => {
             exit={{ opacity: 0, x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
           >
-            {/* Botão para fechar no canto superior */}
-            <button className="close-menu-btn" onClick={() => setIsOpen(false)}>
-              <X size={32} />
-            </button>
-
             <div className="mobile-menu-content">
               {navLinks.map((link, i) => (
                 <motion.a
