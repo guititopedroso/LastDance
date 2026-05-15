@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowRight, ShieldCheck, Stars, Users, Mail, Phone, Globe, Music, Camera, Heart } from 'lucide-react';
@@ -52,6 +52,20 @@ const Home = () => {
   const heroRef = useRef(null);
   const statsRef = useRef(null);
 
+  // Memoize particles so Math.random() only runs once (not on every re-render)
+  const particles = useMemo(() =>
+    [...Array(20)].map((_, i) => ({
+      id: i,
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      width: `${2 + Math.random() * 4}px`,
+      height: `${2 + Math.random() * 4}px`,
+      animationDelay: `${Math.random() * 8}s`,
+      animationDuration: `${6 + Math.random() * 10}s`,
+      opacity: 0.2 + Math.random() * 0.5
+    }))
+  , []);
+
   // Animated counters
   const count1 = useCounter(5000, 2200, statsVisible);
   const count2 = useCounter(15, 1800, statsVisible);
@@ -91,15 +105,15 @@ const Home = () => {
           <div className="orb orb-1"></div>
           <div className="orb orb-2"></div>
           <div className="orb orb-3"></div>
-          {[...Array(20)].map((_, i) => (
-            <div key={i} className="hero-particle" style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              width: `${2 + Math.random() * 4}px`,
-              height: `${2 + Math.random() * 4}px`,
-              animationDelay: `${Math.random() * 8}s`,
-              animationDuration: `${6 + Math.random() * 10}s`,
-              opacity: 0.2 + Math.random() * 0.5
+          {particles.map((p) => (
+            <div key={p.id} className="hero-particle" style={{
+              left: p.left,
+              top: p.top,
+              width: p.width,
+              height: p.height,
+              animationDelay: p.animationDelay,
+              animationDuration: p.animationDuration,
+              opacity: p.opacity
             }} />
           ))}
         </div>
@@ -210,7 +224,7 @@ const Home = () => {
       </div>
 
       {/* Parallax Divider 1 - Ballroom */}
-      <div className="parallax-divider" style={{ backgroundImage: 'url(/bg-outdoor-prom.png)' }}>
+      <div className="parallax-divider" style={{ backgroundImage: 'url(/bg-outdoor-prom.webp)' }}>
         <div className="parallax-overlay" />
         <div className="parallax-content">
           <p className="parallax-quote">&ldquo;Uma noite que ficará para sempre na memória&rdquo;</p>
@@ -285,7 +299,7 @@ const Home = () => {
       </div>
 
       {/* Parallax Divider 2 - Dance */}
-      <div className="parallax-divider" style={{ backgroundImage: 'url(/bg-dance.png)' }}>
+      <div className="parallax-divider" style={{ backgroundImage: 'url(/bg-dance.webp)' }}>
         <div className="parallax-overlay" />
         <div className="parallax-content">
           <p className="parallax-quote">&ldquo;Celebra o fim de um ciclo. Começa a maior aventura da tua vida.&rdquo;</p>
@@ -345,7 +359,7 @@ const Home = () => {
       </section>
 
       {/* Parallax Divider 3 - Venue */}
-      <div className="parallax-divider" style={{ backgroundImage: 'url(/bg-venue.png)' }}>
+      <div className="parallax-divider" style={{ backgroundImage: 'url(/bg-venue.webp)' }}>
         <div className="parallax-overlay" />
         <div className="parallax-content">
           <p className="parallax-quote">&ldquo;O cenário perfeito para a última dança&rdquo;</p>

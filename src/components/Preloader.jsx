@@ -53,7 +53,7 @@ const Preloader = ({ onLoadingComplete }) => {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
             >
-              <img src="/logo.jpg" alt="Last Dance Logo" className="preloader-img" />
+              <img src="/logo.webp" alt="Last Dance Logo" className="preloader-img" />
             </motion.div>
 
             <div className="preloader-line">

@@ -146,6 +146,11 @@ ul {
   .section-padding {
     padding: 70px 0;
   }
+  /* Blur pesado no GPU mobile — reduzir para manter fluido */
+  .glass-card {
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
 }
 
 @media (max-width: 480px) {

@@ -103,7 +103,7 @@
   background-color: #050505;
   background:
     linear-gradient(to right, rgba(5,5,5,0.75) 0%, rgba(5,5,5,0.45) 60%, rgba(5,5,5,0.2) 100%),
-    url('/hero-bg.png');
+    url('/hero-bg.webp');
   background-size: cover;
   background-position: center top;
 }

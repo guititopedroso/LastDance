@@ -16,17 +16,15 @@ const Navbar = () => {
   }, []);
 
   // Bloqueia o scroll do body quando o menu mobile está aberto (fix iOS Safari)
+  // NOTA: Não usar touchAction:'none' — bloqueia todos os toques globalmente
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-      document.body.style.touchAction = 'none';
     } else {
       document.body.style.overflow = '';
-      document.body.style.touchAction = '';
     }
     return () => {
       document.body.style.overflow = '';
-      document.body.style.touchAction = '';
     };
   }, [isOpen]);
 
@@ -57,7 +55,7 @@ const Navbar = () => {
             className="navbar-logo"
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
           >
-            <img src="/logo_transparent.png" alt="Last Dance" className="navbar-logo-img" />
+            <img src="/logo_transparent.webp" alt="Last Dance" className="navbar-logo-img" />
           </Link>
         </motion.div>
 

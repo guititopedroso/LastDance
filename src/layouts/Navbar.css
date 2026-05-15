@@ -130,8 +130,9 @@
   align-items: center;
   justify-content: center;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  touch-action: pan-y;
+  touch-action: auto;
 }
 
 .mobile-menu-content {
@@ -226,5 +227,10 @@
   }
   .btn-login-nav {
     display: none;
+  }
+  /* Reduz blur do menu mobile para aliviar GPU */
+  .mobile-menu {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 }

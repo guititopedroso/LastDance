@@ -28,7 +28,7 @@ const Footer = () => {
         {/* Brand Column */}
         <motion.div className="footer-brand" variants={col}>
           <Link to="/" className="footer-logo">
-            <img src="/logo_transparent.png" alt="Last Dance" className="footer-logo-img" />
+            <img src="/logo_transparent.webp" alt="Last Dance" className="footer-logo-img" />
           </Link>
           <p>Transformamos o teu final de ciclo numa celebração inesquecível com sofisticação, segurança e o melhor entretenimento.</p>
           <div className="social-links">

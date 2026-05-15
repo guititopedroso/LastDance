@@ -46,7 +46,7 @@ const AdminDashboard = () => {
     <div className="admin-sidebar">
       <div className="sidebar-header">
         <div className="admin-logo-wrapper">
-          <img src="/logo_transparent.png" alt="Last Dance" className="admin-logo-img" />
+          <img src="/logo_transparent.webp" alt="Last Dance" className="admin-logo-img" />
           <span className="badge-admin">Admin</span>
         </div>
       </div>
