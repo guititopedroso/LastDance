@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './layouts/Navbar';
 import Home from './pages/public/Home';
 import Preloader from './components/Preloader';
@@ -9,6 +9,7 @@ const Register = lazy(() => import('./pages/portal/Register'));
 const AccountSetup = lazy(() => import('./pages/portal/AccountSetup'));
 const Success = lazy(() => import('./pages/portal/Success'));
 const ClientArea = lazy(() => import('./pages/portal/ClientArea'));
+const Memorias = lazy(() => import('./pages/portal/Memorias'));
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
 const Footer = lazy(() => import('./layouts/Footer'));
 const CookiePolicy = lazy(() => import('./pages/public/CookiePolicy'));
@@ -16,6 +17,15 @@ const CookieConsent = lazy(() => import('./components/CookieConsent'));
 const PrivacyPolicy = lazy(() => import('./pages/public/PrivacyPolicy'));
 const Terms = lazy(() => import('./pages/public/Terms'));
 const StarCanvas = lazy(() => import('./components/StarCanvas'));
+
+// Simple route guard for student portal
+const ProtectedRoute = ({ children }) => {
+  const session = localStorage.getItem('student_session');
+  if (!session) {
+    return <Navigate to="/area-cliente" replace />;
+  }
+  return children;
+};
 
 function App() {
   // Detetar se é mobile/touch para desativar o Preloader e o StarCanvas
@@ -57,6 +67,11 @@ function App() {
                     <Route path="/setup-account/:code" element={<AccountSetup />} />
                     <Route path="/success" element={<Success />} />
                     <Route path="/area-cliente" element={<ClientArea />} />
+                    <Route path="/memorias" element={
+                      <ProtectedRoute>
+                        <Memorias />
+                      </ProtectedRoute>
+                    } />
                     <Route path="/termos" element={<Terms />} />
                     <Route path="/privacidade" element={<PrivacyPolicy />} />
                     <Route path="/cookies" element={<CookiePolicy />} />

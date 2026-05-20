@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, LogIn, ArrowRight, User } from 'lucide-react';
+import { Menu, X, LogIn, ArrowRight, User, Camera } from 'lucide-react';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -89,6 +89,14 @@ const Navbar = () => {
               {link.name}
             </motion.a>
           ))}
+          <motion.div
+            variants={{ hidden: { opacity: 0, y: -10 }, visible: { opacity: 1, y: 0 } }}
+            style={{ display: 'flex', alignItems: 'center' }}
+          >
+            <Link to="/memorias" className="nav-link-item" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <Camera size={16} /> Memórias
+            </Link>
+          </motion.div>
           <motion.a
             href="/#inscricao"
             className="btn-premium-nav"
@@ -147,10 +155,21 @@ const Navbar = () => {
                 </motion.a>
               ))}
               
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: navLinks.length * 0.1 }}
+                style={{ margin: '15px 0' }}
+              >
+                <Link to="/memorias" onClick={() => setIsOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem', fontWeight: '600' }}>
+                  <Camera size={24} className="text-gold" /> Memórias
+                </Link>
+              </motion.div>
+
               <motion.div 
                 initial={{ opacity: 0, y: 20 }} 
                 animate={{ opacity: 1, y: 0 }} 
-                transition={{ delay: navLinks.length * 0.1 }}
+                transition={{ delay: (navLinks.length + 1) * 0.1 }}
                 className="mobile-menu-footer"
               >
                 <Link to="/area-cliente" onClick={() => setIsOpen(false)} className="btn-premium-nav">

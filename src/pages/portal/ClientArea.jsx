@@ -75,6 +75,7 @@ const ClientArea = () => {
       const sessionData = {
         name: `${tempData.firstName} ${tempData.lastName}`,
         school: schoolName,
+        schoolCode: tempData.schoolCode || null,
         ballDate: ballDate,
         status: tempData.status || 'pending_payment',
         nif: tempData.nif,

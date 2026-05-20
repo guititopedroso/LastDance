@@ -12,6 +12,7 @@ import {
   deleteDoc 
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBoDymedQurHM3IZzDCxSt22MdiKXlLEkA",
@@ -26,8 +27,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const storage = getStorage(app);
 
-export { db, auth };
+export { db, auth, storage };
 
 // Public Helpers
 export const validateSchoolCode = async (code) => {

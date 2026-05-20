@@ -1,0 +1,26 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Rules for the 'memorias' collection
+    match /memorias/{memoriaId} {
+      // NOTE: Since the project currently manages student sessions via local storage NIF-lookup 
+      // rather than native Firebase Authentication, request.auth is null. 
+      // To prevent 'Permission Denied' errors, we allow reads/writes, but require essential fields.
+      allow read: if true;
+      
+      allow create: if request.resource.data.codigoEscola != null && 
+                    request.resource.data.nif != null && 
+                    request.resource.data.fotoURL != null;
+
+      allow update: if request.resource.data.reportada == true;
+      
+      allow delete: if true; // In production with Auth, restrict to author/admin
+    }
+
+    // Default rule fallback for other collections
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

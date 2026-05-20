@@ -1,0 +1,9 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /memorias/{codigoEscola}/{fileName} {
+      // Relaxed rules since student authentication relies on custom localStorage NIF lookup
+      allow read, write, delete: if true;
+    }
+  }
+}
