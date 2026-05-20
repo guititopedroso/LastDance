@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy, useRef } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './layouts/Navbar';
 import Home from './pages/public/Home';
 import Preloader from './components/Preloader';
@@ -21,8 +21,9 @@ const StarCanvas = lazy(() => import('./components/StarCanvas'));
 // Simple route guard for student portal
 const ProtectedRoute = ({ children }) => {
   const session = localStorage.getItem('student_session');
+  const location = useLocation();
   if (!session) {
-    return <Navigate to="/area-cliente" replace />;
+    return <Navigate to="/area-cliente" state={{ from: location }} replace />;
   }
   return children;
 };

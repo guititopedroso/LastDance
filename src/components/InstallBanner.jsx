@@ -1,27 +1,34 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowDownToLine, X } from 'lucide-react';
+import { ArrowDownToLine, X, Share, MoreVertical, Smartphone, Info } from 'lucide-react';
 
 const InstallBanner = () => {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [isVisible, setIsVisible] = useState(false);
+  const [isPWA, setIsPWA] = useState(true);
+  const [isDismissed, setIsDismissed] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
+    // Detect if already installed/standalone
+    const checkPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                     window.navigator.standalone === true;
+    setIsPWA(checkPWA);
+
+    // Detect if iOS
+    const checkIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    setIsIOS(checkIOS);
+
     const handleBeforeInstallPrompt = (e) => {
-      // Prevent default mini-infobar
       e.preventDefault();
-      // Store prompt event
       setDeferredPrompt(e);
-      // Show the install UI
-      setIsVisible(true);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Check if already running in standalone (installed) mode
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsVisible(false);
-    }
+    // Check if dismissed in this session
+    const dismissed = sessionStorage.getItem('pwa_banner_dismissed') === 'true';
+    setIsDismissed(dismissed);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -34,38 +41,67 @@ const InstallBanner = () => {
     const { outcome } = await deferredPrompt.userChoice;
     console.log(`PWA Installation outcome: ${outcome}`);
     setDeferredPrompt(null);
-    setIsVisible(false);
   };
 
   const handleDismiss = () => {
-    setIsVisible(false);
+    setIsDismissed(true);
+    sessionStorage.setItem('pwa_banner_dismissed', 'true');
   };
+
+  // If already running in PWA standalone mode or dismissed, don't show the banner
+  if (isPWA || isDismissed) return null;
 
   return (
     <AnimatePresence>
-      {isVisible && (
-        <motion.div
-          className="install-banner-container"
-          initial={{ opacity: 0, y: -50 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -50 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        >
-          <div className="install-banner-content">
-            <span className="install-banner-text">
-              📲 Adiciona ao ecrã principal para partilhares momentos!
-            </span>
-            <div className="install-banner-actions">
+      <motion.div
+        className="install-banner-container"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      >
+        <div className="install-banner-header">
+          <div className="install-banner-title">
+            <Smartphone className="icon-rose text-rose-500" size={20} />
+            <span>Instalar App de Memórias</span>
+          </div>
+          <button className="btn-dismiss" onClick={handleDismiss} aria-label="Fechar">
+            <X size={16} />
+          </button>
+        </div>
+        
+        <div className="install-banner-body">
+          <p className="install-banner-desc">
+            Adiciona ao teu ecrã principal para poderes tirar fotos e partilhá-las diretamente com a câmara no baile, e aceder offline!
+          </p>
+          
+          <div className="instructions-box">
+            {isIOS ? (
+              <div className="instruction-step">
+                <Info size={18} className="text-rose-500 flex-shrink-0" />
+                <span>
+                  No teu iPhone/iPad (Safari): Toca em <strong>Partilhar <Share size={14} className="inline-icon" /></strong> (na barra inferior) e escolhe <strong>"Adicionar ao Ecrã Principal"</strong>.
+                </span>
+              </div>
+            ) : (
+              <div className="instruction-step">
+                <Info size={18} className="text-rose-500 flex-shrink-0" />
+                <span>
+                  No Android/Chrome: Clica no botão abaixo, ou toca nos <strong>3 pontos <MoreVertical size={14} className="inline-icon" /></strong> no canto superior e seleciona <strong>"Instalar"</strong>.
+                </span>
+              </div>
+            )}
+          </div>
+          
+          {deferredPrompt && (
+            <div className="install-banner-actions-footer">
               <button className="btn-install" onClick={handleInstallClick}>
-                <ArrowDownToLine size={16} /> Instalar
-              </button>
-              <button className="btn-dismiss" onClick={handleDismiss} aria-label="Fechar">
-                <X size={16} />
+                <ArrowDownToLine size={16} /> Instalar Web App
               </button>
             </div>
-          </div>
-        </motion.div>
-      )}
+          )}
+        </div>
+      </motion.div>
     </AnimatePresence>
   );
 };

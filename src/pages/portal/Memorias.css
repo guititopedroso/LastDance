@@ -62,35 +62,77 @@
 /* PWA Install Banner Style */
 .install-banner-container {
   width: 100%;
-  background: linear-gradient(135deg, rgba(225, 29, 72, 0.2), rgba(15, 15, 15, 0.85));
-  border: 1px solid rgba(225, 29, 72, 0.4);
-  padding: 16px 20px;
-  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(225, 29, 72, 0.15), rgba(15, 15, 15, 0.95));
+  border: 1px solid rgba(225, 29, 72, 0.3);
+  padding: 20px;
+  border-radius: 16px;
   margin-bottom: 30px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
   backdrop-filter: blur(15px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.install-banner-content {
+.install-banner-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
+}
+
+.install-banner-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.install-banner-body {
+  display: flex;
+  flex-direction: column;
   gap: 15px;
 }
 
-.install-banner-text {
-  font-weight: 600;
-  color: #fff;
-  font-size: 0.95rem;
-  display: inline-flex;
-  align-items: center;
+.install-banner-desc {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
 }
 
-.install-banner-actions {
+.instructions-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.instruction-step {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.instruction-step strong {
+  color: #fff;
+}
+
+.inline-icon {
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0 2px;
+  color: #e11d48;
+}
+
+.install-banner-actions-footer {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .btn-install {

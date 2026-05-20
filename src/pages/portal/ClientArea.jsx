@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Ticket, CreditCard, Clock, User, LogOut, ArrowLeft, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { getStudentByNIF, validateSchoolCode } from '../../api/firebase';
 import './ClientArea.css';
 
 const ClientArea = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [nif, setNif] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,9 +33,16 @@ const ClientArea = () => {
     const activeSession = localStorage.getItem('student_session');
     if (activeSession) {
       setRegistration(JSON.parse(activeSession));
-      setStep('dashboard');
+      
+      // Redirect if from state is present
+      const redirectTarget = location.state?.from?.pathname || location.state?.from || null;
+      if (redirectTarget) {
+        navigate(redirectTarget, { replace: true });
+      } else {
+        setStep('dashboard');
+      }
     }
-  }, [navigate]);
+  }, [navigate, location]);
 
   const handleNifSubmit = async (e) => {
     e.preventDefault();
@@ -91,7 +99,14 @@ const ClientArea = () => {
 
       setRegistration(sessionData);
       localStorage.setItem('student_session', JSON.stringify(sessionData));
-      setStep('dashboard');
+      
+      // Redirect if from state is present
+      const redirectTarget = location.state?.from?.pathname || location.state?.from || null;
+      if (redirectTarget) {
+        navigate(redirectTarget, { replace: true });
+      } else {
+        setStep('dashboard');
+      }
     } else {
       alert("Password incorreta. Tenta novamente.");
     }
