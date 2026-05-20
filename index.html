@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/webp" href="/logo_transparent.webp" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>LastDance | O Teu Baile de Finalistas Premium</title>
     <meta name="description" content="Organização de bailes de finalistas de excelência. Inscreve-te no evento da tua escola." />
     <link rel="manifest" href="/manifest.json">
@@ -13,6 +13,24 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Satisfy&family=Outfit:wght@300;400;600;700;900&family=Plus+Jakarta+Sans:wght@700;800&family=Caveat:wght@400;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <noscript><link href="https://fonts.googleapis.com/css2?family=Satisfy&family=Outfit:wght@300;400;600;700;900&family=Plus+Jakarta+Sans:wght@700;800&family=Caveat:wght@400;700&display=swap" rel="stylesheet"></noscript>
+    <script>
+      // Disable pinch-zoom (multi-touch) on mobile
+      document.addEventListener('touchstart', function (event) {
+        if (event.touches.length > 1) {
+          event.preventDefault();
+        }
+      }, { passive: false });
+
+      // Disable double-tap zoom on mobile
+      let lastTouchEnd = 0;
+      document.addEventListener('touchend', function (event) {
+        const now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) {
+          event.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, false);
+    </script>
   </head>
   <body>
     <div id="root"></div>
