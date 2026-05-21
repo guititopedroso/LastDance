@@ -1,6 +1,6 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Flag, Trash2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Flag, Trash2, AlertTriangle } from 'lucide-react';
 
 const getInitials = (name) => {
   if (!name) return "?";
@@ -11,9 +11,12 @@ const getInitials = (name) => {
 
 const PolaroidCard = ({ memory, index, currentStudentNif, onDelete, onReport }) => {
   const { id, nomeAluno, nif, fotoURL, legenda, emoji, timestamp } = memory;
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Deterministic random rotation: seed is last 4 characters of memory ID
-  const seed = id ? parseInt(id.slice(-4), 16) : index;
+  const idStr = id ? String(id) : '';
+  const parsedSeed = idStr ? parseInt(idStr.slice(-4), 16) : index;
+  const seed = isNaN(parsedSeed) ? index : parsedSeed;
   const rotation = (seed % 13) - 6; // Values between -6deg and +6deg
 
   // Size variation (alternating 3 sizes by index)
@@ -28,13 +31,11 @@ const PolaroidCard = ({ memory, index, currentStudentNif, onDelete, onReport }) 
     color: '#fff'
   };
 
-  const isOwner = currentStudentNif === nif;
+  const isOwner = String(currentStudentNif) === String(nif);
 
   const handleDeleteClick = (e) => {
     e.stopPropagation();
-    if (window.confirm("Tens a certeza que queres eliminar esta polaroid permanentemente?")) {
-      onDelete(id, fotoURL);
-    }
+    setShowConfirm(true);
   };
 
   const handleReportClick = (e) => {
@@ -64,6 +65,48 @@ const PolaroidCard = ({ memory, index, currentStudentNif, onDelete, onReport }) 
       }}
       whileTap={{ scale: 0.97 }}
     >
+      {/* Confirm Delete Overlay inside the card */}
+      <AnimatePresence>
+        {showConfirm && (
+          <motion.div 
+            className="polaroid-confirm-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => e.stopPropagation()} // Prevent triggering card interactions
+          >
+            <div className="confirm-content">
+              <AlertTriangle className="confirm-icon" size={28} />
+              <h4>Apagar Polaroid?</h4>
+              <p>Esta ação não poderá ser desfeita.</p>
+              <div className="confirm-buttons">
+                <button 
+                  type="button"
+                  className="btn-confirm-delete"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(id, fotoURL);
+                    setShowConfirm(false);
+                  }}
+                >
+                  Eliminar
+                </button>
+                <button 
+                  type="button"
+                  className="btn-confirm-cancel"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowConfirm(false);
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Photo Wrapper */}
       <div className="polaroid-image-container">
         <img src={fotoURL} alt={`Momento de ${nomeAluno}`} loading="lazy" />

@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, X, Camera, Send } from 'lucide-react';
 
-const EMOJIS = ['😂', '🥹', '🔥', '💃', '🎉', '😭', '🫶', '👑'];
+const EMOJIS = ['😂', '❤️', '🔥', '💃', '🎉', '😭', '✨', '👑'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 const UploadMemoria = ({ studentName, onUpload }) => {
