@@ -1,0 +1,62 @@
+/* ── Memorias Page ────────────────────────────────────────── */
+.memorias-page {
+  min-height: 100dvh;
+  position: relative;
+}
+
+.memorias-header {
+  padding: 52px 24px 20px;
+  text-align: center;
+}
+
+.memorias-title {
+  font-size: 3rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #fff 0%, var(--rose-400) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.1;
+}
+
+.memorias-subtitle {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  margin-top: 6px;
+}
+
+.memorias-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+}
+
+/* Polaroid Wall */
+.polaroid-wall {
+  padding: 16px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* FAB */
+.fab-btn {
+  position: fixed;
+  bottom: calc(var(--nav-height) + var(--safe-bottom) + 16px);
+  right: 20px;
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: var(--rose-600);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-rose), var(--shadow-md);
+  z-index: 50;
+}

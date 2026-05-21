@@ -1,0 +1,35 @@
+/* ── Premios Page ─────────────────────────────────────────── */
+.premios-page {
+  min-height: 100dvh;
+}
+
+.premios-header {
+  padding: 52px 24px 20px;
+  text-align: center;
+}
+
+.premios-title {
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.premios-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 8px;
+}
+
+.premios-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+}
+
+.premios-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 20px 24px;
+}

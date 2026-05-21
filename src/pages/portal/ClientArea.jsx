@@ -262,6 +262,22 @@ const ClientArea = () => {
                 </div>
               </div>
 
+              {/* WebApp App Promo Card */}
+              <div className="glass-card webapp-promo-card">
+                <div className="card-header-client">
+                  <span style={{ fontSize: '24px' }}>📸</span>
+                  <h3>App LastDance</h3>
+                </div>
+                <div className="webapp-promo-content">
+                  <p>
+                    Acede à nossa WebApp para partilhares as tuas polaroids no mural digital e votares nos teus colegas para os Prémios da Noite em tempo real!
+                  </p>
+                  <Link to="/app" className="btn-open-app-link" style={{ width: '100%' }}>
+                    Entrar na App 🎉
+                  </Link>
+                </div>
+              </div>
+
               {registration.paymentPlan === 'installments' && (
                 <div className="glass-card installment-management full-width-card">
                   <div className="card-header-client">

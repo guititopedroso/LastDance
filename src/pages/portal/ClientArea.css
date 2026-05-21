@@ -520,3 +520,65 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* WebApp Promo Card */
+.webapp-promo-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(244, 63, 94, 0.3) !important;
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.05) 0%, rgba(9, 9, 11, 0.8) 100%) !important;
+  box-shadow: 0 8px 32px rgba(244, 63, 94, 0.1) !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.webapp-promo-card::before {
+  content: '';
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(244, 63, 94, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.webapp-promo-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-between;
+  gap: 15px;
+}
+
+.webapp-promo-content p {
+  color: var(--color-gray-300);
+  font-size: 0.9rem;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.btn-open-app-link {
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+  color: #fff !important;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 50px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(225, 29, 72, 0.3);
+}
+
+.btn-open-app-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(225, 29, 72, 0.5);
+  background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+}
+

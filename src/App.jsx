@@ -17,6 +17,14 @@ const CookieConsent = lazy(() => import('./components/CookieConsent'));
 const PrivacyPolicy = lazy(() => import('./pages/public/PrivacyPolicy'));
 const Terms = lazy(() => import('./pages/public/Terms'));
 const StarCanvas = lazy(() => import('./components/StarCanvas'));
+const InstallAppBanner = lazy(() => import('./components/InstallAppBanner'));
+
+// Lazy load PWA WebApp pages
+const AppLayout = lazy(() => import('./pages/app/AppLayout'));
+const AppLogin = lazy(() => import('./pages/app/AppLogin'));
+const AppHome = lazy(() => import('./pages/app/AppHome'));
+const AppMemorias = lazy(() => import('./pages/app/AppMemorias'));
+const AppPremios = lazy(() => import('./pages/app/AppPremios'));
 
 // Simple route guard for student portal
 const ProtectedRoute = ({ children }) => {
@@ -52,10 +60,19 @@ function App() {
         <Suspense fallback={null}>
           {isLoading && <Preloader onLoadingComplete={handleLoadingComplete} />}
           {!isLoading && !isMobile && <StarCanvas />}
+          <InstallAppBanner />
           
           <Routes>
             {/* Admin routes don't show the main Navbar */}
             <Route path="/admin/*" element={<AdminDashboard />} />
+            
+            {/* App (PWA) routes - separate layout, no main Navbar/Footer */}
+            <Route path="/app" element={<AppLayout />}>
+              <Route index element={<AppHome />} />
+              <Route path="login" element={<AppLogin />} />
+              <Route path="memorias" element={<AppMemorias />} />
+              <Route path="premios" element={<AppPremios />} />
+            </Route>
             
             {/* Public/Portal routes show the main Navbar */}
             <Route path="*" element={

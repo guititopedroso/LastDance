@@ -2,25 +2,65 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Rules for the 'memorias' collection
+    // ── Memórias ───────────────────────────────────────────────────────────────
     match /memorias/{memoriaId} {
-      // NOTE: Since the project currently manages student sessions via local storage NIF-lookup 
-      // rather than native Firebase Authentication, request.auth is null. 
-      // To prevent 'Permission Denied' errors, we allow reads/writes, but require essential fields.
+      // Public read (filtered by codigoEscola client-side)
       allow read: if true;
       
+      // Create: require essential fields
       allow create: if request.resource.data.codigoEscola != null && 
                     request.resource.data.nif != null && 
                     request.resource.data.fotoURL != null;
 
+      // Update: only flagging as reported allowed
       allow update: if request.resource.data.reportada == true;
       
-      allow delete: if true; // In production with Auth, restrict to author/admin
+      // Delete: allow (restrict to author in production with Auth)
+      allow delete: if true;
     }
 
-    // Default rule fallback for other collections
+    // ── Alunos (student directory per event) ───────────────────────────────────
+    // Readable by anyone (needed for login validation and vote modal)
+    match /alunos/{codigoEscola}/lista/{nif} {
+      allow read: if true;
+      // Only admin writes (via Firebase Console or trusted server)
+      allow write: if false;
+    }
+
+    // ── Votação — Categorias ────────────────────────────────────────────────────
+    // Students can read active categories; only admin can write
+    match /votacao/{codigoEscola}/categorias/{categoriaId} {
+      allow read: if true;
+      allow write: if false; // Admin writes via Firebase Console
+    }
+
+    // ── Votação — Votos ─────────────────────────────────────────────────────────
+    // Students can read results; can write their own vote (doc ID = their NIF)
+    match /votacao/{codigoEscola}/votos/{categoriaId}/respostas/{nif} {
+      allow read: if true;
+      
+      // Allow create: require nifVotado and nomeVotado, and not voting for self
+      allow create: if request.resource.data.nifVotado != null &&
+                    request.resource.data.nomeVotado != null &&
+                    request.resource.data.nifVotado != nif;
+
+      // No updates or deletes by students (admin resets from console)
+      allow update, delete: if false;
+    }
+
+    // ── Admin Collections (codes, registrations) ───────────────────────────────
+    match /codes/{codeId} {
+      allow read, write: if true; // Secured by admin session in client
+    }
+
+    match /registrations/{regId} {
+      allow read, write: if true; // Secured by admin session in client
+    }
+
+    // ── Fallback ───────────────────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if true;
     }
   }
 }
+

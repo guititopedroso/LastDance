@@ -1,19 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
   Key, 
   Users, 
-  FileText, 
+  Trophy,
   LogOut, 
   Plus, 
   Search, 
-  Download,
   CheckCircle,
   Clock,
   Copy,
-  Trash2
+  Trash2,
+  Eye,
+  EyeOff,
+  ToggleLeft,
+  ToggleRight,
+  RefreshCw
 } from 'lucide-react';
 import './Admin.css';
 import { 
@@ -24,6 +28,13 @@ import {
   deleteRegistration,
   registerStudent
 } from '../../api/firebase';
+import {
+  db
+} from '../../api/firebase';
+import {
+  collection, doc, addDoc, updateDoc, deleteDoc, getDocs,
+  query, orderBy, onSnapshot, writeBatch
+} from 'firebase/firestore';
 
 import AdminLogin from './AdminLogin';
 
@@ -60,6 +71,9 @@ const AdminDashboard = () => {
         <Link to="/admin/attendees" className={activeTab === 'attendees' ? 'active' : ''} onClick={() => setActiveTab('attendees')}>
           <Users size={20} /> Gestão de Inscritos
         </Link>
+        <Link to="/admin/premios" className={activeTab === 'premios' ? 'active' : ''} onClick={() => setActiveTab('premios')} style={{ color: activeTab === 'premios' ? '#e11d48' : undefined }}>
+          <Trophy size={20} /> Prémios / Votação
+        </Link>
       </nav>
       <div className="sidebar-footer">
         <Link to="/" className="btn-logout"><LogOut size={18} /> Sair</Link>
@@ -75,6 +89,7 @@ const AdminDashboard = () => {
           <Route path="/" element={<Overview />} />
           <Route path="/codes" element={<CodeManager />} />
           <Route path="/attendees" element={<AttendeeManager />} />
+          <Route path="/premios" element={<PremiosManager />} />
         </Routes>
       </div>
     </div>
@@ -532,6 +547,341 @@ const AttendeeManager = () => {
             </div>
           </motion.div>
         </div>
+      )}
+    </div>
+  );
+};
+
+/* ══════════════════════════════════════════════════════
+   PRÉMIOS MANAGER
+   ══════════════════════════════════════════════════════ */
+const PremiosManager = () => {
+  const [schools, setSchools] = useState([]);
+  const [selectedSchool, setSelectedSchool] = useState('');
+  const [categorias, setCategorias] = useState([]);
+  const [loadingCats, setLoadingCats] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [newCat, setNewCat] = useState({ titulo: '', descricao: '', emoji: '🏆', ordem: 1 });
+  const [rankings, setRankings] = useState({}); // { [catId]: [{nifVotado, nomeVotado, votos}] }
+  const [expandedCat, setExpandedCat] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [confirmReset, setConfirmReset] = useState(null);
+  const [confirmResetStep, setConfirmResetStep] = useState(0);
+  const rankingUnsubs = useRef({});
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  // Load school codes
+  useEffect(() => {
+    getAllCodes().then(data => setSchools(data));
+  }, []);
+
+  // Real-time categories listener
+  useEffect(() => {
+    if (!selectedSchool) { setCategorias([]); return; }
+    setLoadingCats(true);
+    const q = query(
+      collection(db, 'votacao', selectedSchool, 'categorias'),
+      orderBy('ordem', 'asc')
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setCategorias(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setLoadingCats(false);
+    });
+    return () => unsub();
+  }, [selectedSchool]);
+
+  // Load ranking for a category
+  const loadRanking = (catId) => {
+    if (rankingUnsubs.current[catId]) return; // already listening
+    const colRef = collection(db, 'votacao', selectedSchool, 'votos', catId, 'respostas');
+    const unsub = onSnapshot(colRef, (snap) => {
+      const counts = {};
+      snap.docs.forEach(d => {
+        const { nifVotado, nomeVotado } = d.data();
+        if (!counts[nifVotado]) counts[nifVotado] = { nifVotado, nomeVotado, votos: 0 };
+        counts[nifVotado].votos++;
+      });
+      const sorted = Object.values(counts).sort((a, b) => b.votos - a.votos);
+      setRankings(prev => ({ ...prev, [catId]: sorted }));
+    });
+    rankingUnsubs.current[catId] = unsub;
+  };
+
+  const handleExpandCat = (catId) => {
+    if (expandedCat === catId) { setExpandedCat(null); return; }
+    setExpandedCat(catId);
+    loadRanking(catId);
+  };
+
+  const handleCreateCat = async (e) => {
+    e.preventDefault();
+    if (!selectedSchool) { showToast('Seleciona uma escola primeiro.'); return; }
+    try {
+      await addDoc(collection(db, 'votacao', selectedSchool, 'categorias'), {
+        ...newCat,
+        ordem: Number(newCat.ordem),
+        ativa: true,
+        mostrarResultados: false,
+      });
+      setNewCat({ titulo: '', descricao: '', emoji: '🏆', ordem: 1 });
+      setShowForm(false);
+      showToast('✅ Categoria criada!');
+    } catch (err) {
+      showToast('❌ Erro ao criar categoria.');
+    }
+  };
+
+  const handleToggle = async (catId, field, current) => {
+    try {
+      await updateDoc(doc(db, 'votacao', selectedSchool, 'categorias', catId), { [field]: !current });
+      showToast(field === 'mostrarResultados' ? (current ? '🔒 Resultados ocultados' : '👁️ Resultados revelados!') : (current ? '⏸️ Categoria desativada' : '▶️ Categoria ativada'));
+    } catch { showToast('❌ Erro ao atualizar.'); }
+  };
+
+  const handleDeleteCat = async (catId) => {
+    if (!window.confirm('Apagar esta categoria e todos os votos?')) return;
+    try {
+      await deleteDoc(doc(db, 'votacao', selectedSchool, 'categorias', catId));
+      showToast('🗑️ Categoria apagada.');
+    } catch { showToast('❌ Erro ao apagar.'); }
+  };
+
+  const handleResetVotes = (cat) => {
+    setConfirmReset(cat);
+    setConfirmResetStep(1);
+  };
+
+  const executeReset = async () => {
+    if (!confirmReset) return;
+    try {
+      const colRef = collection(db, 'votacao', selectedSchool, 'votos', confirmReset.id, 'respostas');
+      const snap = await getDocs(colRef);
+      const batch = writeBatch(db);
+      snap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+      showToast('🔄 Votos resetados!');
+    } catch { showToast('❌ Erro ao resetar votos.'); }
+    setConfirmReset(null);
+    setConfirmResetStep(0);
+  };
+
+  return (
+    <div className="admin-page">
+      <header className="admin-header split">
+        <div>
+          <h1>🏆 Prémios / Votação</h1>
+          <p>Gere as categorias e resultados de votação por escola.</p>
+        </div>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <select
+            value={selectedSchool}
+            onChange={e => setSelectedSchool(e.target.value)}
+            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', padding: '10px 16px', borderRadius: 10, fontFamily: 'inherit', fontSize: '0.9rem' }}
+          >
+            <option value="">Selecionar Escola</option>
+            {schools.map(s => (
+              <option key={s.id} value={s.code}>{s.schoolName} ({s.code})</option>
+            ))}
+          </select>
+          {selectedSchool && (
+            <button onClick={() => setShowForm(!showForm)} className="btn-premium">
+              {showForm ? 'Cancelar' : <><Plus size={16} /> Nova Categoria</>}
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* Create form */}
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            className="glass-card admin-form-card"
+            style={{ marginBottom: 28, padding: 28 }}
+          >
+            <form onSubmit={handleCreateCat} style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div style={{ flex: '0 0 64px' }}>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Emoji</label>
+                <input type="text" value={newCat.emoji} onChange={e => setNewCat({...newCat, emoji: e.target.value})} maxLength={2} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px', color: 'white', fontSize: '1.4rem', textAlign: 'center' }} required />
+              </div>
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Título</label>
+                <input type="text" placeholder="Ex: Mais Popular" value={newCat.titulo} onChange={e => setNewCat({...newCat, titulo: e.target.value})} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: 'white' }} required />
+              </div>
+              <div style={{ flex: 2, minWidth: 200 }}>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Descrição</label>
+                <input type="text" placeholder="Vota no aluno mais popular..." value={newCat.descricao} onChange={e => setNewCat({...newCat, descricao: e.target.value})} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: 'white' }} />
+              </div>
+              <div style={{ flex: '0 0 80px' }}>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Ordem</label>
+                <input type="number" min={1} value={newCat.ordem} onChange={e => setNewCat({...newCat, ordem: e.target.value})} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px', color: 'white' }} />
+              </div>
+              <button type="submit" className="btn-premium" style={{ height: 48, whiteSpace: 'nowrap' }}>Criar Categoria</button>
+            </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Empty / No school selected */}
+      {!selectedSchool && (
+        <div className="glass-card" style={{ padding: 48, textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>
+          <Trophy size={40} style={{ marginBottom: 16, opacity: 0.3 }} />
+          <p>Seleciona uma escola para gerir as categorias de votação.</p>
+        </div>
+      )}
+
+      {/* Categories Table */}
+      {selectedSchool && !loadingCats && (
+        <div className="admin-table-wrapper glass-card">
+          {categorias.length === 0 ? (
+            <p style={{ padding: 24, color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>Sem categorias. Cria a primeira acima.</p>
+          ) : (
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Categoria</th>
+                  <th>Ativa</th>
+                  <th>Mostrar Resultados</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {categorias.map(cat => (
+                  <React.Fragment key={cat.id}>
+                    <tr>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ fontSize: '1.4rem' }}>{cat.emoji}</span>
+                          <div>
+                            <div style={{ fontWeight: 700 }}>{cat.titulo}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{cat.descricao}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <button
+                          className="btn-icon-small"
+                          onClick={() => handleToggle(cat.id, 'ativa', cat.ativa)}
+                          title={cat.ativa ? 'Desativar' : 'Ativar'}
+                          style={{ color: cat.ativa ? '#4ade80' : undefined }}
+                        >
+                          {cat.ativa ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                        </button>
+                      </td>
+                      <td>
+                        <button
+                          className="btn-icon-small"
+                          onClick={() => handleToggle(cat.id, 'mostrarResultados', cat.mostrarResultados)}
+                          title={cat.mostrarResultados ? 'Ocultar resultados' : 'Revelar resultados'}
+                          style={{ color: cat.mostrarResultados ? '#fbbf24' : undefined }}
+                        >
+                          {cat.mostrarResultados ? <Eye size={16} /> : <EyeOff size={16} />}
+                        </button>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            className="btn-icon-small"
+                            onClick={() => handleExpandCat(cat.id)}
+                            title="Ver ranking"
+                            style={{ color: expandedCat === cat.id ? '#e11d48' : undefined }}
+                          >
+                            📊
+                          </button>
+                          <button
+                            className="btn-icon-small"
+                            onClick={() => handleResetVotes(cat)}
+                            title="Resetar votos"
+                          >
+                            <RefreshCw size={14} />
+                          </button>
+                          <button
+                            className="btn-delete"
+                            onClick={() => handleDeleteCat(cat.id)}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Inline ranking row */}
+                    {expandedCat === cat.id && (
+                      <tr>
+                        <td colSpan={4} style={{ background: 'rgba(225,29,72,0.04)', padding: '16px 24px' }}>
+                          <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>🏅 Ranking ao Vivo — {cat.emoji} {cat.titulo}</p>
+                          {!rankings[cat.id] || rankings[cat.id].length === 0 ? (
+                            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.875rem' }}>Sem votos ainda.</p>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              {rankings[cat.id].map((r, i) => (
+                                <div key={r.nifVotado} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                  <span style={{ width: 24, fontWeight: 800, color: i === 0 ? '#ffd700' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : 'rgba(255,255,255,0.4)' }}>{i + 1}.</span>
+                                  <span style={{ flex: 1, fontWeight: 600 }}>{r.nomeVotado}</span>
+                                  <span style={{ background: 'rgba(225,29,72,0.15)', color: '#fb7185', padding: '2px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700 }}>{r.votos} {r.votos === 1 ? 'voto' : 'votos'}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {loadingCats && <p style={{ padding: '20px', color: 'rgba(255,255,255,0.4)' }}>A carregar categorias...</p>}
+
+      {/* Reset confirmation modal */}
+      {confirmReset && (
+        <div className="admin-modal-overlay" style={{ zIndex: 2000 }}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="admin-modal glass-card delete-confirm-modal"
+            style={{ maxWidth: 440, textAlign: 'center' }}
+          >
+            <div className="delete-icon-large"><RefreshCw size={36} /></div>
+            <h2>Resetar Votos</h2>
+            {confirmResetStep === 1 ? (
+              <>
+                <p>Apagar <strong>todos os votos</strong> da categoria <strong>{confirmReset.emoji} {confirmReset.titulo}</strong>? Esta ação é irreversível.</p>
+                <div className="modal-actions" style={{ justifyContent: 'center', gap: 16, marginTop: 28 }}>
+                  <button className="btn-outline-gold" onClick={() => { setConfirmReset(null); setConfirmResetStep(0); }}>Cancelar</button>
+                  <button className="btn-delete" style={{ padding: '12px 20px' }} onClick={() => setConfirmResetStep(2)}>Continuar →</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p style={{ color: '#ff4d4d', fontWeight: 700, marginTop: 8 }}>Última confirmação. Tens a certeza absoluta?</p>
+                <div className="modal-actions" style={{ justifyContent: 'center', gap: 16, marginTop: 28 }}>
+                  <button className="btn-outline-gold" onClick={() => { setConfirmReset(null); setConfirmResetStep(0); }}>Cancelar</button>
+                  <button className="btn-delete" style={{ padding: '12px 20px' }} onClick={executeReset}>Sim, Resetar Tudo</button>
+                </div>
+              </>
+            )}
+          </motion.div>
+        </div>
+      )}
+
+      {toast && (
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="admin-toast"
+        >
+          {toast}
+        </motion.div>
       )}
     </div>
   );

@@ -1,0 +1,77 @@
+/* ── Categoria Vote Card Scoped ──────────────────────────────────── */
+.categoria-card {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: border-color 0.3s;
+}
+
+.categoria-card--voted {
+  border-color: rgba(74, 222, 128, 0.2);
+}
+
+.categoria-top {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.categoria-emoji-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.categoria-emoji {
+  font-size: 1.8rem;
+}
+
+.categoria-info {
+  flex: 1;
+}
+
+.categoria-titulo {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.categoria-desc {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.categoria-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.categoria-btn {
+  padding: 10px 20px;
+  font-size: 0.875rem;
+  flex-shrink: 0;
+}
+
+.categoria-reveal-hint,
+.categoria-pending-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.categoria-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
