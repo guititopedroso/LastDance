@@ -2,8 +2,8 @@
 // Configurações da base de dados MySQL (edita estes valores de acordo com o teu phpMyAdmin/servidor)
 
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'novabase');
-define('DB_USER', 'gui2');
+define('DB_NAME', 'u236076924_novabase');
+define('DB_USER', 'u236076924_gui2');
 define('DB_PASS', 'Guitito2006');
 
 // Conexão com a base de dados via PDO
