@@ -336,7 +336,7 @@ const AttendeeManager = () => {
   const [confirmDelete, setConfirmDelete] = useState(null); // Attendee to delete
   const [schools, setSchools] = useState([]);
   const [newAttendee, setNewAttendee] = useState({
-    firstName: '', lastName: '', nif: '', email: '', phone: '', schoolCode: '', paymentPlan: 'full'
+    firstName: '', lastName: '', email: '', phone: '', schoolCode: '', paymentPlan: 'full'
   });
 
   const fetchData = async () => {
@@ -376,7 +376,7 @@ const AttendeeManager = () => {
         createdAt: new Date().toISOString()
       });
       setShowAddForm(false);
-      setNewAttendee({ firstName: '', lastName: '', nif: '', email: '', phone: '', schoolCode: '', paymentPlan: 'full' });
+      setNewAttendee({ firstName: '', lastName: '', email: '', phone: '', schoolCode: '', paymentPlan: 'full' });
       fetchData();
     } catch (error) {
       alert("Erro ao adicionar inscrito.");
@@ -413,21 +413,20 @@ const AttendeeManager = () => {
               <input type="text" placeholder="Apelido" value={newAttendee.lastName} onChange={e => setNewAttendee({...newAttendee, lastName: e.target.value})} required />
             </div>
             <div className="form-row">
-              <input type="text" placeholder="NIF" value={newAttendee.nif} onChange={e => setNewAttendee({...newAttendee, nif: e.target.value})} required />
-              <select value={newAttendee.schoolCode} onChange={e => setNewAttendee({...newAttendee, schoolCode: e.target.value})} required>
-                <option value="">Selecionar Escola</option>
-                {schools.map(s => <option key={s.id} value={s.code}>{s.schoolName} ({s.code})</option>)}
-              </select>
-            </div>
-            <div className="form-row">
               <input type="email" placeholder="Email" value={newAttendee.email} onChange={e => setNewAttendee({...newAttendee, email: e.target.value})} required />
               <input type="tel" placeholder="Telemóvel" value={newAttendee.phone} onChange={e => setNewAttendee({...newAttendee, phone: e.target.value})} required />
             </div>
             <div className="form-row">
+              <select value={newAttendee.schoolCode} onChange={e => setNewAttendee({...newAttendee, schoolCode: e.target.value})} required>
+                <option value="">Selecionar Escola</option>
+                {schools.map(s => <option key={s.id} value={s.code}>{s.schoolName} ({s.code})</option>)}
+              </select>
               <select value={newAttendee.paymentPlan} onChange={e => setNewAttendee({...newAttendee, paymentPlan: e.target.value})}>
                 <option value="full">Pagamento Total</option>
                 <option value="installments">5 Prestações</option>
               </select>
+            </div>
+            <div className="form-row" style={{ justifyContent: 'flex-end', marginTop: '10px' }}>
               <button type="submit" className="btn-premium">Adicionar Aluno</button>
             </div>
           </form>
@@ -478,7 +477,7 @@ const AttendeeManager = () => {
                   <div className="detail-item"><span>Nome:</span> <strong>{selectedAttendee.firstName} {selectedAttendee.lastName}</strong></div>
                   <div className="detail-item"><span>Email:</span> <strong>{selectedAttendee.email}</strong></div>
                   <div className="detail-item"><span>Telemóvel:</span> <strong>{selectedAttendee.phone}</strong></div>
-                  <div className="detail-item"><span>NIF:</span> <strong>{selectedAttendee.nif}</strong></div>
+                  <div className="detail-item"><span>Inscrição ID:</span> <strong style={{ fontSize: '0.85em' }}>{selectedAttendee.id}</strong></div>
                 </div>
               </div>
 

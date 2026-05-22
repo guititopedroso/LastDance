@@ -75,6 +75,26 @@ export const getStudentByNIF = async (nif) => {
   }
 };
 
+export const getStudentByNameAndSchool = async (fullName, schoolCode) => {
+  try {
+    const q = query(collection(db, "registrations"), where("schoolCode", "==", schoolCode.toUpperCase()));
+    const querySnapshot = await getDocs(q);
+    const cleanSearchName = fullName.trim().toLowerCase();
+    
+    for (const doc of querySnapshot.docs) {
+      const data = doc.data();
+      const studentName = `${data.firstName || ''} ${data.lastName || ''}`.trim().toLowerCase();
+      if (studentName === cleanSearchName || (data.firstName && data.firstName.trim().toLowerCase() === cleanSearchName)) {
+        return { id: doc.id, ...data };
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching student by name and school:", error);
+    return null;
+  }
+};
+
 // Admin Helpers - Codes
 export const getAllCodes = async () => {
   const querySnapshot = await getDocs(collection(db, "codes"));

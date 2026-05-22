@@ -399,39 +399,21 @@ const Home = () => {
                 Pronto para a Noite da Tua Vida?
               </motion.h2>
               <motion.p variants={staggerItem}>
-                Introduz o código que a tua escola te forneceu para iniciares o processo de inscrição.
+                Garante já a tua presença no Baile de Finalistas. O processo é simples e rápido.
               </motion.p>
             </motion.div>
 
-            <form onSubmit={handleValidateCode} className="code-form central">
-              <motion.div
-                className="input-group"
-                whileFocusWithin={{
-                  borderColor: 'var(--color-gold)',
-                  boxShadow: '0 0 30px rgba(255,140,0,0.2)'
-                }}
+            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+              <motion.button
+                onClick={() => navigate('/register')}
+                className="btn-premium"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.97 }}
+                style={{ padding: '16px 40px', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}
               >
-                <input
-                  type="text"
-                  placeholder="CÓDIGO DE ESCOLA"
-                  maxLength={8}
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  autoComplete="off"
-                />
-                <motion.button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-premium"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  {loading ? 'A Validar...' : 'Validar Código'}
-                  {!loading && <ArrowRight size={18} />}
-                </motion.button>
-              </motion.div>
-              <span className="helper-text">Precisas de um código de 8 caracteres (ex: A8B29C1F)</span>
-            </form>
+                Inscrever Agora <ArrowRight size={18} />
+              </motion.button>
+            </div>
           </motion.div>
         </div>
       </section>

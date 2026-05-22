@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { db } from '../api/firebase';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { db, getStudentByNameAndSchool } from '../api/firebase';
 
 const AppAuthContext = createContext(null);
 
@@ -18,52 +17,24 @@ export const AppAuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Login: verifica alunos/{codigoEscola}/lista/{nif} no Firestore com fallback para registrations
-  const login = useCallback(async (nif, codigoEscola) => {
+  // Login: verifica registrations pelo Nome e Código de Escola no Firestore
+  const login = useCallback(async (fullName, schoolCode) => {
     setLoading(true);
     setError(null);
     try {
-      const cleanNif = nif.trim();
-      const cleanCode = codigoEscola.trim().toUpperCase();
+      const studentData = await getStudentByNameAndSchool(fullName, schoolCode);
 
-      let data = null;
-
-      // 1. Tentar encontrar na lista de alunos do evento
-      const alunoRef = doc(db, 'alunos', cleanCode, 'lista', cleanNif);
-      const alunoSnap = await getDoc(alunoRef);
-
-      if (alunoSnap.exists()) {
-        data = alunoSnap.data();
-      } else {
-        // 2. Fallback: procurar nas inscrições realizadas no site (registrations)
-        const q = query(
-          collection(db, 'registrations'),
-          where('nif', '==', cleanNif),
-          where('schoolCode', '==', cleanCode)
-        );
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-          const regData = querySnapshot.docs[0].data();
-          data = {
-            nomeAluno: `${regData.firstName} ${regData.lastName}`,
-            turma: regData.turma || '',
-            fotoPerfilURL: regData.fotoPerfilURL || null
-          };
-        }
-      }
-
-      if (!data) {
-        setError(`NIF (${cleanNif}) não encontrado no evento (${cleanCode}).`);
+      if (!studentData) {
+        setError(`Inscrição não encontrada para o nome "${fullName}" na escola selecionada.`);
         return false;
       }
 
       const session = {
-        nif: cleanNif,
-        nomeAluno: data.nomeAluno || 'Aluno',
-        turma: data.turma || '',
-        fotoPerfilURL: data.fotoPerfilURL || null,
-        codigoEscola: cleanCode,
+        nif: studentData.id, // Usar o ID da inscrição como identificador único 'nif' na App
+        nomeAluno: `${studentData.firstName} ${studentData.lastName || ''}`.trim(),
+        turma: studentData.turma || '',
+        fotoPerfilURL: studentData.fotoPerfilURL || null,
+        codigoEscola: schoolCode.toUpperCase(),
       };
 
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));

@@ -1,34 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Ticket, CreditCard, Clock, User, LogOut, ArrowLeft, Lock, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { Search, Ticket, CreditCard, Clock, User, LogOut, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { getStudentByNIF, validateSchoolCode } from '../../api/firebase';
+import { getStudentByNameAndSchool, getAllCodes } from '../../api/firebase';
 import './ClientArea.css';
 
 const ClientArea = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [nif, setNif] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [schools, setSchools] = useState([]);
+  const [selectedSchoolCode, setSelectedSchoolCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState('nif'); // 'nif' | 'password' | 'dashboard'
-  const [tempData, setTempData] = useState(null);
+  const [step, setStep] = useState('search'); // 'search' | 'dashboard'
   const [registration, setRegistration] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState('multibanco');
 
   useEffect(() => {
-    // Check for incomplete registration
-    const savedRegData = localStorage.getItem('temp_reg_data');
-    if (savedRegData) {
-      const parsed = JSON.parse(savedRegData);
-      if (parsed.schoolCode) {
-        navigate(`/register/${parsed.schoolCode}`);
-        return;
-      }
-    }
-
     // Check for active session
     const activeSession = localStorage.getItem('student_session');
     if (activeSession) {
@@ -42,84 +31,83 @@ const ClientArea = () => {
         setStep('dashboard');
       }
     }
+
+    const fetchSchools = async () => {
+      try {
+        const schoolsData = await getAllCodes();
+        setSchools(schoolsData);
+      } catch (err) {
+        console.error("Error loading schools:", err);
+      }
+    };
+    fetchSchools();
   }, [navigate, location]);
 
-  const handleNifSubmit = async (e) => {
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
+    if (!fullName.trim() || !selectedSchoolCode) {
+      alert("Por favor, preenche todos os campos.");
+      return;
+    }
     setLoading(true);
     
     try {
-      const data = await getStudentByNIF(nif);
-      if (data) {
-        setTempData(data);
-        setStep('password');
+      const studentData = await getStudentByNameAndSchool(fullName, selectedSchoolCode);
+      if (studentData) {
+        // Fetch school name
+        let schoolName = 'Escola não especificada';
+        let ballDate = null;
+        const schoolData = schools.find(s => s.code.toUpperCase() === selectedSchoolCode.toUpperCase());
+        if (schoolData) {
+          schoolName = schoolData.schoolName;
+          ballDate = schoolData.ballDate || null;
+        }
+
+        const sessionData = {
+          name: `${studentData.firstName} ${studentData.lastName}`,
+          school: schoolName,
+          schoolCode: studentData.schoolCode || null,
+          ballDate: ballDate,
+          status: studentData.status || 'pending_payment',
+          nif: studentData.nif || '',
+          reference: studentData.paymentReference || 'Gerando...',
+          entity: studentData.paymentEntity || '21054',
+          amount: studentData.paymentPlan === 'installments' ? '11.00€' : '55.00€',
+          paymentMethod: studentData.paymentMethod || 'multibanco',
+          paymentPlan: studentData.paymentPlan,
+          mbwayPhone: studentData.mbwayPhone || null,
+          paidInstallments: studentData.paidInstallments || 0,
+          totalInstallments: studentData.paymentPlan === 'installments' ? 5 : 1
+        };
+
+        setRegistration(sessionData);
+        localStorage.setItem('student_session', JSON.stringify(sessionData));
+        
+        const redirectTarget = location.state?.from?.pathname || location.state?.from || null;
+        if (redirectTarget) {
+          navigate(redirectTarget, { replace: true });
+        } else {
+          setStep('dashboard');
+        }
       } else {
-        alert("Inscrição não encontrada. Verifica se o NIF está correto.");
+        alert("Inscrição não encontrada. Verifica se o nome e a escola estão corretos.");
       }
     } catch (error) {
-      console.error("Search Error:", error);
-      alert("Ocorreu um erro ao procurar. Tenta novamente.");
+      console.error("Login Error:", error);
+      alert("Ocorreu um erro ao aceder. Tenta novamente.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handlePasswordSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    if (tempData.password === password) {
-      // Fetch school name
-      let schoolName = 'Escola não especificada';
-      let ballDate = null;
-      if (tempData.schoolCode) {
-        const schoolData = await validateSchoolCode(tempData.schoolCode);
-        if (schoolData) {
-          schoolName = schoolData.schoolName;
-          ballDate = schoolData.ballDate || null;
-        }
-      }
-
-      const sessionData = {
-        name: `${tempData.firstName} ${tempData.lastName}`,
-        school: schoolName,
-        schoolCode: tempData.schoolCode || null,
-        ballDate: ballDate,
-        status: tempData.status || 'pending_payment',
-        nif: tempData.nif,
-        reference: tempData.paymentReference || 'Gerando...',
-        entity: tempData.paymentEntity || '21054',
-        amount: tempData.paymentPlan === 'installments' ? '11.00€' : '55.00€',
-        paymentMethod: tempData.paymentMethod || 'multibanco',
-        paymentPlan: tempData.paymentPlan,
-        mbwayPhone: tempData.mbwayPhone || null,
-        paidInstallments: tempData.paidInstallments || 0,
-        totalInstallments: tempData.paymentPlan === 'installments' ? 5 : 1
-      };
-
-      setRegistration(sessionData);
-      localStorage.setItem('student_session', JSON.stringify(sessionData));
-      
-      // Redirect if from state is present
-      const redirectTarget = location.state?.from?.pathname || location.state?.from || null;
-      if (redirectTarget) {
-        navigate(redirectTarget, { replace: true });
-      } else {
-        setStep('dashboard');
-      }
-    } else {
-      alert("Password incorreta. Tenta novamente.");
-    }
-    setLoading(false);
-  };
-
   const handleLogout = () => {
     localStorage.removeItem('student_session');
     setRegistration(null);
-    setTempData(null);
-    setPassword('');
-    setStep('nif');
+    setFullName('');
+    setSelectedSchoolCode('');
+    setStep('search');
   };
+
 
   return (
     <div className="client-area-page section-padding">
@@ -132,62 +120,49 @@ const ClientArea = () => {
           <p>Consulta o estado da tua inscrição e dados de pagamento.</p>
         </div>
 
-        {step === 'nif' && (
+        {step === 'search' && (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="glass-card search-card"
           >
             <h3>Aceder à Inscrição</h3>
-            <p>Introduz o teu NIF para começar.</p>
-            <form onSubmit={handleNifSubmit} className="search-form">
-              <div className="input-group-simple">
+            <p>Introduz o teu nome e seleciona a tua escola para começar.</p>
+            <form onSubmit={handleLoginSubmit} className="search-form" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <div className="input-group-simple" style={{ width: '100%' }}>
                 <input 
                   type="text" 
-                  placeholder="Teu NIF (Ex: 123456789)" 
-                  maxLength={9}
-                  value={nif}
-                  onChange={(e) => setNif(e.target.value)}
+                  placeholder="Nome Completo (Ex: João Silva)" 
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
                   required 
                 />
               </div>
-              <button type="submit" disabled={loading} className="btn-premium">
-                {loading ? 'A validar...' : 'Próximo'} <Search size={18} />
-              </button>
-            </form>
-          </motion.div>
-        )}
-
-        {step === 'password' && (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass-card search-card"
-          >
-            <button onClick={() => setStep('nif')} className="btn-back-step">
-              <ArrowLeft size={16} /> Alterar NIF
-            </button>
-            <h3>Confirmar Identidade</h3>
-            <p>Olá <strong>{tempData.firstName}</strong>, introduz a tua password de acesso.</p>
-            <form onSubmit={handlePasswordSubmit} className="search-form">
-              <div className="input-group-simple password-wrapper">
-                <input 
-                  type={showPassword ? "text" : "password"} 
-                  placeholder="Tua password" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+              <div className="input-group-simple" style={{ width: '100%' }}>
+                <select 
                   required 
-                />
-                <button 
-                  type="button" 
-                  className="eye-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
+                  value={selectedSchoolCode}
+                  onChange={(e) => setSelectedSchoolCode(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    color: '#fff',
+                    outline: 'none',
+                    fontSize: '1rem',
+                    cursor: 'pointer'
+                  }}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                  <option value="" style={{ background: '#111' }}>Selecionar Escola...</option>
+                  {schools.map((s) => (
+                    <option key={s.id} value={s.code} style={{ background: '#111' }}>{s.schoolName}</option>
+                  ))}
+                </select>
               </div>
-              <button type="submit" disabled={loading} className="btn-premium">
-                {loading ? 'A entrar...' : 'Entrar na Área de Aluno'}
+              <button type="submit" disabled={loading} className="btn-premium" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                {loading ? 'A aceder...' : 'Entrar na Área de Aluno'} <Search size={18} />
               </button>
             </form>
           </motion.div>

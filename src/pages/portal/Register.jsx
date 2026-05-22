@@ -1,26 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, Calendar, Globe, CreditCard, Hash, ArrowLeft } from 'lucide-react';
+import { User, Mail, Phone, Globe, ArrowLeft } from 'lucide-react';
 import './Register.css';
-import { registerStudent, validateSchoolCode } from '../../api/firebase';
-import { isValidNIF } from '../../utils/validation';
-import { nationalities } from '../../data/nationalities';
+import { registerStudent, getAllCodes } from '../../api/firebase';
 
 const Register = () => {
   const { code } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [schools, setSchools] = useState([]);
+  const [selectedSchoolCode, setSelectedSchoolCode] = useState(code || '');
   const [school, setSchool] = useState(null);
   const [step, setStep] = useState(1); // 1: Personal Details, 2: Payment Plan
   
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    nif: '',
-    password: '',
-    dob: '',
-    nationality: 'Portuguesa',
     email: '',
     phone: '',
     paymentPlan: 'full',
@@ -29,33 +25,43 @@ const Register = () => {
   });
 
   useEffect(() => {
-    const savedData = localStorage.getItem('temp_reg_data');
-    if (!savedData) {
-      navigate(`/setup-account/${code}`);
-      return;
-    }
-    
-    const parsedData = JSON.parse(savedData);
-    setFormData(prev => ({
-      ...prev,
-      nif: parsedData.nif,
-      password: parsedData.password
-    }));
-
-    const fetchSchool = async () => {
-      const data = await validateSchoolCode(code);
-      if (data) {
-        setSchool(data);
-      } else {
-        alert("Código inválido.");
-        navigate('/');
+    const fetchSchoolsAndInitial = async () => {
+      try {
+        const schoolsData = await getAllCodes();
+        setSchools(schoolsData);
+        
+        if (code) {
+          const matchedSchool = schoolsData.find(s => s.code.toUpperCase() === code.toUpperCase());
+          if (matchedSchool) {
+            setSchool(matchedSchool);
+            setSelectedSchoolCode(matchedSchool.code);
+          } else {
+            alert("Código de escola inválido.");
+            navigate('/register');
+          }
+        }
+      } catch (err) {
+        console.error("Error loading schools:", err);
       }
     };
-    fetchSchool();
+    fetchSchoolsAndInitial();
   }, [code, navigate]);
+
+  useEffect(() => {
+    if (selectedSchoolCode) {
+      const matched = schools.find(s => s.code.toUpperCase() === selectedSchoolCode.toUpperCase());
+      setSchool(matched || null);
+    } else {
+      setSchool(null);
+    }
+  }, [selectedSchoolCode, schools]);
 
   const handleNextStep = (e) => {
     e.preventDefault();
+    if (!selectedSchoolCode) {
+      alert("Por favor, seleciona uma escola.");
+      return;
+    }
     setStep(2);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -67,12 +73,10 @@ const Register = () => {
     try {
       const dataToSubmit = {
         ...formData,
-        schoolCode: code
+        schoolCode: selectedSchoolCode
       };
       const regId = await registerStudent(dataToSubmit);
-      // Clear session data after success
-      localStorage.removeItem('temp_reg_data');
-      navigate('/success', { state: { formData: dataToSubmit, code, regId } });
+      navigate('/success', { state: { formData: dataToSubmit, code: selectedSchoolCode, regId } });
     } catch (error) {
       alert("Erro ao realizar inscrição. Tenta novamente.");
     } finally {
@@ -100,7 +104,7 @@ const Register = () => {
           className="register-header"
         >
           <div className="school-badge">
-            <Globe size={16} /> {school ? school.schoolName : 'A validar...'}
+            <Globe size={16} /> {school ? school.schoolName : 'Seleciona a tua escola...'}
           </div>
           <div className="step-indicator">
             <span className={step === 1 ? 'active' : ''}>1. Dados Pessoais</span>
@@ -108,15 +112,11 @@ const Register = () => {
             <span className={step === 2 ? 'active' : ''}>2. Pagamento</span>
           </div>
           <h1>{step === 1 ? 'Dados Pessoais' : 'Plano de Pagamento'}</h1>
-          {school ? (
-            <p className="school-info">
-              {step === 1 
-                ? 'Completa o teu perfil para continuares.' 
-                : 'Escolhe a modalidade que preferes para o teu bilhete.'}
-            </p>
-          ) : (
-            <p>A carregar dados do evento...</p>
-          )}
+          <p className="school-info">
+            {step === 1 
+              ? 'Completa o teu perfil para continuares.' 
+              : 'Escolhe a modalidade que preferes para o teu bilhete.'}
+          </p>
         </motion.div>
 
         <motion.div 
@@ -152,26 +152,17 @@ const Register = () => {
                   />
                 </div>
 
-                <div className="input-field">
-                  <label><Calendar size={16} /> Data de Nascimento</label>
-                  <input 
-                    type="date" 
-                    required 
-                    value={formData.dob}
-                    onChange={(e) => setFormData({...formData, dob: e.target.value})}
-                  />
-                </div>
-
-                <div className="input-field">
-                  <label><Globe size={16} /> Nacionalidade</label>
+                <div className="input-field full-width">
+                  <label><Globe size={16} /> Escola</label>
                   <select 
                     required 
-                    value={formData.nationality}
-                    onChange={(e) => setFormData({...formData, nationality: e.target.value})}
+                    value={selectedSchoolCode}
+                    onChange={(e) => setSelectedSchoolCode(e.target.value)}
                     className="select-field"
                   >
-                    {nationalities.map((n, index) => (
-                      <option key={index} value={n}>{n}</option>
+                    <option value="">Selecionar Escola...</option>
+                    {schools.map((s) => (
+                      <option key={s.id} value={s.code}>{s.schoolName}</option>
                     ))}
                   </select>
                 </div>
@@ -187,7 +178,7 @@ const Register = () => {
                   />
                 </div>
 
-                <div className="input-field full-width">
+                <div className="input-field">
                   <label><Phone size={16} /> Telemóvel</label>
                   <input 
                     type="tel" 

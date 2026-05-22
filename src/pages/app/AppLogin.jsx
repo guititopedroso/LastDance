@@ -1,30 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppAuth } from '../../context/AppAuthContext';
+import { getAllCodes } from '../../api/firebase';
 import './AppLogin.css';
 
 const AppLogin = () => {
-  const [nif, setNif] = useState('');
-  const [codigoEscola, setCodigoEscola] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [schools, setSchools] = useState([]);
+  const [selectedSchoolCode, setSelectedSchoolCode] = useState('');
   const { login, loading, error, clearError } = useAppAuth();
   const navigate = useNavigate();
 
-  const handleNifChange = (e) => {
-    const val = e.target.value.replace(/\D/g, '').slice(0, 9);
-    setNif(val);
+  useEffect(() => {
+    const fetchSchools = async () => {
+      try {
+        const schoolsData = await getAllCodes();
+        setSchools(schoolsData);
+      } catch (err) {
+        console.error("Error loading schools:", err);
+      }
+    };
+    fetchSchools();
+  }, []);
+
+  const handleNameChange = (e) => {
+    setFullName(e.target.value);
     if (error) clearError();
   };
 
-  const handleCodeChange = (e) => {
-    setCodigoEscola(e.target.value.toUpperCase());
+  const handleSchoolChange = (e) => {
+    setSelectedSchoolCode(e.target.value);
     if (error) clearError();
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (nif.length !== 9) return;
-    const ok = await login(nif, codigoEscola);
+    if (!fullName.trim() || !selectedSchoolCode) return;
+    const ok = await login(fullName, selectedSchoolCode);
     if (ok) navigate('/app', { replace: true });
   };
 
@@ -72,35 +85,44 @@ const AppLogin = () => {
           <h2 className="form-title">Entrar</h2>
 
           <div className="input-group">
-            <label className="input-label" htmlFor="nif-input">NIF</label>
+            <label className="input-label" htmlFor="name-input">Nome Completo</label>
             <input
-              id="nif-input"
+              id="name-input"
               className="input-field"
-              type="tel"
-              inputMode="numeric"
-              placeholder="Ex: 123456789"
-              value={nif}
-              onChange={handleNifChange}
-              maxLength={9}
+              type="text"
+              placeholder="Ex: João Silva"
+              value={fullName}
+              onChange={handleNameChange}
               required
               autoComplete="off"
             />
-            <span className="input-hint">{nif.length}/9 dígitos</span>
           </div>
 
           <div className="input-group">
-            <label className="input-label" htmlFor="code-input">Código do Evento</label>
-            <input
-              id="code-input"
+            <label className="input-label" htmlFor="school-select">Escola</label>
+            <select
+              id="school-select"
               className="input-field"
-              type="text"
-              placeholder="Ex: ESC2025"
-              value={codigoEscola}
-              onChange={handleCodeChange}
+              value={selectedSchoolCode}
+              onChange={handleSchoolChange}
               required
-              autoComplete="off"
-              autoCapitalize="characters"
-            />
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                background: 'rgba(255, 255, 255, 0.05)',
+                color: '#fff',
+                outline: 'none',
+                fontSize: '1rem',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="" style={{ background: '#111' }}>Selecionar Escola...</option>
+              {schools.map((s) => (
+                <option key={s.id} value={s.code} style={{ background: '#111' }}>{s.schoolName}</option>
+              ))}
+            </select>
           </div>
 
           {/* Error */}
@@ -121,7 +143,8 @@ const AppLogin = () => {
             type="submit"
             id="login-btn"
             className="btn btn-primary login-btn"
-            disabled={loading || nif.length !== 9 || !codigoEscola}
+            disabled={loading || !fullName.trim() || !selectedSchoolCode}
+            style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
             {loading ? (
               <span className="login-spinner" />

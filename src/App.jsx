@@ -6,10 +6,10 @@ import Preloader from './components/Preloader';
 
 // Lazy load heavy components and other pages
 const Register = lazy(() => import('./pages/portal/Register'));
-const AccountSetup = lazy(() => import('./pages/portal/AccountSetup'));
 const Success = lazy(() => import('./pages/portal/Success'));
 const ClientArea = lazy(() => import('./pages/portal/ClientArea'));
 const Memorias = lazy(() => import('./pages/portal/Memorias'));
+const DownloadApp = lazy(() => import('./pages/public/DownloadApp'));
 const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'));
 const Footer = lazy(() => import('./layouts/Footer'));
 const CookiePolicy = lazy(() => import('./pages/public/CookiePolicy'));
@@ -81,8 +81,8 @@ function App() {
                 <main>
                   <Routes>
                     <Route path="/" element={<Home />} />
+                    <Route path="/register" element={<Register />} />
                     <Route path="/register/:code" element={<Register />} />
-                    <Route path="/setup-account/:code" element={<AccountSetup />} />
                     <Route path="/success" element={<Success />} />
                     <Route path="/area-cliente" element={<ClientArea />} />
                     <Route path="/memorias" element={
@@ -90,6 +90,7 @@ function App() {
                         <Memorias />
                       </ProtectedRoute>
                     } />
+                    <Route path="/app-install" element={<DownloadApp />} />
                     <Route path="/termos" element={<Terms />} />
                     <Route path="/privacidade" element={<PrivacyPolicy />} />
                     <Route path="/cookies" element={<CookiePolicy />} />

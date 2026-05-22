@@ -1,1 +1,0 @@
-var e=e=>{if(!e)return!1;let t=String(e);if(!/^[0-9]{9}$/.test(t)||![`1`,`2`,`3`,`5`,`6`,`8`,`9`].includes(t[0]))return!1;let n=0;for(let e=0;e<8;e++)n+=Number(t[e])*(9-e);let r=n%11,i=r<2?0:11-r;return i>=10&&(i=0),Number(t[8])===i};export{e as t};
