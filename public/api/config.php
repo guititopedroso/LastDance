@@ -1,9 +1,10 @@
 <?php
 // Configurações da base de dados MySQL (edita estes valores de acordo com o teu phpMyAdmin/servidor)
+
 define('DB_HOST', 'localhost');
-define('DB_NAME', 'lastdance');
-define('DB_USER', 'gui');
-define('DB_PASS', 'guitito2006');
+define('DB_NAME', 'novabase');
+define('DB_USER', 'gui2');
+define('DB_PASS', 'Guitito2006');
 
 // Conexão com a base de dados via PDO
 try {
