@@ -7,18 +7,24 @@
   z-index: 100;
 }
 
-.upload-sheet {
+.upload-sheet-wrapper {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  max-height: 90dvh;
-  max-height: 90vh;
+  inset: 0;
+  z-index: 101;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: auto;
+}
+
+.upload-sheet {
+  position: relative;
+  width: 100%;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   border-bottom: none;
-  z-index: 101;
-  padding: 12px 24px 40px;
+  padding: 12px 24px calc(48px + env(safe-area-inset-bottom));
   background: var(--bg-card);
 }
 
