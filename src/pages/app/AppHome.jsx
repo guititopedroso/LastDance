@@ -13,7 +13,7 @@ const cardVariants = {
 };
 
 const AppHome = () => {
-  const { user, logout } = useAppAuth();
+  const { user } = useAppAuth();
   const navigate = useNavigate();
 
   const displayName = user?.nomeAluno || 'Olá';
@@ -23,20 +23,18 @@ const AppHome = () => {
       id: 'memorias',
       emoji: '📸',
       title: 'Memórias',
-      desc: 'O teu mural de polaroids da festa',
-      gradient: 'from-violet-600 to-rose-600',
-      bgGlow: 'rgba(139, 92, 246, 0.15)',
+      desc: 'Partilha e visualiza fotografias Polaroids da festa.',
       path: '/app/memorias',
+      bgGlow: 'rgba(236,72,153,0.15)'
     },
     {
       id: 'premios',
       emoji: '🏆',
-      title: 'Prémios',
-      desc: 'Vota nos prémios dos teus colegas',
-      gradient: 'from-amber-500 to-rose-600',
-      bgGlow: 'rgba(245, 158, 11, 0.15)',
+      title: 'Prémios LastDance',
+      desc: 'Vota nos teus colegas nas categorias dos prémios.',
       path: '/app/premios',
-    },
+      bgGlow: 'rgba(251,191,36,0.15)'
+    }
   ];
 
   return (
@@ -58,18 +56,6 @@ const AppHome = () => {
             <span className="home-school-badge">{user.nomeEscola}</span>
           )}
         </div>
-        <button
-          id="home-logout-btn"
-          className="btn btn-icon"
-          onClick={logout}
-          title="Terminar sessão"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-            <polyline points="16 17 21 12 16 7"/>
-            <line x1="21" y1="12" x2="9" y2="12"/>
-          </svg>
-        </button>
       </motion.div>
 
       {/* Section Cards */}

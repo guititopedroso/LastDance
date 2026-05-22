@@ -44,9 +44,8 @@ export const AppAuthProvider = ({ children }) => {
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(SESSION_KEY);
-    setUser(null);
-    setError(null);
+    // Disabled to prevent logout sabotage
+    console.warn('Logout is disabled to prevent voting sabotage.');
   }, []);
 
   const clearError = useCallback(() => setError(null), []);

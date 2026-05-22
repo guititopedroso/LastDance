@@ -17,7 +17,10 @@ import {
   EyeOff,
   ToggleLeft,
   ToggleRight,
-  RefreshCw
+  RefreshCw,
+  Edit2,
+  Check,
+  X
 } from 'lucide-react';
 import './Admin.css';
 import { 
@@ -551,6 +554,13 @@ const AttendeeManager = () => {
   );
 };
 
+const PRESET_EMOJIS = [
+  '🏆', '👑', '🥇', '🥈', '🥉', '🎓', '🔥', '😂', 
+  '💃', '🕺', '🎤', '📸', '✨', '🎭', '🎨', '🎸', 
+  '🧠', '🤡', '⚽', '💖', '🕶️', '🌟', '🚀', '👔', 
+  '💅', '👗', '🎮', '🍕', '🍻', '🍿', '💡', '💯'
+];
+
 /* ══════════════════════════════════════════════════════
    PRÉMIOS MANAGER
    ══════════════════════════════════════════════════════ */
@@ -568,9 +578,33 @@ const PremiosManager = () => {
   const [confirmReset, setConfirmReset] = useState(null);
   const [confirmResetStep, setConfirmResetStep] = useState(0);
 
+  // Edit category state
+  const [editingCatId, setEditingCatId] = useState(null);
+  const [editCatData, setEditCatData] = useState({ titulo: '', descricao: '', emoji: '', ordem: 1 });
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showEditEmojiPicker, setShowEditEmojiPicker] = useState(false);
+
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2500);
+  };
+
+  const handleSaveEdit = async (catId) => {
+    if (!editCatData.titulo.trim()) { showToast('⚠️ O título não pode estar vazio.'); return; }
+    try {
+      await updateDoc(doc(db, 'votacao', selectedSchool, 'categorias', catId), {
+        titulo: editCatData.titulo.trim(),
+        descricao: editCatData.descricao.trim(),
+        emoji: editCatData.emoji,
+        ordem: Number(editCatData.ordem) || 1
+      });
+      setEditingCatId(null);
+      setShowEditEmojiPicker(false);
+      showToast('✅ Categoria atualizada!');
+    } catch (err) {
+      console.error(err);
+      showToast('❌ Erro ao atualizar categoria.');
+    }
   };
 
   // Load school codes
@@ -750,9 +784,107 @@ const PremiosManager = () => {
             style={{ marginBottom: 28, padding: 28 }}
           >
             <form onSubmit={handleCreateCat} style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div style={{ flex: '0 0 64px' }}>
+              <div style={{ flex: '0 0 80px', position: 'relative' }}>
                 <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Emoji</label>
-                <input type="text" value={newCat.emoji} onChange={e => setNewCat({...newCat, emoji: e.target.value})} maxLength={2} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px', color: 'white', fontSize: '1.4rem', textAlign: 'center' }} required />
+                <button
+                  type="button"
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  style={{
+                    width: '100%',
+                    height: '48px',
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 10,
+                    color: 'white',
+                    fontSize: '1.6rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    outline: 'none'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                >
+                  {newCat.emoji}
+                </button>
+                
+                {showEmojiPicker && (
+                  <>
+                    <div 
+                      onClick={() => setShowEmojiPicker(false)} 
+                      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}
+                    />
+                    <div 
+                      style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: 0,
+                        marginTop: 8,
+                        background: '#18181b',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        borderRadius: 12,
+                        padding: 12,
+                        zIndex: 1000,
+                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.5)',
+                        width: '280px',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(6, 1fr)',
+                        gap: 8
+                      }}
+                    >
+                      {PRESET_EMOJIS.map(emoji => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => {
+                            setNewCat(prev => ({ ...prev, emoji }));
+                            setShowEmojiPicker(false);
+                          }}
+                          style={{
+                            fontSize: '1.4rem',
+                            background: newCat.emoji === emoji ? 'rgba(255,255,255,0.1)' : 'transparent',
+                            border: 'none',
+                            borderRadius: 8,
+                            padding: '6px',
+                            cursor: 'pointer',
+                            transition: 'background 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                          onMouseLeave={e => e.currentTarget.style.background = newCat.emoji === emoji ? 'rgba(255,255,255,0.1)' : 'transparent'}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                      
+                      <div style={{ gridColumn: 'span 6', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 8, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', flexShrink: 0 }}>Outro:</span>
+                        <input
+                          type="text"
+                          value={newCat.emoji}
+                          onChange={e => setNewCat({ ...newCat, emoji: e.target.value })}
+                          maxLength={2}
+                          placeholder="Ex: 👑"
+                          style={{
+                            flex: 1,
+                            background: 'rgba(0,0,0,0.2)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: 6,
+                            padding: '4px 8px',
+                            color: 'white',
+                            fontSize: '0.9rem',
+                            textAlign: 'center',
+                            outline: 'none'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
               <div style={{ flex: 1, minWidth: 160 }}>
                 <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Título</label>
@@ -866,15 +998,137 @@ const PremiosManager = () => {
               <tbody>
                 {categorias.map(cat => (
                   <React.Fragment key={cat.id}>
-                    <tr>
+                    <tr style={{ background: editingCatId === cat.id ? 'rgba(255, 255, 255, 0.03)' : undefined }}>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <span style={{ fontSize: '1.4rem' }}>{cat.emoji}</span>
-                          <div>
-                            <div style={{ fontWeight: 700 }}>{cat.titulo}</div>
-                            <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{cat.descricao}</div>
+                        {editingCatId === cat.id ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ position: 'relative' }}>
+                              <button
+                                type="button"
+                                onClick={() => setShowEditEmojiPicker(!showEditEmojiPicker)}
+                                style={{
+                                  background: 'rgba(255,255,255,0.05)',
+                                  border: '1px solid rgba(255,255,255,0.1)',
+                                  borderRadius: 8,
+                                  fontSize: '1.4rem',
+                                  width: '42px',
+                                  height: '42px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {editCatData.emoji}
+                              </button>
+                              {showEditEmojiPicker && (
+                                <>
+                                  <div 
+                                    onClick={() => setShowEditEmojiPicker(false)} 
+                                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}
+                                  />
+                                  <div 
+                                    style={{
+                                      position: 'absolute',
+                                      top: '100%',
+                                      left: 0,
+                                      marginTop: 8,
+                                      background: '#18181b',
+                                      border: '1px solid rgba(255,255,255,0.15)',
+                                      borderRadius: 12,
+                                      padding: 12,
+                                      zIndex: 1000,
+                                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+                                      width: '280px',
+                                      display: 'grid',
+                                      gridTemplateColumns: 'repeat(6, 1fr)',
+                                      gap: 8
+                                    }}
+                                  >
+                                    {PRESET_EMOJIS.map(emoji => (
+                                      <button
+                                        key={emoji}
+                                        type="button"
+                                        onClick={() => {
+                                          setEditCatData(prev => ({ ...prev, emoji }));
+                                          setShowEditEmojiPicker(false);
+                                        }}
+                                        style={{
+                                          fontSize: '1.4rem',
+                                          background: editCatData.emoji === emoji ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                          border: 'none',
+                                          borderRadius: 8,
+                                          padding: '6px',
+                                          cursor: 'pointer',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center'
+                                        }}
+                                      >
+                                        {emoji}
+                                      </button>
+                                    ))}
+                                    <div style={{ gridColumn: 'span 6', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 8, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                      <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', flexShrink: 0 }}>Outro:</span>
+                                      <input
+                                        type="text"
+                                        value={editCatData.emoji}
+                                        onChange={e => setEditCatData({ ...editCatData, emoji: e.target.value })}
+                                        maxLength={2}
+                                        placeholder="Ex: 👑"
+                                        style={{
+                                          flex: 1,
+                                          background: 'rgba(0,0,0,0.2)',
+                                          border: '1px solid rgba(255,255,255,0.1)',
+                                          borderRadius: 6,
+                                          padding: '4px 8px',
+                                          color: 'white',
+                                          fontSize: '0.9rem',
+                                          textAlign: 'center',
+                                          outline: 'none'
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <input 
+                                  type="text" 
+                                  value={editCatData.titulo} 
+                                  onChange={e => setEditCatData({ ...editCatData, titulo: e.target.value })} 
+                                  style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 10px', color: 'white', fontWeight: 700 }}
+                                  placeholder="Título"
+                                />
+                                <input 
+                                  type="number" 
+                                  min={1} 
+                                  value={editCatData.ordem} 
+                                  onChange={e => setEditCatData({ ...editCatData, ordem: e.target.value })} 
+                                  style={{ width: '60px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 4px', color: 'white', textAlign: 'center' }}
+                                  title="Ordem"
+                                />
+                              </div>
+                              <input 
+                                type="text" 
+                                value={editCatData.descricao} 
+                                onChange={e => setEditCatData({ ...editCatData, descricao: e.target.value })} 
+                                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 10px', color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem' }}
+                                placeholder="Descrição"
+                              />
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: '1.4rem' }}>{cat.emoji}</span>
+                            <div>
+                              <div style={{ fontWeight: 700 }}>{cat.titulo} <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', fontWeight: 400, marginLeft: 6 }}>#{cat.ordem}</span></div>
+                              <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{cat.descricao}</div>
+                            </div>
+                          </div>
+                        )}
                       </td>
                       <td>
                         <button
@@ -897,29 +1151,66 @@ const PremiosManager = () => {
                         </button>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                          <button
-                            className="btn-icon-small"
-                            onClick={() => handleExpandCat(cat.id)}
-                            title="Ver ranking"
-                            style={{ color: expandedCat === cat.id ? '#e11d48' : undefined }}
-                          >
-                            📊
-                          </button>
-                          <button
-                            className="btn-icon-small"
-                            onClick={() => handleResetVotes(cat)}
-                            title="Resetar votos"
-                          >
-                            <RefreshCw size={14} />
-                          </button>
-                          <button
-                            className="btn-delete"
-                            onClick={() => handleDeleteCat(cat.id)}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                        {editingCatId === cat.id ? (
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              className="btn-icon-small"
+                              onClick={() => handleSaveEdit(cat.id)}
+                              title="Salvar"
+                              style={{ color: '#4ade80' }}
+                            >
+                              <Check size={16} />
+                            </button>
+                            <button
+                              className="btn-icon-small"
+                              onClick={() => { setEditingCatId(null); setShowEditEmojiPicker(false); }}
+                              title="Cancelar"
+                              style={{ color: '#f87171' }}
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button
+                              className="btn-icon-small"
+                              onClick={() => {
+                                setEditingCatId(cat.id);
+                                setEditCatData({
+                                  titulo: cat.titulo,
+                                  descricao: cat.descricao || '',
+                                  emoji: cat.emoji || '🏆',
+                                  ordem: cat.ordem || 1
+                                });
+                              }}
+                              title="Editar"
+                              style={{ color: '#38bdf8' }}
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              className="btn-icon-small"
+                              onClick={() => handleExpandCat(cat.id)}
+                              title="Ver ranking"
+                              style={{ color: expandedCat === cat.id ? '#e11d48' : undefined }}
+                            >
+                              📊
+                            </button>
+                            <button
+                              className="btn-icon-small"
+                              onClick={() => handleResetVotes(cat)}
+                              title="Resetar votos"
+                            >
+                              <RefreshCw size={14} />
+                            </button>
+                            <button
+                              className="btn-delete"
+                              onClick={() => handleDeleteCat(cat.id)}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
 
