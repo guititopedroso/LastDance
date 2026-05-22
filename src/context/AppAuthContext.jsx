@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { db } from '../api/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 
 const AppAuthContext = createContext(null);
 
@@ -18,7 +18,7 @@ export const AppAuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Login: verifica alunos/{codigoEscola}/lista/{nif} no Firestore
+  // Login: verifica alunos/{codigoEscola}/lista/{nif} no Firestore com fallback para registrations
   const login = useCallback(async (nif, codigoEscola) => {
     setLoading(true);
     setError(null);
@@ -26,15 +26,38 @@ export const AppAuthProvider = ({ children }) => {
       const cleanNif = nif.trim();
       const cleanCode = codigoEscola.trim().toUpperCase();
 
+      let data = null;
+
+      // 1. Tentar encontrar na lista de alunos do evento
       const alunoRef = doc(db, 'alunos', cleanCode, 'lista', cleanNif);
       const alunoSnap = await getDoc(alunoRef);
 
-      if (!alunoSnap.exists()) {
+      if (alunoSnap.exists()) {
+        data = alunoSnap.data();
+      } else {
+        // 2. Fallback: procurar nas inscrições realizadas no site (registrations)
+        const q = query(
+          collection(db, 'registrations'),
+          where('nif', '==', cleanNif),
+          where('schoolCode', '==', cleanCode)
+        );
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          const regData = querySnapshot.docs[0].data();
+          data = {
+            nomeAluno: `${regData.firstName} ${regData.lastName}`,
+            turma: regData.turma || '',
+            fotoPerfilURL: regData.fotoPerfilURL || null
+          };
+        }
+      }
+
+      if (!data) {
         setError('NIF não encontrado neste evento.');
         return false;
       }
 
-      const data = alunoSnap.data();
       const session = {
         nif: cleanNif,
         nomeAluno: data.nomeAluno || 'Aluno',
