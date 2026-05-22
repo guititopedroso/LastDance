@@ -16,7 +16,7 @@ const AppHome = () => {
   const { user, logout } = useAppAuth();
   const navigate = useNavigate();
 
-  const firstName = user?.nomeAluno?.split(' ')[0] || 'Olá';
+  const displayName = user?.nomeAluno || 'Olá';
 
   const sections = [
     {
@@ -53,9 +53,9 @@ const AppHome = () => {
       >
         <div className="home-greeting">
           <p className="home-greeting-sub">Bem-vindo de volta,</p>
-          <h1 className="home-greeting-name">{firstName} 👋</h1>
-          {user?.codigoEscola && (
-            <span className="home-school-badge">{user.codigoEscola}</span>
+          <h1 className="home-greeting-name">{displayName} 👋</h1>
+          {user?.nomeEscola && (
+            <span className="home-school-badge">{user.nomeEscola}</span>
           )}
         </div>
         <button

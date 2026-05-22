@@ -8,7 +8,7 @@ import './AppPremios.css';
 
 const AppPremios = () => {
   const { user } = useAppAuth();
-  const { categorias, votos, loading, loadAlunos, votar } = useVotacao(user);
+  const { categorias, votos, loading, votar } = useVotacao(user);
   const [activeCategoria, setActiveCategoria] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -74,8 +74,8 @@ const AppPremios = () => {
           <VotarModal
             categoria={activeCategoria}
             currentNif={user?.nif}
+            currentName={user?.nomeAluno}
             codigoEscola={user?.codigoEscola}
-            loadAlunos={loadAlunos}
             onVotar={handleVotar}
             onClose={() => setActiveCategoria(null)}
           />

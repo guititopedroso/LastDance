@@ -37,7 +37,11 @@ const AppLogin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!fullName.trim() || !selectedSchoolCode) return;
-    const ok = await login(fullName, selectedSchoolCode);
+    
+    const schoolObj = schools.find(s => s.code === selectedSchoolCode);
+    const schoolName = schoolObj ? schoolObj.schoolName : selectedSchoolCode;
+
+    const ok = await login(fullName, selectedSchoolCode, schoolName);
     if (ok) navigate('/app', { replace: true });
   };
 

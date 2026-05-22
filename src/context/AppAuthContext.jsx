@@ -18,7 +18,7 @@ export const AppAuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   // Login: Permite entrar diretamente na App sem verificar se está inscrito na base de dados
-  const login = useCallback(async (fullName, schoolCode) => {
+  const login = useCallback(async (fullName, schoolCode, schoolName) => {
     setLoading(true);
     setError(null);
     try {
@@ -28,6 +28,7 @@ export const AppAuthProvider = ({ children }) => {
         turma: 'Geral',
         fotoPerfilURL: null,
         codigoEscola: schoolCode.toUpperCase(),
+        nomeEscola: schoolName || schoolCode.toUpperCase(),
       };
 
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));

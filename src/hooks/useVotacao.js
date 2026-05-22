@@ -79,7 +79,12 @@ export const useVotacao = (user) => {
   // Cast a vote — document ID = NIF of voter (enforces 1 vote per category)
   const votar = useCallback(async (categoriaId, nifVotado, nomeVotado) => {
     if (!codigoEscola || !nif) throw new Error('Sessão inválida.');
-    if (nifVotado === nif) throw new Error('Não podes votar em ti próprio.');
+    
+    const cleanVotedName = nomeVotado?.trim()?.toLowerCase();
+    const cleanUserName = user?.nomeAluno?.trim()?.toLowerCase();
+    if (nifVotado === nif || (cleanUserName && cleanVotedName === cleanUserName)) {
+      throw new Error('Não podes votar em ti próprio.');
+    }
 
     const votoRef = doc(db, 'votacao', codigoEscola, 'votos', categoriaId, 'respostas', nif);
     await setDoc(votoRef, {
@@ -87,7 +92,7 @@ export const useVotacao = (user) => {
       nomeVotado,
       timestamp: serverTimestamp(),
     });
-  }, [codigoEscola, nif]);
+  }, [codigoEscola, nif, user?.nomeAluno]);
 
   // Get live results for a category (real-time)
   const useResultados = (categoriaId) => {

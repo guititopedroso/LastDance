@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './VotarModal.css';
 
@@ -9,40 +9,39 @@ const getInitials = (name) => {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 };
 
-const getAvatarColor = (nif) => {
-  const n = parseInt(nif, 10);
-  const hue = isNaN(n) ? 0 : n % 360;
-  return `hsl(${n}, 60%, 42%)`;
+const getAvatarColorByName = (name) => {
+  if (!name) return 'hsl(0, 60%, 42%)';
+  let hash = 0;
+  const trimmed = name.trim();
+  for (let i = 0; i < trimmed.length; i++) {
+    hash = trimmed.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue}, 60%, 42%)`;
 };
 
-const VotarModal = ({ categoria, currentNif, codigoEscola, loadAlunos, onVotar, onClose }) => {
-  const [alunos, setAlunos] = useState([]);
-  const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState(null);
+const VotarModal = ({ categoria, currentNif, currentName, codigoEscola, onVotar, onClose }) => {
+  const [votedName, setVotedName] = useState('');
   const [confirming, setConfirming] = useState(false);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadAlunos().then(data => {
-      setAlunos(data);
-      setLoading(false);
-    });
-  }, []);
-
-  const filtered = alunos.filter(a =>
-    a.nomeAluno?.toLowerCase().includes(search.toLowerCase()) ||
-    (a.turma && a.turma.toLowerCase().includes(search.toLowerCase()))
-  );
-
-  const handleSelect = (aluno) => {
-    if (aluno.nif === currentNif) return;
-    setSelected(aluno);
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!votedName.trim()) return;
+    
+    const cleanVotedName = votedName.trim();
+    if (currentName && cleanVotedName.toLowerCase() === currentName.toLowerCase()) {
+      alert("Não podes votar em ti próprio.");
+      return;
+    }
+    
     setConfirming(true);
   };
 
   const handleConfirm = async () => {
-    if (!selected) return;
-    await onVotar(selected.nif, selected.nomeAluno);
+    if (!votedName.trim()) return;
+    const cleanVotedName = votedName.trim();
+    const normalizedNif = cleanVotedName.toLowerCase();
+    await onVotar(normalizedNif, cleanVotedName);
   };
 
   return (
@@ -63,6 +62,7 @@ const VotarModal = ({ categoria, currentNif, codigoEscola, loadAlunos, onVotar, 
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: '100%', opacity: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        style={{ paddingBottom: '30px' }}
       >
         {/* Handle */}
         <div className="modal-handle" />
@@ -73,71 +73,52 @@ const VotarModal = ({ categoria, currentNif, codigoEscola, loadAlunos, onVotar, 
             <div className="modal-categoria-tag">
               {categoria.emoji} {categoria.titulo}
             </div>
-            <h2 className="modal-title">Escolhe quem queres votar</h2>
+            <h2 className="modal-title">Votação por Nome</h2>
           </div>
           <button id="votar-modal-close" className="btn btn-icon" onClick={onClose}>✕</button>
         </div>
 
-        {/* Search */}
-        <div className="modal-search">
-          <span className="modal-search-icon">🔍</span>
-          <input
-            id="votar-search-input"
-            type="text"
-            className="modal-search-input"
-            placeholder="Pesquisar por nome ou turma..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            autoComplete="off"
-          />
-        </div>
-
-        {/* List */}
-        <div className="modal-list">
-          {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
-              <div className="spinner" />
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">🔍</div>
-              <h3>Sem resultados</h3>
-              <p>Tenta outro nome ou turma.</p>
-            </div>
-          ) : (
-            filtered.map((aluno) => {
-              const isMe = aluno.nif === currentNif;
-              return (
-                <motion.button
-                  key={aluno.nif}
-                  id={`aluno-item-${aluno.nif}`}
-                  className={`aluno-item ${isMe ? 'aluno-item--me' : ''}`}
-                  onClick={() => handleSelect(aluno)}
-                  disabled={isMe}
-                  whileHover={!isMe ? { scale: 1.02 } : {}}
-                  whileTap={!isMe ? { scale: 0.98 } : {}}
-                >
-                  <div
-                    className="aluno-avatar avatar avatar-md"
-                    style={{ backgroundColor: getAvatarColor(aluno.nif) }}
-                  >
-                    {getInitials(aluno.nomeAluno)}
-                  </div>
-                  <div className="aluno-info">
-                    <span className="aluno-name">{aluno.nomeAluno}</span>
-                    {aluno.turma && <span className="aluno-turma">{aluno.turma}</span>}
-                  </div>
-                  {isMe && <span className="aluno-me-tag">És tu!</span>}
-                </motion.button>
-              );
-            })
-          )}
-        </div>
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="modal-vote-form" style={{ padding: '0 20px 10px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="input-group-simple" style={{ width: '100%' }}>
+            <label htmlFor="vote-name-input" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>
+              Escreve o nome da pessoa em quem queres votar:
+            </label>
+            <input
+              id="vote-name-input"
+              type="text"
+              placeholder="Nome Completo (Ex: João Silva)"
+              value={votedName}
+              onChange={e => setVotedName(e.target.value)}
+              required
+              autoFocus
+              autoComplete="off"
+              style={{
+                width: '100%',
+                padding: '14px 16px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                background: 'var(--bg-input)',
+                color: '#fff',
+                fontSize: '1rem',
+                outline: 'none'
+              }}
+            />
+          </div>
+          <button
+            type="submit"
+            id="votar-submit-btn"
+            className="btn btn-primary"
+            style={{ width: '100%', padding: '14px', borderRadius: '8px', fontWeight: '800', fontSize: '1rem' }}
+          >
+            Votar 🗳️
+          </button>
+        </form>
       </motion.div>
 
       {/* Confirmation Sheet */}
       <AnimatePresence>
-        {confirming && selected && (
+        {confirming && votedName.trim() && (
           <>
             <motion.div
               className="modal-backdrop"
@@ -145,7 +126,7 @@ const VotarModal = ({ categoria, currentNif, codigoEscola, loadAlunos, onVotar, 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => { setConfirming(false); setSelected(null); }}
+              onClick={() => setConfirming(false)}
             />
             <motion.div
               className="confirm-sheet glass-card"
@@ -158,12 +139,12 @@ const VotarModal = ({ categoria, currentNif, codigoEscola, loadAlunos, onVotar, 
               <div className="confirm-content">
                 <div
                   className="confirm-avatar avatar avatar-xl"
-                  style={{ backgroundColor: getAvatarColor(selected.nif) }}
+                  style={{ backgroundColor: getAvatarColorByName(votedName) }}
                 >
-                  {getInitials(selected.nomeAluno)}
+                  {getInitials(votedName)}
                 </div>
                 <h3 className="confirm-title">
-                  Votar em <span className="text-rose">{selected.nomeAluno}</span>
+                  Votar em <span className="text-rose">{votedName.trim()}</span>
                 </h3>
                 <p className="confirm-desc">
                   para a categoria <strong>{categoria.emoji} {categoria.titulo}</strong>?
@@ -181,7 +162,7 @@ const VotarModal = ({ categoria, currentNif, codigoEscola, loadAlunos, onVotar, 
                   <button
                     className="btn btn-ghost"
                     style={{ flex: 1, padding: '16px', borderRadius: 'var(--radius-md)', fontSize: '0.95rem' }}
-                    onClick={() => { setConfirming(false); setSelected(null); }}
+                    onClick={() => setConfirming(false)}
                   >
                     Cancelar
                   </button>
