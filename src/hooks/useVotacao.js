@@ -28,12 +28,14 @@ export const useVotacao = (user) => {
 
     const q = query(
       collection(db, 'votacao', codigoEscola, 'categorias'),
-      where('ativa', '==', true),
-      orderBy('ordem', 'asc')
+      where('ativa', '==', true)
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      setCategorias(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Sort by ordem ascending (client-side)
+      docs.sort((a, b) => (Number(a.ordem) || 0) - (Number(b.ordem) || 0));
+      setCategorias(docs);
       setLoading(false);
     }, (err) => {
       console.error('Categorias snapshot error:', err);
