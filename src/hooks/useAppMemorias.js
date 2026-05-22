@@ -11,14 +11,16 @@ export const useAppMemorias = (user) => {
   const nif = user?.nif;
   const nomeAluno = user?.nomeAluno;
 
-  const fetchMemorias = useCallback(async () => {
+  const fetchMemorias = useCallback(async (isPolling = false) => {
     if (!codigoEscola) {
       setMemorias([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    if (!isPolling) {
+      setLoading(true);
+    }
     try {
       const response = await fetch(`${API_URL}?codigoEscola=${encodeURIComponent(codigoEscola)}`);
       
@@ -30,7 +32,7 @@ export const useAppMemorias = (user) => {
           console.warn("PHP API not reached. Falling back to local storage mock data for development.");
           const mockDataStr = localStorage.getItem(`mock_memorias_${codigoEscola}`);
           setMemorias(mockDataStr ? JSON.parse(mockDataStr) : []);
-          setError(null);
+          if (!isPolling) setError(null);
           return;
         }
         throw new Error('Erro ao obter memórias do servidor.');
@@ -38,24 +40,30 @@ export const useAppMemorias = (user) => {
 
       const data = await response.json();
       setMemorias(data);
-      setError(null);
+      if (!isPolling) setError(null);
     } catch (err) {
       if (import.meta.env.DEV) {
         console.warn("Connection to PHP API failed. Using local storage mock data instead.", err);
         const mockDataStr = localStorage.getItem(`mock_memorias_${codigoEscola}`);
         setMemorias(mockDataStr ? JSON.parse(mockDataStr) : []);
-        setError(null);
+        if (!isPolling) setError(null);
         return;
       }
       console.error("Error fetching memories:", err);
-      setError(err);
+      if (!isPolling) setError(err);
     } finally {
-      setLoading(false);
+      if (!isPolling) setLoading(false);
     }
   }, [codigoEscola]);
 
   useEffect(() => {
-    fetchMemorias();
+    fetchMemorias(false);
+
+    const interval = setInterval(() => {
+      fetchMemorias(true);
+    }, 4000);
+
+    return () => clearInterval(interval);
   }, [codigoEscola, fetchMemorias]);
 
   // Upload photo to MySQL API (via PHP)

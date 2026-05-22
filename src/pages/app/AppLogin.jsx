@@ -47,8 +47,9 @@ const AppLogin = () => {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.1, type: 'spring', stiffness: 200, damping: 15 }}
+            style={{ background: 'transparent', boxShadow: 'none' }}
           >
-            <span>LD</span>
+            <img src="/logo_transparent.webp" alt="Last Dance" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
           </motion.div>
           <motion.div
             initial={{ opacity: 0, y: 8 }}
