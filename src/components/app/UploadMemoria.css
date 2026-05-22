@@ -4,13 +4,13 @@
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
-  z-index: 100;
+  z-index: 1000;
 }
 
 .upload-sheet-wrapper {
   position: fixed;
   inset: 0;
-  z-index: 101;
+  z-index: 1001;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   display: flex;
