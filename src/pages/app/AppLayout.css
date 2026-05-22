@@ -1,16 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;900&family=Plus+Jakarta+Sans:wght@700;800&display=swap');
 
 .ld-app-root {
   /* ── CSS Variables ── */
-  --rose-50:  #fff1f2;
-  --rose-100: #ffe4e6;
-  --rose-400: #fb7185;
-  --rose-500: #f43f5e;
-  --rose-600: #e11d48;
-  --rose-700: #be123c;
-  --rose-900: #881337;
+  --rose-50:  #fff7ed;
+  --rose-100: #ffedd5;
+  --rose-400: #ffb347;
+  --rose-500: #ff9d1a;
+  --rose-600: #ff8c00;
+  --rose-700: #cc7000;
+  --rose-900: #804600;
 
-  --bg:        #09090b;
+  --bg:        #050505;
   --bg-card:   #111113;
   --bg-card-2: #18181b;
   --bg-input:  #1c1c1f;
@@ -29,7 +29,7 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.6);
-  --shadow-rose: 0 8px 32px rgba(225, 29, 72, 0.3);
+  --shadow-rose: 0 8px 32px rgba(255, 140, 0, 0.3);
 
   --radius-sm: 8px;
   --radius-md: 14px;
@@ -41,7 +41,7 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
   /* Scoped layout rules */
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: var(--bg);
   color: var(--text-primary);
   min-height: 100dvh;
@@ -58,10 +58,10 @@
 }
 
 .ld-app-root h1, .ld-app-root h2, .ld-app-root h3, .ld-app-root h4, .ld-app-root h5, .ld-app-root h6 {
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1.2;
   letter-spacing: -0.02em;
-  font-family: 'Inter', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .ld-app-root .font-caveat {

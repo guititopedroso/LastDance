@@ -44,7 +44,7 @@
   height: 3px;
   background: var(--rose-600);
   border-radius: 0 0 3px 3px;
-  box-shadow: 0 0 12px rgba(225, 29, 72, 0.6);
+  box-shadow: 0 0 12px rgba(255, 140, 0, 0.6);
 }
 
 .nav-emoji {

@@ -17,7 +17,7 @@
   transform: translateX(-50%);
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(225, 29, 72, 0.15) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(255, 140, 0, 0.15) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -58,7 +58,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: var(--shadow-rose), 0 0 0 1px rgba(225, 29, 72, 0.3);
+  box-shadow: var(--shadow-rose), 0 0 0 1px rgba(255, 140, 0, 0.3);
 }
 
 .login-logo span {

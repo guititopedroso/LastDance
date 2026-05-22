@@ -1,23 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { db, storage } from '../api/firebase';
-import { 
-  collection, 
-  doc, 
-  addDoc, 
-  deleteDoc, 
-  query, 
-  where, 
-  orderBy, 
-  onSnapshot, 
-  serverTimestamp, 
-  updateDoc 
-} from 'firebase/firestore';
-import { 
-  ref, 
-  uploadBytesResumable, 
-  getDownloadURL, 
-  deleteObject 
-} from 'firebase/storage';
+
+const API_URL = import.meta.env.VITE_API_MEMORIAS_URL || '/api/memorias.php';
 
 export const useAppMemorias = (user) => {
   const [memorias, setMemorias] = useState([]);
@@ -28,7 +11,7 @@ export const useAppMemorias = (user) => {
   const nif = user?.nif;
   const nomeAluno = user?.nomeAluno;
 
-  useEffect(() => {
+  const fetchMemorias = useCallback(async () => {
     if (!codigoEscola) {
       setMemorias([]);
       setLoading(false);
@@ -36,98 +19,208 @@ export const useAppMemorias = (user) => {
     }
 
     setLoading(true);
-
-    const q = query(
-      collection(db, 'memorias'),
-      where('codigoEscola', '==', codigoEscola),
-      where('reportada', '==', false),
-      orderBy('timestamp', 'desc')
-    );
-
-    const unsub = onSnapshot(
-      q,
-      (snap) => {
-        const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        setMemorias(data);
-        setLoading(false);
-        setError(null);
-      },
-      (err) => {
-        console.error('Memorias snapshot error:', err);
-        setError(err);
-        setLoading(false);
+    try {
+      const response = await fetch(`${API_URL}?codigoEscola=${encodeURIComponent(codigoEscola)}`);
+      
+      const contentType = response.headers.get('content-type');
+      const isHtml = contentType && contentType.includes('text/html');
+      
+      if (!response.ok || isHtml) {
+        if (import.meta.env.DEV) {
+          console.warn("PHP API not reached. Falling back to local storage mock data for development.");
+          const mockDataStr = localStorage.getItem(`mock_memorias_${codigoEscola}`);
+          setMemorias(mockDataStr ? JSON.parse(mockDataStr) : []);
+          setError(null);
+          return;
+        }
+        throw new Error('Erro ao obter memórias do servidor.');
       }
-    );
 
-    return () => unsub();
+      const data = await response.json();
+      setMemorias(data);
+      setError(null);
+    } catch (err) {
+      if (import.meta.env.DEV) {
+        console.warn("Connection to PHP API failed. Using local storage mock data instead.", err);
+        const mockDataStr = localStorage.getItem(`mock_memorias_${codigoEscola}`);
+        setMemorias(mockDataStr ? JSON.parse(mockDataStr) : []);
+        setError(null);
+        return;
+      }
+      console.error("Error fetching memories:", err);
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
   }, [codigoEscola]);
 
-  // Upload photo to Firebase Storage + create Firestore doc
+  useEffect(() => {
+    fetchMemorias();
+  }, [codigoEscola, fetchMemorias]);
+
+  // Upload photo to MySQL API (via PHP)
   const uploadMemoria = useCallback((file, legenda, emoji, onProgress) => {
     if (!codigoEscola || !nif) {
       return Promise.reject(new Error('Sessão inválida. Inicia sessão novamente.'));
     }
 
-    return new Promise((resolve, reject) => {
-      const ext = file.name.split('.').pop();
-      const fileName = `memorias/${codigoEscola}/${Date.now()}_${nif}.${ext}`;
-      const storageRef = ref(storage, fileName);
-      const uploadTask = uploadBytesResumable(storageRef, file);
-
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          if (onProgress) onProgress(Math.round(progress));
-        },
-        (err) => reject(err),
-        async () => {
-          try {
-            const fotoURL = await getDownloadURL(uploadTask.snapshot.ref);
-            await addDoc(collection(db, 'memorias'), {
-              codigoEscola,
-              nif,
-              nomeAluno,
-              fotoURL,
-              storagePath: fileName,
-              legenda: legenda || '',
-              emoji: emoji || '',
-              timestamp: serverTimestamp(),
-              reportada: false,
-            });
-            resolve(fotoURL);
-          } catch (err) {
-            reject(err);
+    // In development mode, simulate upload and save in localStorage
+    if (import.meta.env.DEV) {
+      return new Promise((resolve) => {
+        let percent = 0;
+        const interval = setInterval(() => {
+          percent += 20;
+          if (onProgress) onProgress(percent);
+          
+          if (percent >= 100) {
+            clearInterval(interval);
+            
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const newMock = {
+                id: Date.now(),
+                codigoEscola,
+                nif,
+                nomeAluno,
+                fotoURL: reader.result,
+                legenda: legenda || '',
+                emoji: emoji || '',
+                timestamp: { seconds: Math.floor(Date.now() / 1000) },
+                reportada: false
+              };
+              
+              const mockDataStr = localStorage.getItem(`mock_memorias_${codigoEscola}`);
+              const mockData = mockDataStr ? JSON.parse(mockDataStr) : [];
+              mockData.unshift(newMock);
+              localStorage.setItem(`mock_memorias_${codigoEscola}`, JSON.stringify(mockData));
+              
+              setMemorias(mockData);
+              resolve(newMock.fotoURL);
+            };
+            reader.readAsDataURL(file);
           }
+        }, 150);
+      });
+    }
+
+    return new Promise((resolve, reject) => {
+      const formData = new FormData();
+      formData.append('foto', file);
+      formData.append('codigoEscola', codigoEscola);
+      formData.append('nif', nif);
+      formData.append('nomeAluno', nomeAluno || "Aluno");
+      formData.append('legenda', legenda || '');
+      formData.append('emoji', emoji || '');
+
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_URL}?action=add`);
+
+      if (xhr.upload && onProgress) {
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = (event.loaded / event.total) * 100;
+            onProgress(Math.round(percentComplete));
+          }
+        });
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const res = JSON.parse(xhr.responseText);
+            if (res.success) {
+              fetchMemorias();
+              resolve(res.fotoURL);
+            } else {
+              reject(new Error(res.error || 'Falha ao processar upload'));
+            }
+          } catch (e) {
+            reject(new Error('Resposta inválida do servidor'));
+          }
+        } else {
+          reject(new Error('Falha no upload com código ' + xhr.status));
         }
-      );
+      };
+
+      xhr.onerror = () => {
+        reject(new Error('Erro de ligação ao servidor'));
+      };
+
+      xhr.send(formData);
     });
-  }, [codigoEscola, nif, nomeAluno]);
+  }, [codigoEscola, nif, nomeAluno, fetchMemorias]);
 
   // Delete own memory
-  const deleteMemoria = useCallback(async (memoriaId, storagePath) => {
+  const deleteMemoria = useCallback(async (memoriaId) => {
+    if (import.meta.env.DEV) {
+      const mockDataStr = localStorage.getItem(`mock_memorias_${codigoEscola}`);
+      if (mockDataStr) {
+        const mockData = JSON.parse(mockDataStr);
+        const updated = mockData.filter(m => String(m.id) !== String(memoriaId));
+        localStorage.setItem(`mock_memorias_${codigoEscola}`, JSON.stringify(updated));
+        setMemorias(updated);
+      }
+      return;
+    }
+
     try {
-      await deleteDoc(doc(db, 'memorias', memoriaId));
-      if (storagePath) {
-        try {
-          await deleteObject(ref(storage, storagePath));
-        } catch (_) { /* silent */ }
+      const response = await fetch(`${API_URL}?action=delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id: memoriaId })
+      });
+      if (!response.ok) {
+        throw new Error('Falha ao eliminar memória no servidor.');
+      }
+      const res = await response.json();
+      if (res.success) {
+        setMemorias(prev => prev.filter(m => String(m.id) !== String(memoriaId)));
+      } else {
+        throw new Error(res.error || 'Erro ao eliminar');
       }
     } catch (err) {
-      console.error('Delete error:', err);
+      console.error("Error deleting memory:", err);
       throw err;
     }
-  }, []);
+  }, [codigoEscola]);
 
-  // Report a memory (flag as reportada)
+  // Report a memory
   const reportMemoria = useCallback(async (memoriaId) => {
+    if (import.meta.env.DEV) {
+      const mockDataStr = localStorage.getItem(`mock_memorias_${codigoEscola}`);
+      if (mockDataStr) {
+        const mockData = JSON.parse(mockDataStr);
+        const updated = mockData.filter(m => String(m.id) !== String(memoriaId));
+        localStorage.setItem(`mock_memorias_${codigoEscola}`, JSON.stringify(updated));
+        setMemorias(updated);
+      }
+      return;
+    }
+
     try {
-      await updateDoc(doc(db, 'memorias', memoriaId), { reportada: true });
+      const response = await fetch(`${API_URL}?action=report`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id: memoriaId })
+      });
+      if (!response.ok) {
+        throw new Error('Falha ao reportar memória no servidor.');
+      }
+      const res = await response.json();
+      if (res.success) {
+        setMemorias(prev => prev.filter(m => String(m.id) !== String(memoriaId)));
+      } else {
+        throw new Error(res.error || 'Erro ao reportar');
+      }
     } catch (err) {
-      console.error('Report error:', err);
+      console.error("Error reporting memory:", err);
       throw err;
     }
-  }, []);
+  }, [codigoEscola]);
 
   return { memorias, loading, error, uploadMemoria, deleteMemoria, reportMemoria };
 };
