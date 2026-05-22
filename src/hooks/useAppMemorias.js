@@ -22,7 +22,7 @@ export const useAppMemorias = (user) => {
       setLoading(true);
     }
     try {
-      const response = await fetch(`${API_URL}?codigoEscola=${encodeURIComponent(codigoEscola)}`);
+      const response = await fetch(`${API_URL}?codigoEscola=${encodeURIComponent(codigoEscola)}&t=${Date.now()}`);
       
       const contentType = response.headers.get('content-type');
       const isHtml = contentType && contentType.includes('text/html');

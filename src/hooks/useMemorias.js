@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 
 const API_URL = import.meta.env.VITE_API_MEMORIAS_URL || '/api/memorias.php';
 
@@ -11,16 +11,18 @@ export const useMemorias = (studentSession) => {
   const studentNif = studentSession?.nif;
   const studentName = studentSession?.name || "Aluno";
 
-  const fetchMemorias = async () => {
+  const fetchMemorias = useCallback(async (isPolling = false) => {
     if (!schoolCode) {
       setMemorias([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    if (!isPolling) {
+      setLoading(true);
+    }
     try {
-      const response = await fetch(`${API_URL}?codigoEscola=${encodeURIComponent(schoolCode)}`);
+      const response = await fetch(`${API_URL}?codigoEscola=${encodeURIComponent(schoolCode)}&t=${Date.now()}`);
       
       // If we are in dev mode and the response is not ok or is HTML (like index.html redirect from Vite),
       // we fall back to localStorage mock data.
@@ -32,7 +34,7 @@ export const useMemorias = (studentSession) => {
           console.warn("PHP API not reached. Falling back to local storage mock data for development.");
           const mockDataStr = localStorage.getItem(`mock_memorias_${schoolCode}`);
           setMemorias(mockDataStr ? JSON.parse(mockDataStr) : []);
-          setError(null);
+          if (!isPolling) setError(null);
           return;
         }
         throw new Error('Erro ao obter memórias do servidor.');
@@ -40,26 +42,32 @@ export const useMemorias = (studentSession) => {
 
       const data = await response.json();
       setMemorias(data);
-      setError(null);
+      if (!isPolling) setError(null);
     } catch (err) {
       // In development mode, network failures fall back to local storage
       if (import.meta.env.DEV) {
         console.warn("Connection to PHP API failed. Using local storage mock data instead.", err);
         const mockDataStr = localStorage.getItem(`mock_memorias_${schoolCode}`);
         setMemorias(mockDataStr ? JSON.parse(mockDataStr) : []);
-        setError(null);
+        if (!isPolling) setError(null);
         return;
       }
       console.error("Error fetching memories:", err);
-      setError(err);
+      if (!isPolling) setError(err);
     } finally {
-      setLoading(false);
+      if (!isPolling) setLoading(false);
     }
-  };
+  }, [schoolCode]);
 
   useEffect(() => {
-    fetchMemorias();
-  }, [schoolCode]);
+    fetchMemorias(false);
+
+    const interval = setInterval(() => {
+      fetchMemorias(true);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [schoolCode, fetchMemorias]);
 
   // Upload memory (photo to server directory, metadata to MySQL)
   const uploadMemoria = (file, legenda, emoji, onProgress) => {
