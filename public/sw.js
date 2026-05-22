@@ -52,6 +52,11 @@ self.addEventListener('fetch', (event) => {
 
   const requestUrl = new URL(event.request.url);
 
+  // 0. Bypass caching for PHP API requests
+  if (requestUrl.pathname.includes('/api/')) {
+    return;
+  }
+
   // 1. Firebase Storage Images (Stale-While-Revalidate with a limit of 50 photos)
   if (requestUrl.host === 'firebasestorage.googleapis.com') {
     event.respondWith(

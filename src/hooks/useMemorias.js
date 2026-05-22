@@ -20,6 +20,8 @@ export const useMemorias = (studentSession) => {
 
     if (!isPolling) {
       setLoading(true);
+    } else {
+      console.log('[Memórias Site] A verificar novas fotos em segundo plano...');
     }
     try {
       const response = await fetch(`${API_URL}?codigoEscola=${encodeURIComponent(schoolCode)}&t=${Date.now()}`);

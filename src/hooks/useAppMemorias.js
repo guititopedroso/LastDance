@@ -20,6 +20,8 @@ export const useAppMemorias = (user) => {
 
     if (!isPolling) {
       setLoading(true);
+    } else {
+      console.log('[Memórias App] A verificar novas fotos em segundo plano...');
     }
     try {
       const response = await fetch(`${API_URL}?codigoEscola=${encodeURIComponent(codigoEscola)}&t=${Date.now()}`);
