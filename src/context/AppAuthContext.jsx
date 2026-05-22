@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { db, getStudentByNameAndSchool } from '../api/firebase';
+import { db } from '../api/firebase';
 
 const AppAuthContext = createContext(null);
 
@@ -17,23 +17,16 @@ export const AppAuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Login: verifica registrations pelo Nome e Código de Escola no Firestore
+  // Login: Permite entrar diretamente na App sem verificar se está inscrito na base de dados
   const login = useCallback(async (fullName, schoolCode) => {
     setLoading(true);
     setError(null);
     try {
-      const studentData = await getStudentByNameAndSchool(fullName, schoolCode);
-
-      if (!studentData) {
-        setError(`Inscrição não encontrada para o nome "${fullName}" na escola selecionada.`);
-        return false;
-      }
-
       const session = {
-        nif: studentData.id, // Usar o ID da inscrição como identificador único 'nif' na App
-        nomeAluno: `${studentData.firstName} ${studentData.lastName || ''}`.trim(),
-        turma: studentData.turma || '',
-        fotoPerfilURL: studentData.fotoPerfilURL || null,
+        nif: "guest_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5), // Identificador único gerado na hora
+        nomeAluno: fullName.trim(),
+        turma: 'Geral',
+        fotoPerfilURL: null,
         codigoEscola: schoolCode.toUpperCase(),
       };
 
@@ -42,7 +35,7 @@ export const AppAuthProvider = ({ children }) => {
       return true;
     } catch (err) {
       console.error('Login error:', err);
-      setError('Erro ao conectar. Verifica a tua ligação.');
+      setError('Erro ao ligar. Tenta novamente.');
       return false;
     } finally {
       setLoading(false);
