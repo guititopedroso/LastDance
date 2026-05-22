@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-PT" className="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LastDance — 3D Interactive Showcase</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- GSAP & ScrollTrigger -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            accent: '#ff8c00',
+            accentLight: '#ffb347',
+            darkBg: '#050505',
+          },
+          fontFamily: {
+            outfit: ['Outfit', 'sans-serif'],
+            jakarta: ['Plus Jakarta Sans', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: #050505;
+      color: #ffffff;
+      overflow-x: hidden;
+      perspective: 1000px;
+    }
+    
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #050505;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #ff8c00;
+    }
+
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+    }
+
+    .glow-orange {
+      box-shadow: 0 0 60px -15px rgba(255, 140, 0, 0.4);
+    }
+    
+    .text-gradient {
+      background: linear-gradient(135deg, #ff8c00 0%, #ffb347 50%, #ff8c00 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* 3D Device Container */
+    .device-stage {
+      perspective: 2000px;
+      transform-style: preserve-3d;
+    }
+
+    .device-container {
+      transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      transform-style: preserve-3d;
+    }
+
+    /* MacBook Mockup Styling */
+    .macbook {
+      width: 900px;
+      height: 580px;
+      position: relative;
+      transform-style: preserve-3d;
+      margin: 0 auto;
+    }
+
+    .macbook-screen-frame {
+      width: 100%;
+      height: 540px;
+      background: #111;
+      border-radius: 20px;
+      padding: 14px 14px 22px 14px;
+      box-shadow: 0 25px 70px rgba(0, 0, 0, 0.8), 0 0 0 3px #222;
+      border: 1px solid #333;
+      transform-style: preserve-3d;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .macbook-camera {
+      position: absolute;
+      top: 5px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #000;
+      border: 1px solid #222;
+      z-index: 20;
+    }
+
+    .macbook-screen {
+      width: 100%;
+      height: 100%;
+      background: #050505;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .macbook-base {
+      width: 108%;
+      height: 24px;
+      background: linear-gradient(90deg, #1f1f1f, #3b3b3b 10%, #444 50%, #3b3b3b 90%, #1f1f1f);
+      border-radius: 4px 4px 16px 16px;
+      margin-left: -4%;
+      margin-top: -4px;
+      position: relative;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.9);
+    }
+    
+    .macbook-notch {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 16px;
+      background: #000;
+      border-radius: 0 0 8px 8px;
+      z-index: 10;
+    }
+
+    /* iPhone Mockup Styling */
+    .iphone {
+      width: 340px;
+      height: 700px;
+      background: #111;
+      border-radius: 50px;
+      padding: 12px;
+      box-shadow: 0 25px 70px rgba(0,0,0,0.9), 0 0 0 4px #262626, inset 0 0 0 2px #444;
+      position: relative;
+      margin: 0 auto;
+      display: none;
+      transform-style: preserve-3d;
+    }
+
+    .iphone-island {
+      position: absolute;
+      top: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 30px;
+      background: #000;
+      border-radius: 15px;
+      z-index: 30;
+    }
+
+    .iphone-screen {
+      width: 100%;
+      height: 100%;
+      border-radius: 40px;
+      overflow: hidden;
+      position: relative;
+      background: #050505;
+    }
+
+    /* Floating badges */
+    .float-badge {
+      animation: floatBadge 6s ease-in-out infinite;
+    }
+    @keyframes floatBadge {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-15px) rotate(2deg); }
+    }
+
+    /* Background Orbs */
+    .bg-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: 0.15;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body className="bg-darkBg text-white relative">
+
+  <!-- Background Ambient Lights -->
+  <div className="bg-orb w-[600px] h-[600px] bg-accent top-[-100px] left-[-100px]"></div>
+  <div className="bg-orb w-[700px] h-[700px] bg-amber-600 top-[40%] right-[-150px]"></div>
+  <div className="bg-orb w-[500px] h-[500px] bg-orange-500 bottom-[-50px] left-[20%]"></div>
+
+  <!-- Showcase Header / Navigation -->
+  <header className="fixed top-0 left-0 w-full z-50 py-6 px-8 flex justify-between items-center transition-all duration-300" id="navbar">
+    <div className="flex items-center gap-3">
+      <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-accent to-accentLight flex items-center justify-center shadow-lg shadow-accent/20">
+        <i data-lucide="sparkles" className="w-5 h-5 text-black"></i>
+      </div>
+      <span className="font-jakarta text-2xl font-extrabold tracking-tight">LastDance<span className="text-accent">.</span></span>
+      <span className="ml-3 px-3 py-1 rounded-full text-xs font-semibold bg-accent/10 text-accent border border-accent/20">3D Interactive Demo</span>
+    </div>
+
+    <div className="flex items-center gap-4 bg-white/5 backdrop-blur-md px-2 py-1.5 rounded-full border border-white/10">
+      <button onclick="switchDevice('macbook')" id="btn-macbook" className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all bg-accent text-black font-semibold shadow-lg shadow-accent/20">
+        <i data-lucide="monitor" className="w-4 h-4"></i>
+        <span>Desktop View</span>
+      </button>
+      <button onclick="switchDevice('iphone')" id="btn-iphone" className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all text-white/70 hover:text-white">
+        <i data-lucide="smartphone" className="w-4 h-4"></i>
+        <span>Mobile View</span>
+      </button>
+    </div>
+
+    <div>
+      <a href="/" target="_blank" className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold bg-white/10 hover:bg-white/20 border border-white/10 transition-all hover:scale-105">
+        <span>Abrir Site Real</span>
+        <i data-lucide="external-link" className="w-4 h-4 text-accent"></i>
+      </a>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section className="min-h-screen pt-36 pb-20 flex flex-col items-center justify-center relative px-6 text-center">
+    <div className="max-w-4xl mx-auto z-10 mb-12">
+      <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent font-medium text-sm mb-6 animate-pulse">
+        <i data-lucide="zap" className="w-4 h-4"></i>
+        <span>Apresentação Interativa de Alta Fidelidade</span>
+      </div>
+      <h1 className="text-6xl md:text-8xl font-jakarta font-extrabold mb-6 tracking-tight leading-none">
+        Explora o Universo <br/>
+        <span className="text-gradient">LastDance em 3D</span>
+      </h1>
+      <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto leading-relaxed">
+        Navega pelo site completo diretamente no simulador abaixo. Gira a perspetiva, altera entre dispositivos e descobre cada detalhe da nossa plataforma premium.
+      </p>
+    </div>
+
+    <!-- 3D Device Stage -->
+    <div className="device-stage w-full max-w-6xl mx-auto relative my-8 z-20">
+      
+      <!-- Floating Badges / Hotspots -->
+      <div className="absolute -top-10 left-12 z-30 float-badge hidden lg:flex items-center gap-3 glass-panel glow-orange px-6 py-4 shadow-2xl border-accent/30">
+        <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center text-accent">
+          <i data-lucide="shield-check" className="w-6 h-6"></i>
+        </div>
+        <div className="text-left">
+          <h4 className="font-bold text-sm">Segurança & Validação</h4>
+          <p className="text-xs text-white/60">Sistema de códigos escolares</p>
+        </div>
+      </div>
+
+      <div className="absolute bottom-10 -right-4 z-30 float-badge hidden lg:flex items-center gap-3 glass-panel px-6 py-4 shadow-2xl" style="animation-delay: -3s;">
+        <div className="w-12 h-12 rounded-full bg-amber-500/20 flex items-center justify-center text-amber-500">
+          <i data-lucide="sparkles" className="w-6 h-6"></i>
+        </div>
+        <div className="text-left">
+          <h4 className="font-bold text-sm">Design Imersivo</h4>
+          <p className="text-xs text-white/60">Animações de nível cinematográfico</p>
+        </div>
+      </div>
+
+      <!-- The Interactive Device -->
+      <div className="device-container" id="device-container" style="transform: rotateX(15deg) rotateY(-10deg) translateZ(0px);">
+        
+        <!-- MACBOOK MOCKUP -->
+        <div className="macbook" id="view-macbook">
+          <div className="macbook-screen-frame">
+            <div className="macbook-notch"></div>
+            <div className="macbook-camera"></div>
+            <div className="macbook-screen shadow-2xl">
+              <!-- Live Site Iframe -->
+              <iframe src="/" className="w-full h-full border-0" title="LastDance Live Preview" id="preview-iframe"></iframe>
+            </div>
+          </div>
+          <div className="macbook-base"></div>
+        </div>
+
+        <!-- IPHONE MOCKUP -->
+        <div className="iphone" id="view-iphone">
+          <div className="iphone-island"></div>
+          <div className="iphone-screen shadow-2xl">
+            <!-- Live Site Iframe Mobile -->
+            <iframe src="/" className="w-full h-full border-0" title="LastDance Live Mobile Preview" id="mobile-preview-iframe"></iframe>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Simulator Controls -->
+      <div className="mt-14 flex items-center justify-center gap-6 z-30 relative">
+        <div className="glass-panel px-6 py-3 flex items-center gap-6 text-sm text-white/80">
+          <div className="flex items-center gap-2">
+            <i data-lucide="rotate-3d" className="w-4 h-4 text-accent"></i>
+            <span className="font-semibold">Simulador 3D:</span>
+          </div>
+          <button onclick="rotateDevice(0, 0)" className="hover:text-accent transition-colors px-2 py-1 rounded hover:bg-white/5">Frontal</button>
+          <button onclick="rotateDevice(20, -25)" className="hover:text-accent transition-colors px-2 py-1 rounded hover:bg-white/5">Perspetiva Esq</button>
+          <button onclick="rotateDevice(20, 25)" className="hover:text-accent transition-colors px-2 py-1 rounded hover:bg-white/5">Perspetiva Dir</button>
+          <button onclick="rotateDevice(40, 0)" className="hover:text-accent transition-colors px-2 py-1 rounded hover:bg-white/5">Topo</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Feature Highlights Walkthrough -->
+  <section className="py-32 relative z-10 px-6 max-w-7xl mx-auto">
+    <div className="text-center max-w-3xl mx-auto mb-20">
+      <h2 className="text-4xl md:text-6xl font-jakarta font-extrabold mb-6 tracking-tight">
+        Tudo o que torna a <span className="text-gradient">LastDance Única</span>
+      </h2>
+      <p className="text-white/70 text-lg">
+        Um resumo das funcionalidades e da arquitetura do site que podes experimentar em tempo real.
+      </p>
+    </div>
+
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      
+      <!-- Feature 1 -->
+      <div className="glass-panel p-8 hover:-translate-y-2 transition-all duration-300 group hover:border-accent/40">
+        <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mb-6 group-hover:scale-110 transition-all">
+          <i data-lucide="shield-alert" className="w-7 h-7"></i>
+        </div>
+        <h3 className="text-2xl font-jakarta font-bold mb-3">Portal do Aluno Seguro</h3>
+        <p className="text-white/70 leading-relaxed">
+          Fluxo de registo por etapas com validação de NIF e código exclusivo de escola. Acesso reservado e seguro com gestão de bilhetes e acompanhantes.
+        </p>
+      </div>
+
+      <!-- Feature 2 -->
+      <div className="glass-panel p-8 hover:-translate-y-2 transition-all duration-300 group hover:border-accent/40">
+        <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mb-6 group-hover:scale-110 transition-all">
+          <i data-lucide="layout-dashboard" className="w-7 h-7"></i>
+        </div>
+        <h3 className="text-2xl font-jakarta font-bold mb-3">Dashboard de Administração</h3>
+        <p className="text-white/70 leading-relaxed">
+          Painel protegido por palavra-passe para a equipa gerir inscrições, pagamentos parcelados, escolas parceiras e exportar dados dos alunos.
+        </p>
+      </div>
+
+      <!-- Feature 3 -->
+      <div className="glass-panel p-8 hover:-translate-y-2 transition-all duration-300 group hover:border-accent/40">
+        <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mb-6 group-hover:scale-110 transition-all">
+          <i data-lucide="sparkles" className="w-7 h-7"></i>
+        </div>
+        <h3 className="text-2xl font-jakarta font-bold mb-3">Estética Premium & GSAP</h3>
+        <p className="text-white/70 leading-relaxed">
+          Animações de entrada imersivas, preloader cinematográfico, contadores dinâmicos e efeitos de parallax pensados para deslumbrar o utilizador.
+        </p>
+      </div>
+
+      <!-- Feature 4 -->
+      <div className="glass-panel p-8 hover:-translate-y-2 transition-all duration-300 group hover:border-accent/40">
+        <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mb-6 group-hover:scale-110 transition-all">
+          <i data-lucide="smartphone" className="w-7 h-7"></i>
+        </div>
+        <h3 className="text-2xl font-jakarta font-bold mb-3">100% Responsivo</h3>
+        <p className="text-white/70 leading-relaxed">
+          Experiência perfeitamente adaptada para telemóveis, com menus intuitivos e navegação fluida em ecrãs touch sem quebras de layout.
+        </p>
+      </div>
+
+      <!-- Feature 5 -->
+      <div className="glass-panel p-8 hover:-translate-y-2 transition-all duration-300 group hover:border-accent/40">
+        <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mb-6 group-hover:scale-110 transition-all">
+          <i data-lucide="zap" className="w-7 h-7"></i>
+        </div>
+        <h3 className="text-2xl font-jakarta font-bold mb-3">Otimização WebP</h3>
+        <p className="text-white/70 leading-relaxed">
+          Todos os recursos gráficos e de background estão otimizados no formato WebP de última geração, garantindo velocidades de carregamento ultrarrápidas.
+        </p>
+      </div>
+
+      <!-- Feature 6 -->
+      <div className="glass-panel p-8 hover:-translate-y-2 transition-all duration-300 group hover:border-accent/40">
+        <div className="w-14 h-14 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mb-6 group-hover:scale-110 transition-all">
+          <i data-lucide="ticket" className="w-7 h-7"></i>
+        </div>
+        <h3 className="text-2xl font-jakarta font-bold mb-3">Gestão de Prestações</h3>
+        <p className="text-white/70 leading-relaxed">
+          Suporte completo para pagamentos faseados, envio de comprovativos e controlo do estado do bilhete em tempo real no perfil do aluno.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section className="py-24 px-6 text-center relative z-10">
+    <div className="max-w-4xl mx-auto glass-panel glow-orange p-16 rounded-3xl border-accent/30 relative overflow-hidden">
+      <div className="absolute -right-20 -top-20 w-80 h-80 bg-accent/20 rounded-full filter blur-3xl pointer-events-none"></div>
+      
+      <h2 className="text-4xl md:text-5xl font-jakarta font-extrabold mb-6">
+        Pronto para viver a experiência real?
+      </h2>
+      <p className="text-lg text-white/80 max-w-xl mx-auto mb-10">
+        Abre o site completo numa nova janela e testa todas as páginas, fluxos de registo e o painel de controlo.
+      </p>
+      <a href="/" target="_blank" className="inline-flex items-center gap-3 px-8 py-4 rounded-full bg-gradient-to-r from-accent to-accentLight text-black font-jakarta font-extrabold text-lg transition-all hover:scale-105 shadow-xl shadow-accent/20">
+        <span>Explorar LastDance.pt</span>
+        <i data-lucide="arrow-right" className="w-6 h-6"></i>
+      </a>
+    </div>
+  </section>
+
+  <footer className="py-12 border-t border-white/10 text-center text-white/50 text-sm">
+    <p>LastDance © 2026. Todos os direitos reservados. Showcase interativo 3D.</p>
+  </footer>
+
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    const deviceContainer = document.getElementById('device-container');
+    const viewMacbook = document.getElementById('view-macbook');
+    const viewIphone = document.getElementById('view-iphone');
+    const btnMacbook = document.getElementById('btn-macbook');
+    const btnIphone = document.getElementById('btn-iphone');
+
+    // Default rotation
+    let currentRotateX = 15;
+    let currentRotateY = -10;
+
+    function rotateDevice(x, y) {
+      currentRotateX = x;
+      currentRotateY = y;
+      deviceContainer.style.transform = `rotateX(${x}deg) rotateY(${y}deg) translateZ(0px)`;
+    }
+
+    function switchDevice(type) {
+      if (type === 'macbook') {
+        viewMacbook.style.display = 'block';
+        viewIphone.style.display = 'none';
+        
+        btnMacbook.className = 'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all bg-accent text-black font-semibold shadow-lg shadow-accent/20';
+        btnIphone.className = 'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all text-white/70 hover:text-white';
+      } else {
+        viewMacbook.style.display = 'none';
+        viewIphone.style.display = 'block';
+
+        btnIphone.className = 'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all bg-accent text-black font-semibold shadow-lg shadow-accent/20';
+        btnMacbook.className = 'flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all text-white/70 hover:text-white';
+      }
+    }
+
+    // Interactive Mouse Move Rotation for 3D effect
+    const stage = document.querySelector('.device-stage');
+    stage.addEventListener('mousemove', (e) => {
+      const rect = stage.getBoundingClientRect();
+      const x = e.clientX - rect.left - rect.width/2;
+      const y = e.clientY - rect.top - rect.height/2;
+      
+      const rotateY = currentRotateY + (x / 50);
+      const rotateX = currentRotateX - (y / 50);
+
+      deviceContainer.style.transform = `rotateX(${rotateX}deg) rotateY(${rotateY}deg) translateZ(0px)`;
+    });
+
+    stage.addEventListener('mouseleave', () => {
+      deviceContainer.style.transform = `rotateX(${currentRotateX}deg) rotateY(${currentRotateY}deg) translateZ(0px)`;
+    });
+  </script>
+
+</body>
+</html>

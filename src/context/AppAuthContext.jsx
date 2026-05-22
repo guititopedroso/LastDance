@@ -54,7 +54,7 @@ export const AppAuthProvider = ({ children }) => {
       }
 
       if (!data) {
-        setError('NIF não encontrado neste evento.');
+        setError(`NIF (${cleanNif}) não encontrado no evento (${cleanCode}).`);
         return false;
       }
 
