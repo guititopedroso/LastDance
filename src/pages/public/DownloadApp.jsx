@@ -160,6 +160,14 @@ const DownloadApp = () => {
                   <Link to="/app" className="btn-secondary-link">
                     Aceder no Browser (Sem instalar) ➔
                   </Link>
+
+                  <div className="desktop-qr-section glass-card">
+                    <img src="/qr_code_dark.png" alt="Scan to install" className="qr-code-img" />
+                    <div className="qr-text">
+                      <h4>Estás no computador?</h4>
+                      <p>Aponta a câmara do telemóvel para abrir a App instantaneamente.</p>
+                    </div>
+                  </div>
                 </>
               )}
             </div>

@@ -485,3 +485,48 @@
 .btn-close-sheet-action:hover {
   background: rgba(255, 255, 255, 0.1);
 }
+
+/* QR Code Section styles */
+.desktop-qr-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: 15px;
+}
+
+.qr-code-img {
+  width: 90px;
+  height: 90px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #18181b;
+}
+
+.qr-text {
+  text-align: left;
+}
+
+.qr-text h4 {
+  font-size: 0.9rem;
+  margin: 0 0 4px 0;
+  color: #D4AF37;
+  font-weight: 700;
+}
+
+.qr-text p {
+  font-size: 0.75rem;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.4;
+}
+
+/* Hide on mobile screens */
+@media (max-width: 600px) {
+  .desktop-qr-section {
+    display: none;
+  }
+}
