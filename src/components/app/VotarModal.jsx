@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './VotarModal.css';
 
@@ -23,6 +23,14 @@ const getAvatarColorByName = (name) => {
 const VotarModal = ({ categoria, currentNif, currentName, codigoEscola, onVotar, onClose }) => {
   const [votedName, setVotedName] = useState('');
   const [confirming, setConfirming] = useState(false);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -55,66 +63,65 @@ const VotarModal = ({ categoria, currentNif, currentName, codigoEscola, onVotar,
         onClick={onClose}
       />
 
-      {/* Modal */}
-      <motion.div
-        className="votar-modal glass-card"
-        initial={{ y: '100%', opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: '100%', opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        style={{ paddingBottom: '30px' }}
-      >
-        {/* Handle */}
-        <div className="modal-handle" />
-
-        {/* Header */}
-        <div className="modal-header">
-          <div>
-            <div className="modal-categoria-tag">
-              {categoria.emoji} {categoria.titulo}
+      {/* Centered Modal Wrapper */}
+      <div className="modal-wrapper">
+        {/* Modal */}
+        <motion.div
+          className="votar-modal glass-card"
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          style={{ paddingBottom: '30px' }}
+        >
+          {/* Header */}
+          <div className="modal-header">
+            <div>
+              <div className="modal-categoria-tag">
+                {categoria.emoji} {categoria.titulo}
+              </div>
+              <h2 className="modal-title">Votação por Nome</h2>
             </div>
-            <h2 className="modal-title">Votação por Nome</h2>
+            <button id="votar-modal-close" className="btn btn-icon" onClick={onClose}>✕</button>
           </div>
-          <button id="votar-modal-close" className="btn btn-icon" onClick={onClose}>✕</button>
-        </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="modal-vote-form" style={{ padding: '0 20px 10px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="input-group-simple" style={{ width: '100%' }}>
-            <label htmlFor="vote-name-input" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>
-              Escreve o nome da pessoa em quem queres votar:
-            </label>
-            <input
-              id="vote-name-input"
-              type="text"
-              placeholder="Nome Completo (Ex: João Silva)"
-              value={votedName}
-              onChange={e => setVotedName(e.target.value)}
-              required
-              autoFocus
-              autoComplete="off"
-              style={{
-                width: '100%',
-                padding: '14px 16px',
-                borderRadius: '8px',
-                border: '1px solid var(--border)',
-                background: 'var(--bg-input)',
-                color: '#fff',
-                fontSize: '1rem',
-                outline: 'none'
-              }}
-            />
-          </div>
-          <button
-            type="submit"
-            id="votar-submit-btn"
-            className="btn btn-primary"
-            style={{ width: '100%', padding: '14px', borderRadius: '8px', fontWeight: '800', fontSize: '1rem' }}
-          >
-            Votar 🗳️
-          </button>
-        </form>
-      </motion.div>
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="modal-vote-form" style={{ padding: '0 20px 10px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="input-group-simple" style={{ width: '100%' }}>
+              <label htmlFor="vote-name-input" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>
+                Escreve o nome da pessoa em quem queres votar:
+              </label>
+              <input
+                id="vote-name-input"
+                type="text"
+                placeholder="Nome Completo (Ex: João Silva)"
+                value={votedName}
+                onChange={e => setVotedName(e.target.value)}
+                required
+                autoComplete="off"
+                style={{
+                  width: '100%',
+                  padding: '14px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-input)',
+                  color: '#fff',
+                  fontSize: '1rem',
+                  outline: 'none'
+                }}
+              />
+            </div>
+            <button
+              type="submit"
+              id="votar-submit-btn"
+              className="btn btn-primary"
+              style={{ width: '100%', padding: '14px', borderRadius: '8px', fontWeight: '800', fontSize: '1rem' }}
+            >
+              Votar 🗳️
+            </button>
+          </form>
+        </motion.div>
+      </div>
 
       {/* Confirmation Sheet */}
       <AnimatePresence>
@@ -128,47 +135,48 @@ const VotarModal = ({ categoria, currentNif, currentName, codigoEscola, onVotar,
               exit={{ opacity: 0 }}
               onClick={() => setConfirming(false)}
             />
-            <motion.div
-              className="confirm-sheet glass-card"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            >
-              <div className="modal-handle" />
-              <div className="confirm-content">
-                <div
-                  className="confirm-avatar avatar avatar-xl"
-                  style={{ backgroundColor: getAvatarColorByName(votedName) }}
-                >
-                  {getInitials(votedName)}
-                </div>
-                <h3 className="confirm-title">
-                  Votar em <span className="text-rose">{votedName.trim()}</span>
-                </h3>
-                <p className="confirm-desc">
-                  para a categoria <strong>{categoria.emoji} {categoria.titulo}</strong>?
-                </p>
-                <p className="confirm-warn">Esta ação não pode ser desfeita.</p>
-                <div className="confirm-actions">
-                  <button
-                    id="confirm-votar-btn"
-                    className="btn btn-primary"
-                    style={{ flex: 1, padding: '16px', borderRadius: 'var(--radius-md)', fontSize: '1rem' }}
-                    onClick={handleConfirm}
+            <div className="modal-wrapper" style={{ zIndex: 202 }}>
+              <motion.div
+                className="confirm-sheet glass-card"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+              >
+                <div className="confirm-content">
+                  <div
+                    className="confirm-avatar avatar avatar-xl"
+                    style={{ backgroundColor: getAvatarColorByName(votedName) }}
                   >
-                    ✅ Confirmar Voto
-                  </button>
-                  <button
-                    className="btn btn-ghost"
-                    style={{ flex: 1, padding: '16px', borderRadius: 'var(--radius-md)', fontSize: '0.95rem' }}
-                    onClick={() => setConfirming(false)}
-                  >
-                    Cancelar
-                  </button>
+                    {getInitials(votedName)}
+                  </div>
+                  <h3 className="confirm-title">
+                    Votar em <span className="text-rose">{votedName.trim()}</span>
+                  </h3>
+                  <p className="confirm-desc">
+                    para a categoria <strong>{categoria.emoji} {categoria.titulo}</strong>?
+                  </p>
+                  <p className="confirm-warn">Esta ação não pode ser desfeita.</p>
+                  <div className="confirm-actions">
+                    <button
+                      id="confirm-votar-btn"
+                      className="btn btn-primary"
+                      style={{ flex: 1, padding: '16px', borderRadius: 'var(--radius-md)', fontSize: '1rem' }}
+                      onClick={handleConfirm}
+                    >
+                      ✅ Confirmar Voto
+                    </button>
+                    <button
+                      className="btn btn-ghost"
+                      style={{ flex: 1, padding: '16px', borderRadius: 'var(--radius-md)', fontSize: '0.95rem' }}
+                      onClick={() => setConfirming(false)}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>

@@ -562,11 +562,11 @@ const PremiosManager = () => {
   const [showForm, setShowForm] = useState(false);
   const [newCat, setNewCat] = useState({ titulo: '', descricao: '', emoji: '🏆', ordem: 1 });
   const [rankings, setRankings] = useState({}); // { [catId]: [{nifVotado, nomeVotado, votos}] }
+  const [globalRankings, setGlobalRankings] = useState([]);
   const [expandedCat, setExpandedCat] = useState(null);
   const [toast, setToast] = useState(null);
   const [confirmReset, setConfirmReset] = useState(null);
   const [confirmResetStep, setConfirmResetStep] = useState(0);
-  const rankingUnsubs = useRef({});
 
   const showToast = (msg) => {
     setToast(msg);
@@ -593,27 +593,72 @@ const PremiosManager = () => {
     return () => unsub();
   }, [selectedSchool]);
 
-  // Load ranking for a category
-  const loadRanking = (catId) => {
-    if (rankingUnsubs.current[catId]) return; // already listening
-    const colRef = collection(db, 'votacao', selectedSchool, 'votos', catId, 'respostas');
-    const unsub = onSnapshot(colRef, (snap) => {
-      const counts = {};
-      snap.docs.forEach(d => {
-        const { nifVotado, nomeVotado } = d.data();
-        if (!counts[nifVotado]) counts[nifVotado] = { nifVotado, nomeVotado, votos: 0 };
-        counts[nifVotado].votos++;
+  // Real-time global votes listener across all categories
+  useEffect(() => {
+    if (!selectedSchool || categorias.length === 0) {
+      setGlobalRankings([]);
+      setRankings({});
+      return;
+    }
+
+    const unsubs = [];
+    const allVotes = {}; // { [catId]: { [nifVotado]: { nomeVotado, votos } } }
+
+    const updateGlobalRanking = () => {
+      const aggregates = {}; // { [nifVotado]: { nomeVotado, totalVotos, detalheCategorias } }
+
+      Object.entries(allVotes).forEach(([catId, catCounts]) => {
+        const catObj = categorias.find(c => c.id === catId);
+        const emoji = catObj?.emoji || '🏆';
+        const titulo = catObj?.titulo || '';
+
+        Object.entries(catCounts).forEach(([nif, info]) => {
+          if (!aggregates[nif]) {
+            aggregates[nif] = {
+              nifVotado: nif,
+              nomeVotado: info.nomeVotado,
+              totalVotos: 0,
+              detalheCategorias: []
+            };
+          }
+          aggregates[nif].totalVotos += info.votos;
+          aggregates[nif].detalheCategorias.push({
+            catId,
+            titulo: `${emoji} ${titulo}`,
+            votos: info.votos
+          });
+        });
       });
-      const sorted = Object.values(counts).sort((a, b) => b.votos - a.votos);
-      setRankings(prev => ({ ...prev, [catId]: sorted }));
+
+      const sorted = Object.values(aggregates).sort((a, b) => b.totalVotos - a.totalVotos);
+      setGlobalRankings(sorted);
+    };
+
+    categorias.forEach(cat => {
+      const colRef = collection(db, 'votacao', selectedSchool, 'votos', cat.id, 'respostas');
+      const unsub = onSnapshot(colRef, (snap) => {
+        const catCounts = {};
+        snap.docs.forEach(d => {
+          const { nifVotado, nomeVotado } = d.data();
+          if (!catCounts[nifVotado]) catCounts[nifVotado] = { nomeVotado, votos: 0 };
+          catCounts[nifVotado].votos++;
+        });
+
+        const sortedCat = Object.values(catCounts).sort((a, b) => b.votos - a.votos);
+        setRankings(prev => ({ ...prev, [cat.id]: sortedCat }));
+
+        allVotes[cat.id] = catCounts;
+        updateGlobalRanking();
+      });
+      unsubs.push(unsub);
     });
-    rankingUnsubs.current[catId] = unsub;
-  };
+
+    return () => unsubs.forEach(unsub => unsub());
+  }, [selectedSchool, categorias]);
 
   const handleExpandCat = (catId) => {
     if (expandedCat === catId) { setExpandedCat(null); return; }
     setExpandedCat(catId);
-    loadRanking(catId);
   };
 
   const handleCreateCat = async (e) => {
@@ -732,6 +777,74 @@ const PremiosManager = () => {
         <div className="glass-card" style={{ padding: 48, textAlign: 'center', color: 'rgba(255,255,255,0.3)' }}>
           <Trophy size={40} style={{ marginBottom: 16, opacity: 0.3 }} />
           <p>Seleciona uma escola para gerir as categorias de votação.</p>
+        </div>
+      )}
+
+      {/* Resumo Geral de Votações */}
+      {selectedSchool && globalRankings.length > 0 && (
+        <div className="glass-card" style={{ marginBottom: 28, padding: '24px 28px' }}>
+          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
+            📊 Resumo Geral de Votação (Mais Votados)
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
+            {globalRankings.slice(0, 6).map((r, i) => (
+              <div 
+                key={r.nifVotado} 
+                style={{ 
+                  background: 'rgba(255,255,255,0.02)', 
+                  border: '1px solid rgba(255,255,255,0.05)', 
+                  padding: 16, 
+                  borderRadius: 12, 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: 10,
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div 
+                      style={{ 
+                        width: 28, 
+                        height: 28, 
+                        borderRadius: '50%', 
+                        background: i === 0 ? 'rgba(255, 215, 0, 0.15)' : i === 1 ? 'rgba(192, 192, 192, 0.15)' : i === 2 ? 'rgba(205, 127, 50, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                        color: i === 0 ? '#ffd700' : i === 1 ? '#e2e8f0' : i === 2 ? '#cd7f32' : 'rgba(255, 255, 255, 0.4)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 800,
+                        fontSize: '0.9rem'
+                      }}
+                    >
+                      {i + 1}
+                    </div>
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem', color: '#ffffff' }}>{r.nomeVotado}</span>
+                  </div>
+                  <span style={{ background: 'rgba(225,29,72,0.12)', color: '#fda4af', padding: '4px 10px', borderRadius: 20, fontSize: '0.78rem', fontWeight: 800 }}>
+                    {r.totalVotos} {r.totalVotos === 1 ? 'voto' : 'votos'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {r.detalheCategorias.map((d, index) => (
+                    <span 
+                      key={index} 
+                      style={{ 
+                        background: 'rgba(255, 255, 255, 0.04)', 
+                        border: '1px solid rgba(255, 255, 255, 0.06)', 
+                        color: 'rgba(255, 255, 255, 0.6)', 
+                        padding: '2px 8px', 
+                        borderRadius: 6, 
+                        fontSize: '0.72rem' 
+                      }}
+                    >
+                      {d.titulo} ({d.votos})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

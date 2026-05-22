@@ -7,36 +7,41 @@
   z-index: 150;
 }
 
-.votar-modal {
+.modal-wrapper {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  max-height: 85dvh;
-  max-height: 85vh;
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  border-bottom: none;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 151;
+  padding: 20px;
+  pointer-events: none;
+}
+
+.votar-modal {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
   z-index: 151;
   display: flex;
   flex-direction: column;
   background: var(--bg-card);
   overflow: hidden;
+  pointer-events: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
 }
 
 .modal-handle {
-  width: 36px;
-  height: 4px;
-  background: var(--border);
-  border-radius: 2px;
-  margin: 12px auto;
-  flex-shrink: 0;
+  display: none;
 }
 
 .modal-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  padding: 0 20px 16px;
+  padding: 24px 20px 16px;
   gap: 12px;
   flex-shrink: 0;
 }
@@ -151,22 +156,23 @@
 
 /* Confirm Sheet */
 .confirm-sheet {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-  border-bottom: none;
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
   z-index: 202;
   background: var(--bg-card);
+  pointer-events: auto;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
 }
 
 .confirm-content {
-  padding: 4px 28px 40px;
+  padding: 32px 28px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   text-align: center;
 }
 
