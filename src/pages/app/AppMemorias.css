@@ -60,3 +60,113 @@
   box-shadow: var(--shadow-rose), var(--shadow-md);
   z-index: 50;
 }
+
+/* Lightbox Image Viewer */
+.photo-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 5, 5, 0.98);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  padding: 20px;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: calc(16px + env(safe-area-inset-top));
+  right: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 1.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1102;
+  transition: background 0.2s;
+  line-height: 1;
+}
+
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.lightbox-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  max-width: 420px;
+  z-index: 1101;
+}
+
+.lightbox-img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+}
+
+.lightbox-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 0 10px;
+}
+
+.lightbox-author {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--rose-400);
+}
+
+.lightbox-caption {
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  margin-top: -4px;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.lightbox-download-btn {
+  width: 100%;
+  max-width: 240px;
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 24px;
+  border-radius: 50px;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 480px) {
+  .photo-lightbox {
+    max-width: 100%;
+    left: 0;
+    transform: none;
+  }
+}

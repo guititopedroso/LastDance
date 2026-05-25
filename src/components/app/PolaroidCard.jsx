@@ -15,7 +15,7 @@ const getAvatarColor = (nif) => {
   return `hsl(${hue}, 65%, 42%)`;
 };
 
-const PolaroidCard = ({ memory, index, currentStudentNif, onDelete, onReport }) => {
+const PolaroidCard = ({ memory, index, currentStudentNif, onDelete, onReport, onPhotoClick }) => {
   const { id, nomeAluno, nif, fotoURL, storagePath, legenda, emoji, timestamp } = memory;
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -44,6 +44,7 @@ const PolaroidCard = ({ memory, index, currentStudentNif, onDelete, onReport }) 
       whileHover={{ scale: 1.07, rotate: 0, zIndex: 20, boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }}
       whileTap={{ scale: 0.96 }}
       style={{ '--rot': `${rotation}deg` }}
+      onClick={() => onPhotoClick && onPhotoClick(memory)}
     >
       {/* Confirm delete overlay */}
       <AnimatePresence>

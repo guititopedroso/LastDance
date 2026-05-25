@@ -27,6 +27,7 @@ import {
   getAllCodes, 
   deleteCode, 
   addSchoolCode, 
+  updateSchoolCode,
   getAllRegistrations,
   deleteRegistration,
   registerStudent
@@ -153,16 +154,40 @@ const CodeManager = () => {
   const [showForm, setShowForm] = useState(false);
   const [newSchool, setNewSchool] = useState({ name: '', location: '', ballDate: '' });
   const [toast, setToast] = useState(null);
+  const [editingCodeId, setEditingCodeId] = useState(null);
+  const [editCodeData, setEditCodeData] = useState({ code: '', schoolName: '', location: '', ballDate: '' });
 
   const showToast = (message) => {
     setToast(message);
     setTimeout(() => setToast(null), 2000);
   };
 
+  const handleSaveEdit = async (id) => {
+    if (!editCodeData.code.trim() || !editCodeData.schoolName.trim()) {
+      showToast('⚠️ Código e nome da escola não podem estar vazios.');
+      return;
+    }
+    try {
+      await updateSchoolCode(
+        id, 
+        editCodeData.code.toUpperCase().trim(), 
+        editCodeData.schoolName.trim(), 
+        editCodeData.location.trim(), 
+        editCodeData.ballDate
+      );
+      setEditingCodeId(null);
+      fetchCodes();
+      showToast('✅ Código atualizado!');
+    } catch (err) {
+      console.error(err);
+      showToast('❌ Erro ao atualizar código.');
+    }
+  };
+
   const fetchCodes = async () => {
     setLoading(true);
     try {
-      const data = await getAllCodes();
+      const data = await getAllCodes(true);
       setCodes(data);
     } catch (error) {
       console.error(error);
@@ -274,43 +299,125 @@ const CodeManager = () => {
             </thead>
             <tbody>
               {codes.map(c => (
-                <tr key={c.id}>
-                  <td>{c.schoolName}</td>
-                  <td>{c.location || 'N/A'}</td>
-                  <td>
-                    {c.ballDate
-                      ? new Date(c.ballDate + 'T00:00:00').toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })
-                      : <span style={{ color: 'var(--color-gray-400)', fontSize: '0.85rem' }}>Sem data</span>
-                    }
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <code className="code-badge">{c.code}</code>
-                      <button 
-                        onClick={() => {
-                          const text = c.code;
-                          if (navigator.clipboard && window.isSecureContext) {
-                            navigator.clipboard.writeText(text);
-                          } else {
-                            const textArea = document.createElement("textarea");
-                            textArea.value = text;
-                            document.body.appendChild(textArea);
-                            textArea.select();
-                            document.execCommand('copy');
-                            document.body.removeChild(textArea);
-                          }
-                          showToast('Código copiado');
-                        }}
-                        className="btn-icon-small"
-                        title="Copiar Código"
-                      >
-                        <Copy size={14} />
-                      </button>
-                    </div>
-                  </td>
-                  <td>
-                    <button onClick={() => handleDelete(c.id)} className="btn-delete">Apagar</button>
-                  </td>
+                <tr key={c.id} style={{ background: editingCodeId === c.id ? 'rgba(255, 255, 255, 0.03)' : undefined }}>
+                  {editingCodeId === c.id ? (
+                    <>
+                      <td>
+                        <input 
+                          type="text" 
+                          value={editCodeData.schoolName} 
+                          onChange={e => setEditCodeData({ ...editCodeData, schoolName: e.target.value })} 
+                          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 10px', color: 'white', fontWeight: 700 }}
+                          required
+                        />
+                      </td>
+                      <td>
+                        <input 
+                          type="text" 
+                          value={editCodeData.location} 
+                          onChange={e => setEditCodeData({ ...editCodeData, location: e.target.value })} 
+                          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 10px', color: 'white' }}
+                          required
+                        />
+                      </td>
+                      <td>
+                        <input 
+                          type="date" 
+                          value={editCodeData.ballDate} 
+                          onChange={e => setEditCodeData({ ...editCodeData, ballDate: e.target.value })} 
+                          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 10px', color: 'white', colorScheme: 'dark' }}
+                          required
+                        />
+                      </td>
+                      <td>
+                        <input 
+                          type="text" 
+                          value={editCodeData.code} 
+                          onChange={e => setEditCodeData({ ...editCodeData, code: e.target.value.toUpperCase() })} 
+                          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 10px', color: 'white', fontFamily: 'monospace', fontWeight: 'bold' }}
+                          required
+                          maxLength={12}
+                        />
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            className="btn-icon-small"
+                            onClick={() => handleSaveEdit(c.id)}
+                            title="Salvar"
+                            style={{ color: '#4ade80', background: 'none', border: 'none', cursor: 'pointer' }}
+                          >
+                            <Check size={16} />
+                          </button>
+                          <button
+                            className="btn-icon-small"
+                            onClick={() => setEditingCodeId(null)}
+                            title="Cancelar"
+                            style={{ color: '#f87171', background: 'none', border: 'none', cursor: 'pointer' }}
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td>{c.schoolName}</td>
+                      <td>{c.location || 'N/A'}</td>
+                      <td>
+                        {c.ballDate
+                          ? new Date(c.ballDate + 'T00:00:00').toLocaleDateString('pt-PT', { day: '2-digit', month: 'long', year: 'numeric' })
+                          : <span style={{ color: 'var(--color-gray-400)', fontSize: '0.85rem' }}>Sem data</span>
+                        }
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <code className="code-badge">{c.code}</code>
+                          <button 
+                            onClick={() => {
+                              const text = c.code;
+                              if (navigator.clipboard && window.isSecureContext) {
+                                navigator.clipboard.writeText(text);
+                              } else {
+                                const textArea = document.createElement("textarea");
+                                textArea.value = text;
+                                document.body.appendChild(textArea);
+                                textArea.select();
+                                document.execCommand('copy');
+                                document.body.removeChild(textArea);
+                              }
+                              showToast('Código copiado');
+                            }}
+                            className="btn-icon-small"
+                            title="Copiar Código"
+                          >
+                            <Copy size={14} />
+                          </button>
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <button
+                            className="btn-icon-small"
+                            onClick={() => {
+                              setEditingCodeId(c.id);
+                              setEditCodeData({
+                                code: c.code,
+                                schoolName: c.schoolName,
+                                location: c.location || '',
+                                ballDate: c.ballDate || ''
+                              });
+                            }}
+                            title="Editar"
+                            style={{ color: '#38bdf8', background: 'none', border: 'none', cursor: 'pointer' }}
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button onClick={() => handleDelete(c.id)} className="btn-delete">Apagar</button>
+                        </div>
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -346,7 +453,7 @@ const AttendeeManager = () => {
     setLoading(true);
     const [regData, schoolData] = await Promise.all([
       getAllRegistrations(),
-      getAllCodes()
+      getAllCodes(true)
     ]);
     setAttendees(regData);
     setSchools(schoolData);
@@ -609,7 +716,7 @@ const PremiosManager = () => {
 
   // Load school codes
   useEffect(() => {
-    getAllCodes().then(data => setSchools(data));
+    getAllCodes(true).then(data => setSchools(data));
   }, []);
 
   // Real-time categories listener

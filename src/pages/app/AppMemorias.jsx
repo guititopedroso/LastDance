@@ -11,10 +11,35 @@ const AppMemorias = () => {
   const { memorias, loading, error, uploadMemoria, deleteMemoria, reportMemoria } = useAppMemorias(user);
   const [showUpload, setShowUpload] = useState(false);
   const [toast, setToast] = useState(null);
+  const [activePhoto, setActivePhoto] = useState(null);
 
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(null), 2800);
+  };
+
+  const handleDownload = async (e, url, id) => {
+    e.stopPropagation();
+    try {
+      showToast('⏳ A descarregar...');
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = blobUrl;
+      a.download = `lastdance-memoria-${id || Date.now()}.jpg`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(a);
+      showToast('✅ Foto guardada!');
+    } catch (error) {
+      console.error('Download failed:', error);
+      // Fallback: open in new tab
+      window.open(url, '_blank');
+      showToast('ℹ️ Foto aberta noutra aba. Podes guardá-la pressionando a imagem.');
+    }
   };
 
   const handleUpload = async (file, legenda, emoji, onProgress) => {
@@ -84,6 +109,7 @@ const AppMemorias = () => {
                 currentStudentNif={user?.nif}
                 onDelete={handleDelete}
                 onReport={handleReport}
+                onPhotoClick={setActivePhoto}
               />
             ))}
           </AnimatePresence>
@@ -118,6 +144,54 @@ const AppMemorias = () => {
             onUpload={handleUpload}
             onClose={() => setShowUpload(false)}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Photo Lightbox / Fullscreen Viewer */}
+      <AnimatePresence>
+        {activePhoto && (
+          <motion.div
+            className="photo-lightbox"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setActivePhoto(null)}
+          >
+            <button 
+              className="lightbox-close" 
+              onClick={() => setActivePhoto(null)}
+              aria-label="Fechar"
+            >
+              &times;
+            </button>
+
+            <motion.div 
+              className="lightbox-content"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={e => e.stopPropagation()}
+            >
+              <img src={activePhoto.fotoURL} alt={`Foto de ${activePhoto.nomeAluno}`} className="lightbox-img" />
+              
+              <div className="lightbox-info">
+                <span className="lightbox-author font-caveat">{activePhoto.nomeAluno}</span>
+                {activePhoto.legenda && <p className="lightbox-caption font-caveat">{activePhoto.legenda}</p>}
+                
+                <button 
+                  className="lightbox-download-btn btn btn-primary"
+                  onClick={(e) => handleDownload(e, activePhoto.fotoURL, activePhoto.id)}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8 }}>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                  </svg>
+                  Guardar Foto
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

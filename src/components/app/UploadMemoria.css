@@ -22,6 +22,8 @@
 .upload-sheet {
   position: relative;
   width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   border-bottom: none;
   padding: 12px 24px calc(48px + env(safe-area-inset-bottom));

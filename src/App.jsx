@@ -37,17 +37,27 @@ const ProtectedRoute = ({ children }) => {
 };
 
 function App() {
-  // Detetar se é mobile/touch para desativar o Preloader e o StarCanvas
+  // Detetar se é mobile (ecrãs pequenos) para desativar o Preloader e o StarCanvas
   const isMobile = useRef(
-    typeof window !== 'undefined' &&
-    (window.innerWidth <= 768 || 'ontouchstart' in window || navigator.maxTouchPoints > 0)
+    typeof window !== 'undefined' && window.innerWidth <= 768
   ).current;
 
-  // Em mobile, nunca mostra o preloader
+  // Mostrar o preloader se for a primeira vez na sessão (em todas as plataformas)
   const [isLoading, setIsLoading] = useState(() => {
-    if (isMobile) return false; // mobile: sem preloader, scroll imediato
     return sessionStorage.getItem('preloaderShown') !== 'true';
   });
+
+  // Bloquear scroll do body durante o preloader para evitar que fique preso ou se mova
+  useEffect(() => {
+    if (isLoading) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isLoading]);
 
   const handleLoadingComplete = () => {
     sessionStorage.setItem('preloaderShown', 'true');

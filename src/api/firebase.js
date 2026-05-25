@@ -95,10 +95,52 @@ export const getStudentByNameAndSchool = async (fullName, schoolCode) => {
   }
 };
 
-// Admin Helpers - Codes
-export const getAllCodes = async () => {
-  const querySnapshot = await getDocs(collection(db, "codes"));
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+// Centralized cache for codes
+let cachedCodes = null;
+try {
+  const stored = localStorage.getItem('ld_cached_schools');
+  if (stored) {
+    cachedCodes = JSON.parse(stored);
+  }
+} catch (e) {
+  console.warn("Failed to load cached schools:", e);
+}
+
+export const getAllCodes = async (forceRefresh = false) => {
+  if (forceRefresh) {
+    const querySnapshot = await getDocs(collection(db, "codes"));
+    const freshData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    cachedCodes = freshData;
+    try {
+      localStorage.setItem('ld_cached_schools', JSON.stringify(freshData));
+    } catch (e) {
+      console.warn("Failed to cache schools:", e);
+    }
+    return freshData;
+  }
+
+  // Background revalidation
+  const fetchPromise = getDocs(collection(db, "codes")).then(querySnapshot => {
+    const freshData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    cachedCodes = freshData;
+    try {
+      localStorage.setItem('ld_cached_schools', JSON.stringify(freshData));
+    } catch (e) {
+      console.warn("Failed to cache schools:", e);
+    }
+    return freshData;
+  }).catch(err => {
+    console.error("Failed to fetch fresh school codes:", err);
+    return cachedCodes || [];
+  });
+
+  // Return cached data immediately if available
+  if (cachedCodes && cachedCodes.length > 0) {
+    return cachedCodes;
+  }
+
+  // Otherwise, wait for the background fetch to finish
+  return fetchPromise;
 };
 
 export const addSchoolCode = async (code, schoolName, location, ballDate) => {
@@ -113,6 +155,16 @@ export const addSchoolCode = async (code, schoolName, location, ballDate) => {
 
 export const deleteCode = async (id) => {
   await deleteDoc(doc(db, "codes", id));
+};
+
+export const updateSchoolCode = async (id, code, schoolName, location, ballDate) => {
+  const docRef = doc(db, "codes", id);
+  await updateDoc(docRef, {
+    code: code.toUpperCase().trim(),
+    schoolName: schoolName.trim(),
+    location: location.trim(),
+    ballDate: ballDate || null
+  });
 };
 
 // Admin Helpers - Registrations

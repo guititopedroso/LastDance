@@ -11,19 +11,19 @@ const StarCanvas = () => {
 
     const resize = () => {
       canvas.width  = window.innerWidth;
-      canvas.height = document.documentElement.scrollHeight;
+      canvas.height = window.innerHeight; // Viewport height instead of document scrollHeight
     };
     resize();
     window.addEventListener('resize', resize);
 
     const onMouseMove = (e) => {
       mouse.x = e.clientX;
-      mouse.y = e.clientY + window.scrollY;
+      mouse.y = e.clientY; // Viewport coordinate (no window.scrollY needed since canvas is fixed)
     };
     window.addEventListener('mousemove', onMouseMove);
 
-    // Create particles
-    const COUNT = 120;
+    // Create particles - reduced count from 120 to 60 for better performance
+    const COUNT = 60;
     const particles = Array.from({ length: COUNT }, () => ({
       x: Math.random() * canvas.width,
       y: Math.random() * canvas.height,
@@ -40,21 +40,25 @@ const StarCanvas = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       frame++;
 
+      // Safety check for dynamic browser viewport adjustments
+      if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+        resize();
+      }
+
       particles.forEach((p) => {
         // Gentle drift
         p.x += p.speedX;
         p.y += p.speedY;
 
-        // Wrap around edges
+        // Wrap around edges of viewport
         if (p.x < 0) p.x = canvas.width;
         if (p.x > canvas.width) p.x = 0;
         if (p.y < 0) p.y = canvas.height;
         if (p.y > canvas.height) p.y = 0;
 
-        // Mouse repel (subtle)
-        const scrollY = window.scrollY;
+        // Mouse repel (subtle, viewport relative)
         const dx = p.x - mouse.x;
-        const dy = p.y - (mouse.y);
+        const dy = p.y - mouse.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < 120) {
           const force = (120 - dist) / 120;
@@ -66,14 +70,21 @@ const StarCanvas = () => {
         const twinkle = 0.5 + 0.5 * Math.sin(frame * p.twinkleSpeed + p.twinkleOffset);
         const alpha = p.opacity * (0.4 + 0.6 * twinkle);
 
-        // Draw star with glow
+        // Draw star with fast glow (outer ring + core) instead of expensive ctx.shadowBlur
         ctx.save();
+        
+        // Outer glow circle
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 140, 0, ${alpha * 0.25})`;
+        ctx.fill();
+
+        // Core star
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255, 160, 50, ${alpha})`;
-        ctx.shadowColor = `rgba(255, 140, 0, ${alpha * 0.8})`;
-        ctx.shadowBlur = p.r * 4;
+        ctx.fillStyle = `rgba(255, 200, 100, ${alpha})`;
         ctx.fill();
+
         ctx.restore();
       });
 
@@ -84,7 +95,7 @@ const StarCanvas = () => {
           const dy = particles[i].y - particles[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < 100) {
-            const lineAlpha = (1 - dist / 100) * 0.06;
+            const lineAlpha = (1 - dist / 100) * 0.05;
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
@@ -114,8 +125,8 @@ const StarCanvas = () => {
         position: 'fixed',
         top: 0,
         left: 0,
-        width: '100%',
-        height: '100%',
+        width: '100vw',
+        height: '100vh',
         pointerEvents: 'none',
         zIndex: 0,
         opacity: 0.7,
