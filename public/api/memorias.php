@@ -29,6 +29,20 @@ if ($method === 'GET') {
     
     $codigoEscola = $_GET['codigoEscola'];
     
+    // Corrigir permissões das fotos antigas para garantir que são públicas e legíveis
+    $uploadDir = __DIR__ . '/../uploads';
+    if (file_exists($uploadDir)) {
+        @chmod($uploadDir, 0755);
+        $files = @scandir($uploadDir);
+        if ($files !== false) {
+            foreach ($files as $file) {
+                if ($file !== '.' && $file !== '..') {
+                    @chmod($uploadDir . '/' . $file, 0644);
+                }
+            }
+        }
+    }
+    
     try {
         $stmt = $pdo->prepare("SELECT * FROM memorias WHERE codigoEscola = ? AND reportada = 0 ORDER BY timestamp DESC");
         $stmt->execute([$codigoEscola]);
@@ -69,16 +83,6 @@ if ($method === 'POST') {
         $legenda = isset($_POST['legenda']) ? $_POST['legenda'] : '';
         $emoji = isset($_POST['emoji']) ? $_POST['emoji'] : '';
         
-        $file = $_FILES['foto'];
-        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
-        
-        if (!in_array(strtolower($ext), $allowedExts)) {
-            http_response_code(400);
-            echo json_encode(['error' => 'Formato de imagem inválido. Use JPG, PNG, WEBP ou GIF.']);
-            exit;
-        }
-        
         // Certificar que a diretoria uploads existe e é editável
         $uploadDir = __DIR__ . '/../uploads';
         if (!file_exists($uploadDir)) {
@@ -88,6 +92,8 @@ if ($method === 'POST') {
                 exit;
             }
         }
+        
+        @chmod($uploadDir, 0755);
         
         if (!is_writable($uploadDir)) {
             http_response_code(500);
@@ -127,6 +133,7 @@ if ($method === 'POST') {
         $uploadFilePath = $uploadDir . '/' . $fileName;
         
         if (move_uploaded_file($file['tmp_name'], $uploadFilePath)) {
+            @chmod($uploadFilePath, 0644);
             // Obter protocolo e host
             $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443 || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) ? "https://" : "http://";
             $host = $_SERVER['HTTP_HOST'];
