@@ -888,7 +888,7 @@ const PremiosManager = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
             className="glass-card admin-form-card"
-            style={{ marginBottom: 28, padding: 28 }}
+            style={{ marginBottom: 28, padding: 28, position: 'relative', zIndex: 10 }}
           >
             <form onSubmit={handleCreateCat} style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
               <div style={{ flex: '0 0 80px', position: 'relative' }}>
@@ -1089,7 +1089,10 @@ const PremiosManager = () => {
 
       {/* Categories Table */}
       {selectedSchool && !loadingCats && (
-        <div className="admin-table-wrapper glass-card">
+        <div 
+          className="admin-table-wrapper glass-card"
+          style={{ overflow: editingCatId ? 'visible' : 'hidden' }}
+        >
           {categorias.length === 0 ? (
             <p style={{ padding: 24, color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>Sem categorias. Cria a primeira acima.</p>
           ) : (
@@ -1105,7 +1108,11 @@ const PremiosManager = () => {
               <tbody>
                 {categorias.map(cat => (
                   <React.Fragment key={cat.id}>
-                    <tr style={{ background: editingCatId === cat.id ? 'rgba(255, 255, 255, 0.03)' : undefined }}>
+                    <tr style={{ 
+                      background: editingCatId === cat.id ? 'rgba(255, 255, 255, 0.03)' : undefined,
+                      position: editingCatId === cat.id ? 'relative' : undefined,
+                      zIndex: editingCatId === cat.id ? 2 : undefined
+                    }}>
                       <td>
                         {editingCatId === cat.id ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

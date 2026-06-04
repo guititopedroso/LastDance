@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import './InstallAppBanner.css';
 
@@ -27,6 +28,7 @@ const isInStandaloneMode = () =>
   window.navigator.standalone === true;
 
 const InstallAppBanner = () => {
+  const location = useLocation();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [show, setShow] = useState(false);
   const [isIosDevice, setIsIosDevice] = useState(false);
@@ -94,7 +96,16 @@ const InstallAppBanner = () => {
     setShow(false);
   };
 
-  if (!show) return null;
+  const isHiddenRoute = 
+    location.pathname === '/app-install' || 
+    location.pathname.startsWith('/app') || 
+    location.pathname.startsWith('/admin') || 
+    location.pathname.startsWith('/area-cliente') || 
+    location.pathname.startsWith('/register') || 
+    location.pathname.startsWith('/success') || 
+    location.pathname.startsWith('/setup-account');
+
+  if (isHiddenRoute || !show) return null;
 
   return (
     <>
