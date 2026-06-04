@@ -79,10 +79,48 @@ if ($method === 'POST') {
             exit;
         }
         
-        // Certificar que a diretoria uploads existe
+        // Certificar que a diretoria uploads existe e é editável
         $uploadDir = __DIR__ . '/../uploads';
         if (!file_exists($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
+            if (!mkdir($uploadDir, 0755, true)) {
+                http_response_code(500);
+                echo json_encode(['error' => 'Não foi possível criar a pasta de uploads no servidor. Verifica as permissões da pasta-mãe.']);
+                exit;
+            }
+        }
+        
+        if (!is_writable($uploadDir)) {
+            http_response_code(500);
+            echo json_encode(['error' => 'A pasta de uploads não tem permissões de escrita (chmod 755/777).']);
+            exit;
+        }
+        
+        $file = $_FILES['foto'];
+        
+        // Verificar erros de upload do PHP
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            $uploadErrors = [
+                UPLOAD_ERR_INI_SIZE   => 'O ficheiro excede o limite de tamanho definido no servidor (upload_max_filesize).',
+                UPLOAD_ERR_FORM_SIZE  => 'O ficheiro excede o limite definido no formulário.',
+                UPLOAD_ERR_PARTIAL    => 'O upload do ficheiro foi feito apenas parcialmente.',
+                UPLOAD_ERR_NO_FILE    => 'Nenhum ficheiro foi enviado.',
+                UPLOAD_ERR_NO_TMP_DIR => 'Falta a pasta temporária no servidor.',
+                UPLOAD_ERR_CANT_WRITE => 'Falha ao escrever o ficheiro no disco do servidor.',
+                UPLOAD_ERR_EXTENSION  => 'Uma extensão do PHP parou o upload do ficheiro.'
+            ];
+            $errMsg = isset($uploadErrors[$file['error']]) ? $uploadErrors[$file['error']] : 'Erro desconhecido no upload.';
+            http_response_code(400);
+            echo json_encode(['error' => $errMsg]);
+            exit;
+        }
+
+        $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+        $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+        
+        if (!in_array(strtolower($ext), $allowedExts)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Formato de imagem inválido. Use JPG, PNG, WEBP ou GIF.']);
+            exit;
         }
         
         $fileName = 'memoria_' . $codigoEscola . '_' . $nif . '_' . time() . '.' . $ext;
@@ -90,7 +128,7 @@ if ($method === 'POST') {
         
         if (move_uploaded_file($file['tmp_name'], $uploadFilePath)) {
             // Obter protocolo e host
-            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
+            $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443 || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')) ? "https://" : "http://";
             $host = $_SERVER['HTTP_HOST'];
             
             // Descobrir se está numa subpasta do domínio
