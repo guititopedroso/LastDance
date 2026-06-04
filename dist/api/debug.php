@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Debug Uploads</title>
+    <title>Debug Search</title>
     <style>
         body { font-family: monospace; background: #000; color: #0f0; padding: 20px; }
         h1, h2 { color: #fff; border-bottom: 1px solid #333; }
@@ -11,71 +11,72 @@
     </style>
 </head>
 <body>
-    <h1>Debug LastDance Uploads</h1>
+    <h1>Debug Search for Memories on Server</h1>
     <div class="section">
-        <p><strong>Current File:</strong> <?php echo __FILE__; ?></p>
-        <p><strong>Current Dir:</strong> <?php echo __DIR__; ?></p>
-        <p><strong>Document Root:</strong> <?php echo $_SERVER['DOCUMENT_ROOT']; ?></p>
+        <p><strong>Starting Search...</strong></p>
     </div>
 
     <?php
-    $searchDirs = [
-        'Relative to API (../uploads)' => __DIR__ . '/../uploads',
-        'Relative to API (uploads)' => __DIR__ . '/uploads',
-        'Root uploads (../../uploads)' => __DIR__ . '/../../uploads',
-        'Document root uploads' => $_SERVER['DOCUMENT_ROOT'] . '/uploads',
-        'Document root api/uploads' => $_SERVER['DOCUMENT_ROOT'] . '/api/uploads'
-    ];
-
-    foreach ($searchDirs as $label => $path) {
-        echo "<div class='section'>";
-        echo "<h2>$label</h2>";
-        echo "<p><strong>Configured Path:</strong> $path</p>";
+    $startDir = '/home/u236076924/domains/lastdance.pt/';
+    
+    if (!file_exists($startDir)) {
+        $startDir = $_SERVER['DOCUMENT_ROOT'];
+    }
+    
+    echo "<div class='section'>";
+    echo "<h2>Searching in: $startDir</h2>";
+    
+    $foundFiles = [];
+    $foundDirs = [];
+    
+    function search($dir, &$foundFiles, &$foundDirs) {
+        $items = @scandir($dir);
+        if ($items === false) return;
         
-        try {
-            $realPath = realpath($path);
-            if ($realPath) {
-                echo "<p><strong>Resolved Path:</strong> $realPath</p>";
-                if (file_exists($realPath)) {
-                    echo "<p class='exists'><strong>Status:</strong> EXISTS</p>";
-                    $perms = @fileperms($realPath);
-                    if ($perms !== false) {
-                        echo "<p><strong>Permissions:</strong> " . substr(sprintf('%o', $perms), -4) . "</p>";
-                    }
-                    echo "<p><strong>Writable?</strong> " . (is_writable($realPath) ? "YES" : "NO") . "</p>";
-                    
-                    $files = @scandir($realPath);
-                    if ($files === false) {
-                        echo "<p class='missing'>Could not list files.</p>";
-                    } else {
-                        $count = 0;
-                        echo "<ul>";
-                        foreach ($files as $file) {
-                            if ($file !== '.' && $file !== '..') {
-                                $count++;
-                                if ($count <= 10) {
-                                    $filePath = $realPath . '/' . $file;
-                                    $fileSize = @filesize($filePath);
-                                    $filePerms = @fileperms($filePath);
-                                    $fPermsStr = $filePerms !== false ? substr(sprintf('%o', $filePerms), -4) : "unknown";
-                                    echo "<li>$file ($fileSize bytes, perms: $fPermsStr)</li>";
-                                }
-                            }
-                        }
-                        echo "</ul>";
-                        echo "<p><strong>Total files:</strong> $count</p>";
-                    }
-                } else {
-                    echo "<p class='missing'><strong>Status:</strong> DOES NOT EXIST (file_exists failed)</p>";
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') continue;
+            
+            $path = $dir . '/' . $item;
+            if (is_dir($path)) {
+                if (strtolower($item) === 'uploads') {
+                    $foundDirs[] = $path;
+                }
+                // Avoid infinite recursion or very deep vendor/node_modules directories
+                if ($item !== 'node_modules' && $item !== '.git' && $item !== 'vendor') {
+                    search($path, $foundFiles, $foundDirs);
                 }
             } else {
-                echo "<p class='missing'><strong>Status:</strong> NOT RESOLVED (does not exist)</p>";
+                if (strpos($item, 'memoria_') === 0) {
+                    $foundFiles[] = $path . " (" . filesize($path) . " bytes)";
+                }
             }
-        } catch (Exception $e) {
-            echo "<p class='missing'><strong>Error:</strong> " . $e->getMessage() . "</p>";
         }
-        echo "</div>";
     }
+    
+    search($startDir, $foundFiles, $foundDirs);
+    
+    echo "<h3>Folders found matching 'uploads':</h3>";
+    if (empty($foundDirs)) {
+        echo "<p class='missing'>No 'uploads' directories found anywhere!</p>";
+    } else {
+        echo "<ul>";
+        foreach ($foundDirs as $d) {
+            echo "<li class='exists'>$d (Writable: " . (is_writable($d) ? 'YES' : 'NO') . ", Perms: " . substr(sprintf('%o', fileperms($d)), -4) . ")</li>";
+        }
+        echo "</ul>";
+    }
+    
+    echo "<h3>Files found starting with 'memoria_':</h3>";
+    if (empty($foundFiles)) {
+        echo "<p class='missing'>No files starting with 'memoria_' found anywhere!</p>";
+    } else {
+        echo "<ul>";
+        foreach ($foundFiles as $f) {
+            echo "<li class='exists'>$f</li>";
+        }
+        echo "</ul>";
+    }
+    echo "</div>";
     ?>
 </body>
 </html>
