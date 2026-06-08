@@ -13,7 +13,7 @@ const cardVariants = {
 };
 
 const AppHome = () => {
-  const { user } = useAppAuth();
+  const { user, logout } = useAppAuth();
   const navigate = useNavigate();
 
   const displayName = user?.nomeAluno || 'Olá';
@@ -48,6 +48,7 @@ const AppHome = () => {
         initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%', gap: '15px' }}
       >
         <div className="home-greeting">
           <p className="home-greeting-sub">Bem-vindo de volta,</p>
@@ -56,6 +57,37 @@ const AppHome = () => {
             <span className="home-school-badge">{user.nomeEscola}</span>
           )}
         </div>
+        <button 
+          onClick={logout} 
+          className="btn-logout-app"
+          style={{
+            background: 'rgba(239, 68, 68, 0.08)',
+            border: '1px solid rgba(239, 68, 68, 0.15)',
+            color: '#f87171',
+            padding: '8px 16px',
+            borderRadius: '12px',
+            fontSize: '0.85rem',
+            fontWeight: '600',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            marginTop: '8px',
+            transition: 'all 0.2s',
+            boxShadow: '0 4px 12px rgba(239, 68, 68, 0.05)',
+            outline: 'none'
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)';
+            e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)';
+            e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.15)';
+          }}
+        >
+          Sair 🚪
+        </button>
       </motion.div>
 
       {/* Section Cards */}
