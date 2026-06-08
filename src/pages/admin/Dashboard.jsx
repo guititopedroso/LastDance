@@ -740,6 +740,23 @@ const EntradasManager = () => {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
 
+  // Quick manual add guest states
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newGuest, setNewGuest] = useState({
+    firstName: '',
+    lastName: '',
+    schoolCode: '',
+    ticketType: 'All-Access',
+    immediateCheckIn: true
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (showAddForm) {
+      setNewGuest(prev => ({ ...prev, schoolCode: selectedSchool }));
+    }
+  }, [showAddForm, selectedSchool]);
+
   const showToast = (message) => {
     setToast(message);
     setTimeout(() => setToast(null), 2000);
@@ -775,6 +792,47 @@ const EntradasManager = () => {
     } catch (error) {
       console.error("Check-in error:", error);
       showToast("❌ Erro ao processar check-in.");
+    }
+  };
+
+  const handleAddGuest = async (e) => {
+    e.preventDefault();
+    if (!newGuest.firstName.trim() || !newGuest.schoolCode) {
+      showToast("⚠️ Nome e escola são obrigatórios.");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    try {
+      await addDoc(collection(db, "registrations"), {
+        firstName: newGuest.firstName.trim(),
+        lastName: newGuest.lastName.trim(),
+        schoolCode: newGuest.schoolCode,
+        ticketType: newGuest.ticketType,
+        status: 'paid',
+        paidInstallments: 1,
+        totalInstallments: 1,
+        paymentPlan: 'full',
+        checkedIn: newGuest.immediateCheckIn,
+        createdAt: new Date().toISOString(),
+        paymentMethod: 'manual_entradas'
+      });
+      
+      showToast(`✅ Convidado ${newGuest.firstName} adicionado com sucesso!`);
+      setShowAddForm(false);
+      setNewGuest({
+        firstName: '',
+        lastName: '',
+        schoolCode: selectedSchool || '',
+        ticketType: 'All-Access',
+        immediateCheckIn: true
+      });
+      fetchData();
+    } catch (err) {
+      console.error("Error adding guest:", err);
+      showToast("❌ Erro ao adicionar convidado.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -816,7 +874,14 @@ const EntradasManager = () => {
           <h1>🚪 Controlo de Entradas</h1>
           <p>Faça o check-in dos convidados e acompanhe a lotação em tempo real.</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <button 
+            onClick={() => { setShowAddForm(!showAddForm); setNewGuest(prev => ({ ...prev, schoolCode: selectedSchool })); }} 
+            className="btn-premium" 
+            style={{ height: '44px', display: 'flex', alignItems: 'center', gap: '8px', padding: '0 16px', fontSize: '0.9rem' }}
+          >
+            <Plus size={16} /> {showAddForm ? 'Cancelar' : 'Adicionar Convidado'}
+          </button>
           <select
             value={selectedSchool}
             onChange={e => setSelectedSchool(e.target.value)}
@@ -840,6 +905,89 @@ const EntradasManager = () => {
           </button>
         </div>
       </header>
+
+      {showAddForm && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-card admin-form-card"
+          style={{ marginBottom: '30px', padding: '30px' }}
+        >
+          <form onSubmit={handleAddGuest} className="admin-manual-form" style={{ display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div className="input-group-simple" style={{ flex: 1, minWidth: '180px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--color-gray-400)' }}>Nome Próprio</label>
+              <input 
+                type="text" 
+                placeholder="Ex: João" 
+                value={newGuest.firstName}
+                onChange={(e) => setNewGuest({...newGuest, firstName: e.target.value})}
+                required 
+                disabled={isSubmitting}
+              />
+            </div>
+            <div className="input-group-simple" style={{ flex: 1, minWidth: '180px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--color-gray-400)' }}>Apelido / Turma</label>
+              <input 
+                type="text" 
+                placeholder="Ex: Silva (12º A)" 
+                value={newGuest.lastName}
+                onChange={(e) => setNewGuest({...newGuest, lastName: e.target.value})}
+                disabled={isSubmitting}
+              />
+            </div>
+            <div className="input-group-simple" style={{ flex: 1, minWidth: '160px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--color-gray-400)' }}>Escola</label>
+              <select
+                value={newGuest.schoolCode}
+                onChange={(e) => setNewGuest({...newGuest, schoolCode: e.target.value})}
+                required
+                disabled={isSubmitting}
+              >
+                <option value="">Selecionar Escola...</option>
+                {schools.map(s => (
+                  <option key={s.id} value={s.code}>{s.schoolName} ({s.code})</option>
+                ))}
+              </select>
+            </div>
+            <div className="input-group-simple" style={{ flex: 1, minWidth: '160px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--color-gray-400)' }}>Tipo de Acesso</label>
+              <select
+                value={newGuest.ticketType}
+                onChange={(e) => setNewGuest({...newGuest, ticketType: e.target.value})}
+                required
+                disabled={isSubmitting}
+              >
+                <option value="All-Access">All-Access</option>
+                <option value="Só Cocktail">Só Cocktail</option>
+                <option value="Cocktail + Jantar">Cocktail + Jantar</option>
+              </select>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '220px', height: '48px', paddingBottom: '10px' }}>
+              <input 
+                type="checkbox" 
+                id="immediate-checkin"
+                checked={newGuest.immediateCheckIn}
+                onChange={(e) => setNewGuest({...newGuest, immediateCheckIn: e.target.checked})}
+                disabled={isSubmitting}
+                style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+              />
+              <label htmlFor="immediate-checkin" style={{ fontSize: '0.9rem', color: 'var(--color-gray-400)', cursor: 'pointer', userSelect: 'none' }}>
+                Check-in imediato (Entra já)
+              </label>
+            </div>
+
+            <button 
+              type="submit" 
+              className="btn-premium" 
+              style={{ height: '48px', whiteSpace: 'nowrap' }}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'A Adicionar...' : 'Adicionar'}
+            </button>
+          </form>
+        </motion.div>
+      )}
 
       <div style={{
         display: 'grid',

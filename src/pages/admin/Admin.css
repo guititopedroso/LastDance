@@ -548,8 +548,30 @@
     padding: 14px 0;
     gap: 0;
   }
-  .admin-content { margin-left: 80px; }
-  .stats-grid { grid-template-columns: 1fr; }
+  .admin-content { 
+    margin-left: 80px; 
+    padding: 24px;
+  }
+  .stats-grid { 
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); 
+    gap: 20px; 
+  }
+  .admin-header.split {
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .admin-table th,
+  .admin-table td {
+    padding: 16px 12px;
+    font-size: 0.9rem;
+  }
+  .admin-modal {
+    padding: 30px 24px;
+    max-width: 550px;
+  }
+  .admin-manual-form, .admin-form-card form {
+    gap: 16px !important;
+  }
 }
 
 @media (max-width: 768px) {
