@@ -214,6 +214,96 @@ const Overview = () => {
   );
 };
 
+const loadPdfJs = () => {
+  return new Promise((resolve, reject) => {
+    if (window.pdfjsLib) {
+      resolve(window.pdfjsLib);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
+    script.onload = () => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+      resolve(window.pdfjsLib);
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+};
+
+const parsePdfFile = async (file) => {
+  const pdfjsLib = await loadPdfJs();
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+  let fullText = '';
+  
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    
+    let lastY = null;
+    let pageText = '';
+    for (const item of textContent.items) {
+      if (lastY === null || lastY === item.transform[5]) {
+        pageText += item.str;
+      } else {
+        pageText += '\n' + item.str;
+      }
+      lastY = item.transform[5];
+    }
+    fullText += pageText + '\n';
+  }
+  
+  return fullText;
+};
+
+const parseGuestsFromText = (text) => {
+  const lines = text.split('\n');
+  const parsedGuests = [];
+  
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    
+    const numMatch = trimmed.match(/^(\d+)\s*-\s*(.+)$/);
+    if (!numMatch) continue;
+    
+    const rest = numMatch[2].trim();
+    
+    const match = rest.match(/^(.*?)\s*-\s*(ALL-ACCESS|Apenas Cocktail|Só Cocktail|Cocktail\s*\+\s*Jantar)$/i);
+    if (match) {
+      const name = match[1].trim();
+      const rawStatus = match[2].trim().toLowerCase();
+      let ticketType = 'All-Access';
+      
+      if (rawStatus.includes('jantar')) {
+        ticketType = 'Cocktail + Jantar';
+      } else if (rawStatus.includes('cocktail')) {
+        ticketType = 'Só Cocktail';
+      } else {
+        ticketType = 'All-Access';
+      }
+      
+      const nameParts = name.split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      parsedGuests.push({
+        firstName,
+        lastName,
+        ticketType,
+        status: 'paid',
+        email: '',
+        phone: '',
+        paymentPlan: 'full',
+        checkedIn: false
+      });
+    }
+  }
+  
+  return parsedGuests;
+};
+
 const CodeManager = () => {
   const [codes, setCodes] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -222,6 +312,42 @@ const CodeManager = () => {
   const [toast, setToast] = useState(null);
   const [editingCodeId, setEditingCodeId] = useState(null);
   const [editCodeData, setEditCodeData] = useState({ code: '', schoolName: '', location: '', ballDate: '' });
+
+  // PDF upload and parsing states
+  const [pdfFile, setPdfFile] = useState(null);
+  const [parsedGuests, setParsedGuests] = useState([]);
+  const [guestCount, setGuestCount] = useState(0);
+  const [isParsing, setIsParsing] = useState(false);
+  const [pdfError, setPdfError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setPdfFile(file);
+    setIsParsing(true);
+    setPdfError(null);
+    setParsedGuests([]);
+    setGuestCount(0);
+
+    try {
+      const text = await parsePdfFile(file);
+      const guests = parseGuestsFromText(text);
+      setParsedGuests(guests);
+      setGuestCount(guests.length);
+      if (guests.length === 0) {
+        setPdfError("Não foram encontrados convidados no formato esperado no PDF.");
+        setPdfFile(null);
+      }
+    } catch (err) {
+      console.error("Error parsing PDF file:", err);
+      setPdfError("Erro ao processar o ficheiro PDF.");
+      setPdfFile(null);
+    } finally {
+      setIsParsing(false);
+    }
+  };
 
   const showToast = (message) => {
     setToast(message);
@@ -279,7 +405,9 @@ const CodeManager = () => {
 
   const handleCreateCode = async (e) => {
     e.preventDefault();
-    if (!newSchool.name || !newSchool.location || !newSchool.ballDate) return;
+    if (!newSchool.name || !newSchool.location || !newSchool.ballDate || isSubmitting) return;
+
+    setIsSubmitting(true);
 
     // Alphanumeric code generator (8 chars)
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -290,12 +418,38 @@ const CodeManager = () => {
 
     try {
       await addSchoolCode(newCode, newSchool.name, newSchool.location, newSchool.ballDate);
+      
+      // If we have parsed guests from a PDF, upload them in batches of 500
+      if (parsedGuests.length > 0) {
+        const batchLimit = 500;
+        for (let i = 0; i < parsedGuests.length; i += batchLimit) {
+          const chunk = parsedGuests.slice(i, i + batchLimit);
+          const batch = writeBatch(db);
+          for (const guest of chunk) {
+            const newDocRef = doc(collection(db, "registrations"));
+            batch.set(newDocRef, {
+              ...guest,
+              schoolCode: newCode,
+              createdAt: new Date().toISOString()
+            });
+          }
+          await batch.commit();
+        }
+      }
+
       setNewSchool({ name: '', location: '', ballDate: '' });
+      setPdfFile(null);
+      setParsedGuests([]);
+      setGuestCount(0);
+      setPdfError(null);
       setShowForm(false);
       fetchCodes();
-      showToast('Código criado com sucesso');
+      showToast(parsedGuests.length > 0 ? `✅ Escola criada e ${parsedGuests.length} convidados importados!` : '✅ Código criado com sucesso');
     } catch (error) {
-      alert("Erro ao criar código.");
+      console.error(error);
+      alert("Erro ao criar código ou importar convidados.");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -314,7 +468,7 @@ const CodeManager = () => {
           <h1>Gestor de Códigos</h1>
           <p>Gere os códigos de acesso para cada evento.</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="btn-premium">
+        <button onClick={() => { setShowForm(!showForm); setPdfFile(null); setParsedGuests([]); setGuestCount(0); setPdfError(null); }} className="btn-premium">
           {showForm ? 'Cancelar' : 'Gerar Novo Código'}
         </button>
       </header>
@@ -335,6 +489,7 @@ const CodeManager = () => {
                 value={newSchool.name}
                 onChange={(e) => setNewSchool({...newSchool, name: e.target.value})}
                 required 
+                disabled={isSubmitting}
               />
             </div>
             <div className="input-group-simple" style={{ flex: 1, minWidth: '140px' }}>
@@ -345,6 +500,7 @@ const CodeManager = () => {
                 value={newSchool.location}
                 onChange={(e) => setNewSchool({...newSchool, location: e.target.value})}
                 required 
+                disabled={isSubmitting}
               />
             </div>
             <div className="input-group-simple" style={{ flex: 1, minWidth: '160px' }}>
@@ -355,9 +511,58 @@ const CodeManager = () => {
                 onChange={(e) => setNewSchool({...newSchool, ballDate: e.target.value})}
                 required 
                 style={{ colorScheme: 'dark' }}
+                disabled={isSubmitting}
               />
             </div>
-            <button type="submit" className="btn-premium" style={{ height: '48px', whiteSpace: 'nowrap' }}>Criar Agora</button>
+
+            <div className="input-group-simple" style={{ flex: '1 1 100%', marginTop: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.8rem', color: 'var(--color-gray-400)' }}>
+                Lista de Convidados (PDF Opcional)
+              </label>
+              <input 
+                type="file" 
+                accept=".pdf" 
+                onChange={handleFileChange}
+                style={{ display: 'none' }}
+                id="pdf-upload-input"
+                disabled={isSubmitting || isParsing}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+                <label htmlFor="pdf-upload-input" className="btn-icon" style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  padding: '10px 20px', 
+                  cursor: (isSubmitting || isParsing) ? 'not-allowed' : 'pointer',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid var(--glass-border)',
+                  borderRadius: '10px',
+                  color: 'white',
+                  fontWeight: '600'
+                }}>
+                  {isParsing ? 'A analisar PDF...' : pdfFile ? 'Alterar PDF' : 'Selecionar PDF'}
+                </label>
+                {pdfFile && (
+                  <span style={{ fontSize: '0.9rem', color: '#4ade80', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    📄 {pdfFile.name} ({guestCount} convidados detetados)
+                  </span>
+                )}
+                {pdfError && (
+                  <span style={{ fontSize: '0.9rem', color: '#ff4d4d' }}>
+                    ❌ {pdfError}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <button 
+              type="submit" 
+              className="btn-premium" 
+              style={{ height: '48px', whiteSpace: 'nowrap' }}
+              disabled={isSubmitting || isParsing}
+            >
+              {isSubmitting ? 'A Processar...' : 'Criar Agora'}
+            </button>
           </form>
         </motion.div>
       )}
