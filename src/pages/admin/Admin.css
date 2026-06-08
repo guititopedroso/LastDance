@@ -179,6 +179,7 @@
   flex: 1;
   margin-left: 280px;
   padding: 40px;
+  min-width: 0;
 }
 
 .admin-header {
@@ -801,15 +802,25 @@
   .entradas-header-actions {
     width: 100%;
     display: grid !important;
-    grid-template-columns: 1fr 1fr auto !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto !important;
     gap: 8px !important;
   }
-  .entradas-header-actions button, 
-  .entradas-header-actions select {
+  .entradas-header-actions button {
     width: 100% !important;
     height: 40px !important;
     padding: 0 8px !important;
     font-size: 0.8rem !important;
+  }
+  .entradas-header-actions select {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: 40px !important;
+    padding: 0 8px !important;
+    font-size: 0.8rem !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
   }
   .entradas-header-actions .btn-icon-small {
     grid-column: 3;
@@ -867,6 +878,11 @@
   .entradas-stat-card .card-title {
     font-size: 0.6rem;
     font-weight: 800;
+    display: block;
+    width: 100%;
+    word-wrap: break-word;
+    white-space: normal;
+    line-height: 1.2;
   }
   .entradas-stat-card .card-value {
     font-size: 1.1rem;
