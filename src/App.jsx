@@ -100,7 +100,7 @@ function App() {
                         <Memorias />
                       </ProtectedRoute>
                     } />
-                    <Route path="/app-install" element={<DownloadApp />} />
+                    <Route path="/app-install" element={<Navigate to="/app" replace />} />
                     <Route path="/termos" element={<Terms />} />
                     <Route path="/privacidade" element={<PrivacyPolicy />} />
                     <Route path="/cookies" element={<CookiePolicy />} />

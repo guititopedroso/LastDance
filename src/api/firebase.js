@@ -149,7 +149,15 @@ export const addSchoolCode = async (code, schoolName, location, ballDate) => {
     schoolName,
     location,
     ballDate: ballDate || null,
+    hidden: false,
     createdAt: new Date().toISOString()
+  });
+};
+
+export const toggleSchoolVisibility = async (id, currentHiddenState) => {
+  const docRef = doc(db, "codes", id);
+  await updateDoc(docRef, {
+    hidden: !currentHiddenState
   });
 };
 

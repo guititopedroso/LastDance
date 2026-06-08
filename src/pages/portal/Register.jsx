@@ -28,10 +28,11 @@ const Register = () => {
     const fetchSchoolsAndInitial = async () => {
       try {
         const schoolsData = await getAllCodes();
-        setSchools(schoolsData);
+        const visibleSchools = schoolsData.filter(s => !s.hidden);
+        setSchools(visibleSchools);
         
         if (code) {
-          const matchedSchool = schoolsData.find(s => s.code.toUpperCase() === code.toUpperCase());
+          const matchedSchool = visibleSchools.find(s => s.code.toUpperCase() === code.toUpperCase());
           if (matchedSchool) {
             setSchool(matchedSchool);
             setSelectedSchoolCode(matchedSchool.code);

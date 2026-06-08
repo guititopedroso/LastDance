@@ -16,7 +16,7 @@ const AppLogin = () => {
     const fetchSchools = async () => {
       try {
         const schoolsData = await getAllCodes();
-        setSchools(schoolsData);
+        setSchools(schoolsData.filter(s => !s.hidden));
       } catch (err) {
         console.error("Error loading schools:", err);
       }

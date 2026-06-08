@@ -93,7 +93,7 @@ const Navbar = () => {
             variants={{ hidden: { opacity: 0, y: -10 }, visible: { opacity: 1, y: 0 } }}
             style={{ display: 'flex', alignItems: 'center' }}
           >
-            <Link to="/app-install" className="nav-link-item" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+            <Link to="/app" className="nav-link-item" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
               <Smartphone size={16} /> App
             </Link>
           </motion.div>
@@ -161,7 +161,7 @@ const Navbar = () => {
                 transition={{ delay: navLinks.length * 0.1 }}
                 style={{ margin: '15px 0' }}
               >
-                <Link to="/app-install" onClick={() => setIsOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem', fontWeight: '600' }}>
+                <Link to="/app" onClick={() => setIsOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.5rem', fontWeight: '600' }}>
                   <Smartphone size={24} className="text-gold" /> App
                 </Link>
               </motion.div>

@@ -30,7 +30,8 @@ import {
   updateSchoolCode,
   getAllRegistrations,
   deleteRegistration,
-  registerStudent
+  registerStudent,
+  toggleSchoolVisibility
 } from '../../api/firebase';
 import {
   db
@@ -184,6 +185,17 @@ const CodeManager = () => {
     }
   };
 
+  const handleToggleVisibility = async (id, currentHiddenState) => {
+    try {
+      await toggleSchoolVisibility(id, !!currentHiddenState);
+      fetchCodes();
+      showToast(currentHiddenState ? '👁️ Escola agora está visível' : '🔒 Escola foi ocultada');
+    } catch (err) {
+      console.error(err);
+      showToast('❌ Erro ao alterar visibilidade.');
+    }
+  };
+
   const fetchCodes = async () => {
     setLoading(true);
     try {
@@ -294,6 +306,7 @@ const CodeManager = () => {
                 <th>Localização</th>
                 <th>Data do Baile</th>
                 <th>Código</th>
+                <th>Visível</th>
                 <th>Ações</th>
               </tr>
             </thead>
@@ -339,6 +352,7 @@ const CodeManager = () => {
                           maxLength={12}
                         />
                       </td>
+                      <td></td>
                       <td>
                         <div style={{ display: 'flex', gap: 8 }}>
                           <button
@@ -394,6 +408,16 @@ const CodeManager = () => {
                             <Copy size={14} />
                           </button>
                         </div>
+                      </td>
+                      <td>
+                        <button
+                          onClick={() => handleToggleVisibility(c.id, c.hidden)}
+                          className="btn-icon-small"
+                          title={c.hidden ? "Oculto - Clique para Mostrar" : "Visível - Clique para Ocultar"}
+                          style={{ color: c.hidden ? '#f87171' : '#38bdf8', background: 'none', border: 'none', cursor: 'pointer' }}
+                        >
+                          {c.hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
