@@ -86,23 +86,23 @@ const AdminDashboard = () => {
       </div>
       <nav className="sidebar-nav">
         <Link to="/admin" className={activeTab === 'overview' ? 'active' : ''} onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }}>
-          <LayoutDashboard size={20} /> Painel Geral
+          <LayoutDashboard size={20} /> <span>Painel Geral</span>
         </Link>
         <Link to="/admin/codes" className={activeTab === 'codes' ? 'active' : ''} onClick={() => { setActiveTab('codes'); setIsSidebarOpen(false); }}>
-          <Key size={20} /> Códigos de Escola
+          <Key size={20} /> <span>Códigos de Escola</span>
         </Link>
         <Link to="/admin/entradas" className={activeTab === 'entradas' ? 'active' : ''} onClick={() => { setActiveTab('entradas'); setIsSidebarOpen(false); }}>
-          <Ticket size={20} /> Entradas
+          <Ticket size={20} /> <span>Entradas</span>
         </Link>
         <Link to="/admin/attendees" className={activeTab === 'attendees' ? 'active' : ''} onClick={() => { setActiveTab('attendees'); setIsSidebarOpen(false); }}>
-          <Users size={20} /> Gestão de Inscritos
+          <Users size={20} /> <span>Gestão de Inscritos</span>
         </Link>
         <Link to="/admin/premios" className={activeTab === 'premios' ? 'active' : ''} onClick={() => { setActiveTab('premios'); setIsSidebarOpen(false); }} style={{ color: activeTab === 'premios' ? '#e11d48' : undefined }}>
-          <Trophy size={20} /> Prémios / Votação
+          <Trophy size={20} /> <span>Prémios / Votação</span>
         </Link>
       </nav>
       <div className="sidebar-footer">
-        <Link to="/" className="btn-logout"><LogOut size={18} /> Sair</Link>
+        <Link to="/" className="btn-logout"><LogOut size={18} /> <span>Sair</span></Link>
       </div>
     </div>
   );
