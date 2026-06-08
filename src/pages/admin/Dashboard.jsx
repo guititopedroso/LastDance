@@ -739,6 +739,7 @@ const EntradasManager = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
+  const [activeStatsModal, setActiveStatsModal] = useState(null);
 
   // Quick manual add guest states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -763,23 +764,37 @@ const EntradasManager = () => {
   };
 
   const fetchData = async () => {
-    setLoading(true);
     try {
-      const [regData, schoolData] = await Promise.all([
-        getAllRegistrations(),
-        getAllCodes(true)
-      ]);
-      setAttendees(regData);
+      const schoolData = await getAllCodes(true);
       setSchools(schoolData);
+      showToast("🔄 Escolas atualizadas.");
     } catch (error) {
-      console.error("Error loading entries:", error);
-    } finally {
-      setLoading(false);
+      console.error("Error loading schools:", error);
+      showToast("❌ Erro ao atualizar escolas.");
     }
   };
 
   useEffect(() => {
+    // Fetch static schools codes
     fetchData();
+
+    // Set up live listener for registrations
+    setLoading(true);
+    const q = query(collection(db, "registrations"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const regs = [];
+      snapshot.forEach((doc) => {
+        regs.push({ id: doc.id, ...doc.data() });
+      });
+      setAttendees(regs);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error with snapshot listener:", error);
+      showToast("❌ Erro de ligação em tempo real.");
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleToggleCheckIn = async (attendee) => {
@@ -788,7 +803,6 @@ const EntradasManager = () => {
       const docRef = doc(db, "registrations", attendee.id);
       await updateDoc(docRef, { checkedIn: nextState });
       showToast(nextState ? `✅ Check-in realizado para ${attendee.firstName}` : `🔄 Check-in cancelado para ${attendee.firstName}`);
-      setAttendees(prev => prev.map(a => a.id === attendee.id ? { ...a, checkedIn: nextState } : a));
     } catch (error) {
       console.error("Check-in error:", error);
       showToast("❌ Erro ao processar check-in.");
@@ -827,7 +841,6 @@ const EntradasManager = () => {
         ticketType: 'All-Access',
         immediateCheckIn: true
       });
-      fetchData();
     } catch (err) {
       console.error("Error adding guest:", err);
       showToast("❌ Erro ao adicionar convidado.");
@@ -996,13 +1009,22 @@ const EntradasManager = () => {
         marginBottom: '35px'
       }}>
         {/* Só Cocktail - Blue */}
-        <div className="glass-card" style={{
-          padding: '24px',
-          background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.08) 0%, rgba(56, 189, 248, 0.02) 100%)',
-          border: '1px solid rgba(56, 189, 248, 0.15)',
-          borderRadius: '16px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
-        }}>
+        <motion.div 
+          onClick={() => setActiveStatsModal('Só Cocktail')}
+          whileHover={{ y: -5, scale: 1.02, borderColor: 'rgba(56, 189, 248, 0.4)' }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          className="glass-card" 
+          style={{
+            padding: '24px',
+            background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.08) 0%, rgba(56, 189, 248, 0.02) 100%)',
+            border: '1px solid rgba(56, 189, 248, 0.15)',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+            cursor: 'pointer',
+            transition: 'border-color 0.2s'
+          }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '1px' }}>Só Cocktail</span>
             <span style={{ fontSize: '20px' }}>🍸</span>
@@ -1011,16 +1033,25 @@ const EntradasManager = () => {
             {cocktailStats.checkedIn} <span style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.4)', fontWeight: '400' }}>/ {cocktailStats.total}</span>
           </h2>
           <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>Entraram no evento</p>
-        </div>
+        </motion.div>
 
         {/* Cocktail + Jantar - Orange */}
-        <div className="glass-card" style={{
-          padding: '24px',
-          background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.08) 0%, rgba(251, 146, 60, 0.02) 100%)',
-          border: '1px solid rgba(251, 146, 60, 0.15)',
-          borderRadius: '16px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
-        }}>
+        <motion.div 
+          onClick={() => setActiveStatsModal('Cocktail + Jantar')}
+          whileHover={{ y: -5, scale: 1.02, borderColor: 'rgba(251, 146, 60, 0.4)' }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          className="glass-card" 
+          style={{
+            padding: '24px',
+            background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.08) 0%, rgba(251, 146, 60, 0.02) 100%)',
+            border: '1px solid rgba(251, 146, 60, 0.15)',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+            cursor: 'pointer',
+            transition: 'border-color 0.2s'
+          }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '1px' }}>Cocktail + Jantar</span>
             <span style={{ fontSize: '20px' }}>🍽️</span>
@@ -1029,16 +1060,25 @@ const EntradasManager = () => {
             {dinnerStats.checkedIn} <span style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.4)', fontWeight: '400' }}>/ {dinnerStats.total}</span>
           </h2>
           <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>Entraram no evento</p>
-        </div>
+        </motion.div>
 
         {/* All-Access - Violet */}
-        <div className="glass-card" style={{
-          padding: '24px',
-          background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.08) 0%, rgba(167, 139, 250, 0.02) 100%)',
-          border: '1px solid rgba(167, 139, 250, 0.15)',
-          borderRadius: '16px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
-        }}>
+        <motion.div 
+          onClick={() => setActiveStatsModal('All-Access')}
+          whileHover={{ y: -5, scale: 1.02, borderColor: 'rgba(167, 139, 250, 0.4)' }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          className="glass-card" 
+          style={{
+            padding: '24px',
+            background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.08) 0%, rgba(167, 139, 250, 0.02) 100%)',
+            border: '1px solid rgba(167, 139, 250, 0.15)',
+            borderRadius: '16px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+            cursor: 'pointer',
+            transition: 'border-color 0.2s'
+          }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '1px' }}>All-Access</span>
             <span style={{ fontSize: '20px' }}>👑</span>
@@ -1047,7 +1087,7 @@ const EntradasManager = () => {
             {allAccessStats.checkedIn} <span style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.4)', fontWeight: '400' }}>/ {allAccessStats.total}</span>
           </h2>
           <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>Entraram no evento</p>
-        </div>
+        </motion.div>
       </div>
 
       <div style={{ marginBottom: '20px' }}>
@@ -1172,6 +1212,225 @@ const EntradasManager = () => {
           {toast}
         </motion.div>
       )}
+
+      {/* Stats Modal */}
+      <AnimatePresence>
+        {activeStatsModal && (
+          <div 
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: '20px'
+            }}
+          >
+            {/* Backdrop */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveStatsModal(null)}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                background: 'rgba(0, 0, 0, 0.65)',
+                backdropFilter: 'blur(8px)',
+                WebkitBackdropFilter: 'blur(8px)'
+              }}
+            />
+            
+            {/* Modal Content Card */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              style={{
+                position: 'relative',
+                background: 'linear-gradient(135deg, rgba(20, 20, 25, 0.95) 0%, rgba(10, 10, 15, 0.98) 100%)',
+                border: `1px solid ${
+                  activeStatsModal === 'Só Cocktail' ? 'rgba(56, 189, 248, 0.3)' : 
+                  activeStatsModal === 'Cocktail + Jantar' ? 'rgba(251, 146, 60, 0.3)' : 
+                  'rgba(167, 139, 250, 0.3)'
+                }`,
+                borderRadius: '20px',
+                width: '100%',
+                maxWidth: '550px',
+                maxHeight: '80vh',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                overflow: 'hidden',
+                zIndex: 1001
+              }}
+            >
+              {/* Header */}
+              <div style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: `linear-gradient(90deg, ${
+                  activeStatsModal === 'Só Cocktail' ? 'rgba(56, 189, 248, 0.05)' : 
+                  activeStatsModal === 'Cocktail + Jantar' ? 'rgba(251, 146, 60, 0.05)' : 
+                  'rgba(167, 139, 250, 0.05)'
+                } 0%, transparent 100%)`
+              }}>
+                <div>
+                  <h3 style={{ 
+                    fontSize: '1.2rem', 
+                    fontWeight: '800', 
+                    margin: 0,
+                    color: 
+                      activeStatsModal === 'Só Cocktail' ? '#38bdf8' : 
+                      activeStatsModal === 'Cocktail + Jantar' ? '#fb923c' : 
+                      '#a78bfa',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    {activeStatsModal === 'Só Cocktail' ? '🍸' : activeStatsModal === 'Cocktail + Jantar' ? '🍽️' : '👑'} 
+                    {activeStatsModal} — Presentes
+                  </h3>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)' }}>
+                    Lista de convidados com entrada validada
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setActiveStatsModal(null)}
+                  style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: 'none',
+                    color: 'rgba(255,255,255,0.6)',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* List Content */}
+              <div style={{
+                padding: '20px 24px',
+                overflowY: 'auto',
+                flex: 1
+              }}>
+                {attendees.filter(a => {
+                  const matchesSchool = !selectedSchool || a.schoolCode === selectedSchool;
+                  return matchesSchool && a.checkedIn && getTicketType(a) === activeStatsModal;
+                }).length === 0 ? (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '40px 0', 
+                    color: 'rgba(255,255,255,0.3)',
+                    fontSize: '0.9rem' 
+                  }}>
+                    Nenhum convidado validado nesta categoria.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {attendees
+                      .filter(a => {
+                        const matchesSchool = !selectedSchool || a.schoolCode === selectedSchool;
+                        return matchesSchool && a.checkedIn && getTicketType(a) === activeStatsModal;
+                      })
+                      .map(a => (
+                        <div 
+                          key={a.id} 
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            padding: '12px 16px',
+                            background: 'rgba(255,255,255,0.02)',
+                            border: '1px solid rgba(255,255,255,0.05)',
+                            borderRadius: '12px'
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#fff' }}>
+                              {a.firstName} {a.lastName}
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>
+                              Escola: {a.schoolCode}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleToggleCheckIn(a)}
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.1)',
+                              border: '1px solid rgba(239, 68, 68, 0.2)',
+                              color: '#ef4444',
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              cursor: 'pointer',
+                              fontSize: '0.8rem',
+                              fontWeight: '600',
+                              transition: 'all 0.2s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                              e.currentTarget.style.transform = 'scale(1.02)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                              e.currentTarget.style.transform = 'scale(1)';
+                            }}
+                          >
+                            Anular Entrada
+                          </button>
+                        </div>
+                      ))
+                    }
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div style={{
+                padding: '16px 24px',
+                borderTop: '1px solid rgba(255,255,255,0.08)',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                background: 'rgba(0,0,0,0.2)'
+              }}>
+                <button
+                  onClick={() => setActiveStatsModal(null)}
+                  className="btn-premium"
+                  style={{ 
+                    padding: '8px 16px', 
+                    fontSize: '0.85rem',
+                    height: 'auto'
+                  }}
+                >
+                  Fechar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
