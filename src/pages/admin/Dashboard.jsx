@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -49,8 +49,28 @@ const AdminDashboard = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(
     sessionStorage.getItem('adminAuth') === 'true'
   );
-  const [activeTab, setActiveTab] = useState('overview');
+  
+  const location = useLocation();
+  const getInitialTab = () => {
+    const path = location.pathname;
+    if (path.includes('/entradas')) return 'entradas';
+    if (path.includes('/codes')) return 'codes';
+    if (path.includes('/attendees')) return 'attendees';
+    if (path.includes('/premios')) return 'premios';
+    return 'overview';
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab());
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.includes('/entradas')) setActiveTab('entradas');
+    else if (path.includes('/codes')) setActiveTab('codes');
+    else if (path.includes('/attendees')) setActiveTab('attendees');
+    else if (path.includes('/premios')) setActiveTab('premios');
+    else setActiveTab('overview');
+  }, [location]);
 
   const handleLogin = () => {
     sessionStorage.setItem('adminAuth', 'true');
@@ -740,6 +760,7 @@ const EntradasManager = () => {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState(null);
   const [activeStatsModal, setActiveStatsModal] = useState(null);
+  const [sortBy, setSortBy] = useState('alphabetical');
 
   // Quick manual add guest states
   const [showAddForm, setShowAddForm] = useState(false);
@@ -864,6 +885,17 @@ const EntradasManager = () => {
       a.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       a.phone?.includes(searchQuery);
     return matchesSchool && matchesSearch;
+  });
+
+  const sortedAttendees = [...filteredAttendees].sort((a, b) => {
+    if (sortBy === 'alphabetical') {
+      const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase();
+      const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase();
+      return nameA.localeCompare(nameB, 'pt', { sensitivity: 'base' });
+    }
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
   });
 
   const getStatsForType = (type) => {
@@ -1069,8 +1101,8 @@ const EntradasManager = () => {
         </motion.div>
       </div>
 
-      <div style={{ marginBottom: '20px' }}>
-        <div className="search-bar" style={{ maxWidth: '400px' }}>
+      <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '20px', alignItems: 'center' }}>
+        <div className="search-bar" style={{ flex: 1, maxWidth: '400px', minWidth: '250px' }}>
           <Search size={18} />
           <input 
             type="text" 
@@ -1079,12 +1111,33 @@ const EntradasManager = () => {
             onChange={e => setSearchQuery(e.target.value)}
           />
         </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.4)', fontWeight: '600' }}>Ordenar:</span>
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value)}
+            style={{ 
+              background: 'rgba(255,255,255,0.05)', 
+              border: '1px solid rgba(255,255,255,0.1)', 
+              color: 'white', 
+              padding: '10px 16px', 
+              borderRadius: 10,
+              fontFamily: 'inherit',
+              fontSize: '0.85rem',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="alphabetical">🔤 Ordem Alfabética (A-Z)</option>
+            <option value="date">📅 Mais Recentes</option>
+          </select>
+        </div>
       </div>
 
       <div className="admin-table-wrapper glass-card">
         {loading ? (
           <p style={{ padding: '20px' }}>A carregar convidados...</p>
-        ) : filteredAttendees.length === 0 ? (
+        ) : sortedAttendees.length === 0 ? (
           <p style={{ padding: '30px', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>Nenhum convidado encontrado.</p>
         ) : (
           <table className="admin-table">
@@ -1099,7 +1152,7 @@ const EntradasManager = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredAttendees.map(a => {
+              {sortedAttendees.map(a => {
                 const ticket = getTicketType(a);
                 const isPaid = a.status === 'paid' || a.paidInstallments >= a.totalInstallments;
                 
@@ -1181,6 +1234,80 @@ const EntradasManager = () => {
           </table>
         )}
       </div>
+
+      {/* List for Mobile (Cards) */}
+      {!loading && sortedAttendees.length > 0 && (
+        <div className="mobile-attendees-list">
+          {sortedAttendees.map(a => {
+            const ticket = getTicketType(a);
+            const isPaid = a.status === 'paid' || a.paidInstallments >= a.totalInstallments;
+            
+            return (
+              <div key={a.id} className="mobile-attendee-card glass-card" style={{ opacity: a.checkedIn ? 0.8 : 1 }}>
+                <div className="card-top">
+                  <div className="guest-info">
+                    <span className="guest-name">{a.firstName} {a.lastName}</span>
+                    <span className="guest-school">Escola: {a.schoolCode}</span>
+                  </div>
+                  <span className={`status-badge ${isPaid ? 'paid' : 'pending'}`}>
+                    {isPaid ? 'Pago' : 'Pendente'}
+                  </span>
+                </div>
+                
+                <div className="card-middle">
+                  <span style={{ 
+                    color: ticket === 'Só Cocktail' ? '#38bdf8' : ticket === 'Cocktail + Jantar' ? '#fb923c' : '#a78bfa',
+                    fontWeight: '700',
+                    fontSize: '0.85rem'
+                  }}>
+                    {ticket}
+                  </span>
+                  {a.checkedIn ? (
+                    <span className="presence-badge inside">
+                      <CheckCircle size={14} /> Dentro
+                    </span>
+                  ) : (
+                    <span className="presence-badge absent">
+                      <Clock size={14} /> Ausente
+                    </span>
+                  )}
+                </div>
+                
+                <div className="card-actions">
+                  {a.checkedIn ? (
+                    <button
+                      onClick={() => handleToggleCheckIn(a)}
+                      className="btn-cancel"
+                    >
+                      Anular Entrada
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleToggleCheckIn(a)}
+                      disabled={!isPaid}
+                      className="btn-validate"
+                      style={{
+                        background: isPaid ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255,255,255,0.02)',
+                        border: isPaid ? '1px solid rgba(74, 222, 128, 0.2)' : '1px solid rgba(255,255,255,0.05)',
+                        color: isPaid ? '#4ade80' : 'rgba(255,255,255,0.2)',
+                        cursor: isPaid ? 'pointer' : 'not-allowed'
+                      }}
+                    >
+                      Validar Entrada
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      
+      {!loading && sortedAttendees.length === 0 && (
+        <div className="mobile-attendees-list-empty">
+          <p style={{ padding: '30px', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>Nenhum convidado encontrado.</p>
+        </div>
+      )}
 
       {toast && (
         <motion.div 
@@ -1330,6 +1457,11 @@ const EntradasManager = () => {
                       .filter(a => {
                         const matchesSchool = !selectedSchool || a.schoolCode === selectedSchool;
                         return matchesSchool && a.checkedIn && getTicketType(a) === activeStatsModal;
+                      })
+                      .sort((a, b) => {
+                        const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase();
+                        const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase();
+                        return nameA.localeCompare(nameB, 'pt', { sensitivity: 'base' });
                       })
                       .map(a => (
                         <div 
