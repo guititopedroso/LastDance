@@ -887,7 +887,7 @@ const EntradasManager = () => {
           <h1>🚪 Controlo de Entradas</h1>
           <p>Faça o check-in dos convidados e acompanhe a lotação em tempo real.</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+        <div className="entradas-header-actions">
           <button 
             onClick={() => { setShowAddForm(!showAddForm); setNewGuest(prev => ({ ...prev, schoolCode: selectedSchool })); }} 
             className="btn-premium" 
@@ -924,7 +924,6 @@ const EntradasManager = () => {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="glass-card admin-form-card"
-          style={{ marginBottom: '30px', padding: '30px' }}
         >
           <form onSubmit={handleAddGuest} className="admin-manual-form" style={{ display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <div className="input-group-simple" style={{ flex: 1, minWidth: '180px' }}>
@@ -1002,37 +1001,27 @@ const EntradasManager = () => {
         </motion.div>
       )}
 
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-        gap: '20px',
-        marginBottom: '35px'
-      }}>
+      <div className="entradas-stats-grid">
         {/* Só Cocktail - Blue */}
         <motion.div 
           onClick={() => setActiveStatsModal('Só Cocktail')}
           whileHover={{ y: -5, scale: 1.02, borderColor: 'rgba(56, 189, 248, 0.4)' }}
           whileTap={{ scale: 0.98 }}
           transition={{ type: "spring", stiffness: 400, damping: 17 }}
-          className="glass-card" 
+          className="glass-card entradas-stat-card" 
           style={{
-            padding: '24px',
             background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.08) 0%, rgba(56, 189, 248, 0.02) 100%)',
-            border: '1px solid rgba(56, 189, 248, 0.15)',
-            borderRadius: '16px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-            cursor: 'pointer',
-            transition: 'border-color 0.2s'
+            border: '1px solid rgba(56, 189, 248, 0.15)'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '1px' }}>Só Cocktail</span>
+          <div className="card-header">
+            <span className="card-title" style={{ color: '#38bdf8' }}>Só Cocktail</span>
             <span style={{ fontSize: '20px' }}>🍸</span>
           </div>
-          <h2 style={{ fontSize: '2.2rem', fontWeight: '800', margin: 0, color: '#fff' }}>
-            {cocktailStats.checkedIn} <span style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.4)', fontWeight: '400' }}>/ {cocktailStats.total}</span>
+          <h2 className="card-value">
+            {cocktailStats.checkedIn} <span>/ {cocktailStats.total}</span>
           </h2>
-          <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>Entraram no evento</p>
+          <p className="card-desc">Entraram no evento</p>
         </motion.div>
 
         {/* Cocktail + Jantar - Orange */}
@@ -1041,25 +1030,20 @@ const EntradasManager = () => {
           whileHover={{ y: -5, scale: 1.02, borderColor: 'rgba(251, 146, 60, 0.4)' }}
           whileTap={{ scale: 0.98 }}
           transition={{ type: "spring", stiffness: 400, damping: 17 }}
-          className="glass-card" 
+          className="glass-card entradas-stat-card" 
           style={{
-            padding: '24px',
             background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.08) 0%, rgba(251, 146, 60, 0.02) 100%)',
-            border: '1px solid rgba(251, 146, 60, 0.15)',
-            borderRadius: '16px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-            cursor: 'pointer',
-            transition: 'border-color 0.2s'
+            border: '1px solid rgba(251, 146, 60, 0.15)'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '1px' }}>Cocktail + Jantar</span>
+          <div className="card-header">
+            <span className="card-title" style={{ color: '#fb923c' }}>Cocktail + Jantar</span>
             <span style={{ fontSize: '20px' }}>🍽️</span>
           </div>
-          <h2 style={{ fontSize: '2.2rem', fontWeight: '800', margin: 0, color: '#fff' }}>
-            {dinnerStats.checkedIn} <span style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.4)', fontWeight: '400' }}>/ {dinnerStats.total}</span>
+          <h2 className="card-value">
+            {dinnerStats.checkedIn} <span>/ {dinnerStats.total}</span>
           </h2>
-          <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>Entraram no evento</p>
+          <p className="card-desc">Entraram no evento</p>
         </motion.div>
 
         {/* All-Access - Violet */}
@@ -1068,25 +1052,20 @@ const EntradasManager = () => {
           whileHover={{ y: -5, scale: 1.02, borderColor: 'rgba(167, 139, 250, 0.4)' }}
           whileTap={{ scale: 0.98 }}
           transition={{ type: "spring", stiffness: 400, damping: 17 }}
-          className="glass-card" 
+          className="glass-card entradas-stat-card" 
           style={{
-            padding: '24px',
             background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.08) 0%, rgba(167, 139, 250, 0.02) 100%)',
-            border: '1px solid rgba(167, 139, 250, 0.15)',
-            borderRadius: '16px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-            cursor: 'pointer',
-            transition: 'border-color 0.2s'
+            border: '1px solid rgba(167, 139, 250, 0.15)'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '1px' }}>All-Access</span>
+          <div className="card-header">
+            <span className="card-title" style={{ color: '#a78bfa' }}>All-Access</span>
             <span style={{ fontSize: '20px' }}>👑</span>
           </div>
-          <h2 style={{ fontSize: '2.2rem', fontWeight: '800', margin: 0, color: '#fff' }}>
-            {allAccessStats.checkedIn} <span style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.4)', fontWeight: '400' }}>/ {allAccessStats.total}</span>
+          <h2 className="card-value">
+            {allAccessStats.checkedIn} <span>/ {allAccessStats.total}</span>
           </h2>
-          <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>Entraram no evento</p>
+          <p className="card-desc">Entraram no evento</p>
         </motion.div>
       </div>
 
@@ -1355,15 +1334,7 @@ const EntradasManager = () => {
                       .map(a => (
                         <div 
                           key={a.id} 
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            padding: '12px 16px',
-                            background: 'rgba(255,255,255,0.02)',
-                            border: '1px solid rgba(255,255,255,0.05)',
-                            borderRadius: '12px'
-                          }}
+                          className="stats-modal-item"
                         >
                           <div>
                             <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#fff' }}>
