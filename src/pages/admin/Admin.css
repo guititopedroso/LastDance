@@ -537,11 +537,32 @@
 
 @media (max-width: 768px) {
   .admin-sidebar {
-    display: none;
+    display: flex;
+    left: -280px;
+    top: 0;
+    z-index: 1000;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .admin-sidebar.open {
+    left: 0;
+  }
+  .admin-sidebar-close-btn {
+    display: block !important;
+  }
+  .admin-mobile-topbar {
+    display: flex !important;
+  }
+  .admin-logo-img {
+    margin-left: 0 !important;
+    height: 60px !important;
+  }
+  .sidebar-header {
+    margin-bottom: 30px !important;
   }
   .admin-content {
     margin-left: 0;
     padding: 20px 16px;
+    padding-top: 80px !important;
   }
   .admin-header.split {
     flex-direction: column;
@@ -568,6 +589,12 @@
     padding: 12px 10px;
     font-size: 0.85rem;
   }
+  .admin-table td {
+    white-space: nowrap;
+  }
+  .admin-table td:first-child {
+    white-space: normal;
+  }
   .search-bar input {
     width: 100%;
   }
@@ -583,5 +610,17 @@
   .admin-manual-form .form-row {
     flex-direction: column;
     gap: 16px;
+  }
+  .admin-form-card form {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+  .admin-form-card form > * {
+    width: 100% !important;
+    flex: none !important;
+  }
+  .admin-form-card form button {
+    width: 100%;
+    margin-top: 10px;
   }
 }

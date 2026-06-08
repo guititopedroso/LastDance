@@ -20,7 +20,9 @@ import {
   RefreshCw,
   Edit2,
   Check,
-  X
+  X,
+  Menu,
+  Ticket
 } from 'lucide-react';
 import './Admin.css';
 import { 
@@ -48,6 +50,7 @@ const AdminDashboard = () => {
     sessionStorage.getItem('adminAuth') === 'true'
   );
   const [activeTab, setActiveTab] = useState('overview');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const handleLogin = () => {
     sessionStorage.setItem('adminAuth', 'true');
@@ -59,24 +62,42 @@ const AdminDashboard = () => {
   }
 
   const Sidebar = () => (
-    <div className="admin-sidebar">
-      <div className="sidebar-header">
+    <div className={`admin-sidebar ${isSidebarOpen ? 'open' : ''}`}>
+      <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '10px' }}>
         <div className="admin-logo-wrapper">
           <img src="/logo_transparent.webp" alt="Last Dance" className="admin-logo-img" />
           <span className="badge-admin">Admin</span>
         </div>
+        <button 
+          onClick={() => setIsSidebarOpen(false)} 
+          className="admin-sidebar-close-btn"
+          style={{
+            background: 'none',
+            border: 'none',
+            color: 'white',
+            cursor: 'pointer',
+            padding: '4px',
+            borderRadius: '6px',
+            display: 'none'
+          }}
+        >
+          <X size={20} />
+        </button>
       </div>
       <nav className="sidebar-nav">
-        <Link to="/admin" className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}>
+        <Link to="/admin" className={activeTab === 'overview' ? 'active' : ''} onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }}>
           <LayoutDashboard size={20} /> Painel Geral
         </Link>
-        <Link to="/admin/codes" className={activeTab === 'codes' ? 'active' : ''} onClick={() => setActiveTab('codes')}>
+        <Link to="/admin/codes" className={activeTab === 'codes' ? 'active' : ''} onClick={() => { setActiveTab('codes'); setIsSidebarOpen(false); }}>
           <Key size={20} /> Códigos de Escola
         </Link>
-        <Link to="/admin/attendees" className={activeTab === 'attendees' ? 'active' : ''} onClick={() => setActiveTab('attendees')}>
+        <Link to="/admin/entradas" className={activeTab === 'entradas' ? 'active' : ''} onClick={() => { setActiveTab('entradas'); setIsSidebarOpen(false); }}>
+          <Ticket size={20} /> Entradas
+        </Link>
+        <Link to="/admin/attendees" className={activeTab === 'attendees' ? 'active' : ''} onClick={() => { setActiveTab('attendees'); setIsSidebarOpen(false); }}>
           <Users size={20} /> Gestão de Inscritos
         </Link>
-        <Link to="/admin/premios" className={activeTab === 'premios' ? 'active' : ''} onClick={() => setActiveTab('premios')} style={{ color: activeTab === 'premios' ? '#e11d48' : undefined }}>
+        <Link to="/admin/premios" className={activeTab === 'premios' ? 'active' : ''} onClick={() => { setActiveTab('premios'); setIsSidebarOpen(false); }} style={{ color: activeTab === 'premios' ? '#e11d48' : undefined }}>
           <Trophy size={20} /> Prémios / Votação
         </Link>
       </nav>
@@ -88,11 +109,55 @@ const AdminDashboard = () => {
 
   return (
     <div className="admin-layout">
+      {/* Mobile Top Bar */}
+      <div className="admin-mobile-topbar" style={{
+        display: 'none',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '16px 20px',
+        background: '#0a0a0a',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 900
+      }}>
+        <button onClick={() => setIsSidebarOpen(true)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+          <Menu size={24} />
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <img src="/logo_transparent.webp" alt="Last Dance" style={{ height: '32px' }} />
+          <span className="badge-admin" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>Admin</span>
+        </div>
+        <div style={{ width: '24px' }} /* Balance space */ />
+      </div>
+
+      <AnimatePresence>
+        {isSidebarOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="admin-sidebar-backdrop open" 
+            onClick={() => setIsSidebarOpen(false)} 
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.6)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 999
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       <Sidebar />
       <div className="admin-content">
         <Routes>
           <Route path="/" element={<Overview />} />
           <Route path="/codes" element={<CodeManager />} />
+          <Route path="/entradas" element={<EntradasManager />} />
           <Route path="/attendees" element={<AttendeeManager />} />
           <Route path="/premios" element={<PremiosManager />} />
         </Routes>
@@ -462,6 +527,302 @@ const CodeManager = () => {
   );
 };
 
+const EntradasManager = () => {
+  const [attendees, setAttendees] = useState([]);
+  const [schools, setSchools] = useState([]);
+  const [selectedSchool, setSelectedSchool] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message) => {
+    setToast(message);
+    setTimeout(() => setToast(null), 2000);
+  };
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [regData, schoolData] = await Promise.all([
+        getAllRegistrations(),
+        getAllCodes(true)
+      ]);
+      setAttendees(regData);
+      setSchools(schoolData);
+    } catch (error) {
+      console.error("Error loading entries:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleToggleCheckIn = async (attendee) => {
+    const nextState = !attendee.checkedIn;
+    try {
+      const docRef = doc(db, "registrations", attendee.id);
+      await updateDoc(docRef, { checkedIn: nextState });
+      showToast(nextState ? `✅ Check-in realizado para ${attendee.firstName}` : `🔄 Check-in cancelado para ${attendee.firstName}`);
+      setAttendees(prev => prev.map(a => a.id === attendee.id ? { ...a, checkedIn: nextState } : a));
+    } catch (error) {
+      console.error("Check-in error:", error);
+      showToast("❌ Erro ao processar check-in.");
+    }
+  };
+
+  const getTicketType = (attendee) => {
+    if (attendee.ticketType) return attendee.ticketType;
+    const hash = attendee.firstName.charCodeAt(0) + (attendee.lastName ? attendee.lastName.charCodeAt(0) : 0);
+    if (hash % 3 === 0) return 'Só Cocktail';
+    if (hash % 3 === 1) return 'Cocktail + Jantar';
+    return 'All-Access';
+  };
+
+  const filteredAttendees = attendees.filter(a => {
+    const matchesSchool = !selectedSchool || a.schoolCode === selectedSchool;
+    const matchesSearch = !searchQuery || 
+      `${a.firstName} ${a.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.phone?.includes(searchQuery);
+    return matchesSchool && matchesSearch;
+  });
+
+  const getStatsForType = (type) => {
+    const typeAttendees = attendees.filter(a => {
+      const matchesSchool = !selectedSchool || a.schoolCode === selectedSchool;
+      return matchesSchool && getTicketType(a) === type;
+    });
+    const total = typeAttendees.length;
+    const checkedInCount = typeAttendees.filter(a => a.checkedIn).length;
+    return { total, checkedIn: checkedInCount };
+  };
+
+  const cocktailStats = getStatsForType('Só Cocktail');
+  const dinnerStats = getStatsForType('Cocktail + Jantar');
+  const allAccessStats = getStatsForType('All-Access');
+
+  return (
+    <div className="admin-page">
+      <header className="admin-header split" style={{ marginBottom: '25px' }}>
+        <div>
+          <h1>🚪 Controlo de Entradas</h1>
+          <p>Faça o check-in dos convidados e acompanhe a lotação em tempo real.</p>
+        </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <select
+            value={selectedSchool}
+            onChange={e => setSelectedSchool(e.target.value)}
+            style={{ 
+              background: 'rgba(255,255,255,0.05)', 
+              border: '1px solid rgba(255,255,255,0.1)', 
+              color: 'white', 
+              padding: '10px 16px', 
+              borderRadius: 10,
+              fontFamily: 'inherit',
+              fontSize: '0.9rem' 
+            }}
+          >
+            <option value="">Todas as Escolas</option>
+            {schools.map(s => (
+              <option key={s.id} value={s.code}>{s.schoolName} ({s.code})</option>
+            ))}
+          </select>
+          <button onClick={fetchData} className="btn-icon-small" title="Recarregar" style={{ height: '44px', width: '44px' }}>
+            <RefreshCw size={18} />
+          </button>
+        </div>
+      </header>
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+        gap: '20px',
+        marginBottom: '35px'
+      }}>
+        {/* Só Cocktail - Blue */}
+        <div className="glass-card" style={{
+          padding: '24px',
+          background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.08) 0%, rgba(56, 189, 248, 0.02) 100%)',
+          border: '1px solid rgba(56, 189, 248, 0.15)',
+          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '1px' }}>Só Cocktail</span>
+            <span style={{ fontSize: '20px' }}>🍸</span>
+          </div>
+          <h2 style={{ fontSize: '2.2rem', fontWeight: '800', margin: 0, color: '#fff' }}>
+            {cocktailStats.checkedIn} <span style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.4)', fontWeight: '400' }}>/ {cocktailStats.total}</span>
+          </h2>
+          <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>Entraram no evento</p>
+        </div>
+
+        {/* Cocktail + Jantar - Orange */}
+        <div className="glass-card" style={{
+          padding: '24px',
+          background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.08) 0%, rgba(251, 146, 60, 0.02) 100%)',
+          border: '1px solid rgba(251, 146, 60, 0.15)',
+          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#fb923c', textTransform: 'uppercase', letterSpacing: '1px' }}>Cocktail + Jantar</span>
+            <span style={{ fontSize: '20px' }}>🍽️</span>
+          </div>
+          <h2 style={{ fontSize: '2.2rem', fontWeight: '800', margin: 0, color: '#fff' }}>
+            {dinnerStats.checkedIn} <span style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.4)', fontWeight: '400' }}>/ {dinnerStats.total}</span>
+          </h2>
+          <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>Entraram no evento</p>
+        </div>
+
+        {/* All-Access - Violet */}
+        <div className="glass-card" style={{
+          padding: '24px',
+          background: 'linear-gradient(135deg, rgba(167, 139, 250, 0.08) 0%, rgba(167, 139, 250, 0.02) 100%)',
+          border: '1px solid rgba(167, 139, 250, 0.15)',
+          borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#a78bfa', textTransform: 'uppercase', letterSpacing: '1px' }}>All-Access</span>
+            <span style={{ fontSize: '20px' }}>👑</span>
+          </div>
+          <h2 style={{ fontSize: '2.2rem', fontWeight: '800', margin: 0, color: '#fff' }}>
+            {allAccessStats.checkedIn} <span style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.4)', fontWeight: '400' }}>/ {allAccessStats.total}</span>
+          </h2>
+          <p style={{ margin: '8px 0 0', fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)' }}>Entraram no evento</p>
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '20px' }}>
+        <div className="search-bar" style={{ maxWidth: '400px' }}>
+          <Search size={18} />
+          <input 
+            type="text" 
+            placeholder="Pesquisar por nome ou telemóvel..." 
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="admin-table-wrapper glass-card">
+        {loading ? (
+          <p style={{ padding: '20px' }}>A carregar convidados...</p>
+        ) : filteredAttendees.length === 0 ? (
+          <p style={{ padding: '30px', color: 'rgba(255,255,255,0.4)', textAlign: 'center' }}>Nenhum convidado encontrado.</p>
+        ) : (
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Escola</th>
+                <th>Tipo de Acesso</th>
+                <th>Pagamento</th>
+                <th>Lotação</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredAttendees.map(a => {
+                const ticket = getTicketType(a);
+                const isPaid = a.status === 'paid' || a.paidInstallments >= a.totalInstallments;
+                
+                return (
+                  <tr key={a.id} style={{ opacity: a.checkedIn ? 0.75 : 1 }}>
+                    <td style={{ fontWeight: '700' }}>{a.firstName} {a.lastName}</td>
+                    <td>{a.schoolCode}</td>
+                    <td>
+                      <span style={{ 
+                        color: ticket === 'Só Cocktail' ? '#38bdf8' : ticket === 'Cocktail + Jantar' ? '#fb923c' : '#a78bfa',
+                        fontWeight: '700',
+                        fontSize: '0.85rem'
+                      }}>
+                        {ticket}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`status-badge ${isPaid ? 'paid' : 'pending'}`}>
+                        {isPaid ? 'Pago' : 'Pendente'}
+                      </span>
+                    </td>
+                    <td>
+                      {a.checkedIn ? (
+                        <span style={{ color: '#4ade80', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '700', fontSize: '0.85rem' }}>
+                          <CheckCircle size={14} /> Dentro
+                        </span>
+                      ) : (
+                        <span style={{ color: 'rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.85rem' }}>
+                          <Clock size={14} /> Ausente
+                        </span>
+                      )}
+                    </td>
+                    <td>
+                      {a.checkedIn ? (
+                        <button
+                          onClick={() => handleToggleCheckIn(a)}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            color: '#ef4444',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '0.8rem',
+                            fontWeight: '600',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}
+                        >
+                          Anular Entrada
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleToggleCheckIn(a)}
+                          disabled={!isPaid}
+                          style={{
+                            background: isPaid ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255,255,255,0.02)',
+                            border: isPaid ? '1px solid rgba(74, 222, 128, 0.2)' : '1px solid rgba(255,255,255,0.05)',
+                            color: isPaid ? '#4ade80' : 'rgba(255,255,255,0.2)',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            cursor: isPaid ? 'pointer' : 'not-allowed',
+                            fontSize: '0.8rem',
+                            fontWeight: '600',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={e => { if(isPaid) e.currentTarget.style.background = 'rgba(74, 222, 128, 0.2)'; }}
+                          onMouseLeave={e => { if(isPaid) e.currentTarget.style.background = 'rgba(74, 222, 128, 0.1)'; }}
+                        >
+                          Validar Entrada
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {toast && (
+        <motion.div 
+          initial={{ opacity: 0, y: 50 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="admin-toast"
+        >
+          {toast}
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
 const AttendeeManager = () => {
   const [attendees, setAttendees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -470,7 +831,7 @@ const AttendeeManager = () => {
   const [confirmDelete, setConfirmDelete] = useState(null); // Attendee to delete
   const [schools, setSchools] = useState([]);
   const [newAttendee, setNewAttendee] = useState({
-    firstName: '', lastName: '', email: '', phone: '', schoolCode: '', paymentPlan: 'full'
+    firstName: '', lastName: '', email: '', phone: '', schoolCode: '', paymentPlan: 'full', ticketType: 'All-Access'
   });
 
   const fetchData = async () => {
@@ -510,7 +871,7 @@ const AttendeeManager = () => {
         createdAt: new Date().toISOString()
       });
       setShowAddForm(false);
-      setNewAttendee({ firstName: '', lastName: '', email: '', phone: '', schoolCode: '', paymentPlan: 'full' });
+      setNewAttendee({ firstName: '', lastName: '', email: '', phone: '', schoolCode: '', paymentPlan: 'full', ticketType: 'All-Access' });
       fetchData();
     } catch (error) {
       alert("Erro ao adicionar inscrito.");
@@ -558,6 +919,11 @@ const AttendeeManager = () => {
               <select value={newAttendee.paymentPlan} onChange={e => setNewAttendee({...newAttendee, paymentPlan: e.target.value})}>
                 <option value="full">Pagamento Total</option>
                 <option value="installments">5 Prestações</option>
+              </select>
+              <select value={newAttendee.ticketType} onChange={e => setNewAttendee({...newAttendee, ticketType: e.target.value})} required>
+                <option value="Só Cocktail">Só Cocktail</option>
+                <option value="Cocktail + Jantar">Cocktail + Jantar</option>
+                <option value="All-Access">All-Access</option>
               </select>
             </div>
             <div className="form-row" style={{ justifyContent: 'flex-end', marginTop: '10px' }}>
