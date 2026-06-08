@@ -1144,9 +1144,7 @@ const EntradasManager = () => {
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>Escola</th>
                 <th>Tipo de Acesso</th>
-                <th>Pagamento</th>
                 <th>Lotação</th>
                 <th>Ações</th>
               </tr>
@@ -1154,12 +1152,10 @@ const EntradasManager = () => {
             <tbody>
               {sortedAttendees.map(a => {
                 const ticket = getTicketType(a);
-                const isPaid = a.status === 'paid' || a.paidInstallments >= a.totalInstallments;
                 
                 return (
                   <tr key={a.id} style={{ opacity: a.checkedIn ? 0.75 : 1 }}>
                     <td style={{ fontWeight: '700' }}>{a.firstName} {a.lastName}</td>
-                    <td>{a.schoolCode}</td>
                     <td>
                       <span style={{ 
                         color: ticket === 'Só Cocktail' ? '#38bdf8' : ticket === 'Cocktail + Jantar' ? '#fb923c' : '#a78bfa',
@@ -1167,11 +1163,6 @@ const EntradasManager = () => {
                         fontSize: '0.85rem'
                       }}>
                         {ticket}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`status-badge ${isPaid ? 'paid' : 'pending'}`}>
-                        {isPaid ? 'Pago' : 'Pendente'}
                       </span>
                     </td>
                     <td>
@@ -1208,20 +1199,19 @@ const EntradasManager = () => {
                       ) : (
                         <button
                           onClick={() => handleToggleCheckIn(a)}
-                          disabled={!isPaid}
                           style={{
-                            background: isPaid ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255,255,255,0.02)',
-                            border: isPaid ? '1px solid rgba(74, 222, 128, 0.2)' : '1px solid rgba(255,255,255,0.05)',
-                            color: isPaid ? '#4ade80' : 'rgba(255,255,255,0.2)',
+                            background: 'rgba(74, 222, 128, 0.1)',
+                            border: '1px solid rgba(74, 222, 128, 0.2)',
+                            color: '#4ade80',
                             padding: '6px 12px',
                             borderRadius: '8px',
-                            cursor: isPaid ? 'pointer' : 'not-allowed',
+                            cursor: 'pointer',
                             fontSize: '0.8rem',
                             fontWeight: '600',
                             transition: 'all 0.2s'
                           }}
-                          onMouseEnter={e => { if(isPaid) e.currentTarget.style.background = 'rgba(74, 222, 128, 0.2)'; }}
-                          onMouseLeave={e => { if(isPaid) e.currentTarget.style.background = 'rgba(74, 222, 128, 0.1)'; }}
+                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(74, 222, 128, 0.2)'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'rgba(74, 222, 128, 0.1)'}
                         >
                           Validar Entrada
                         </button>
@@ -1240,18 +1230,13 @@ const EntradasManager = () => {
         <div className="mobile-attendees-list">
           {sortedAttendees.map(a => {
             const ticket = getTicketType(a);
-            const isPaid = a.status === 'paid' || a.paidInstallments >= a.totalInstallments;
             
             return (
               <div key={a.id} className="mobile-attendee-card glass-card" style={{ opacity: a.checkedIn ? 0.8 : 1 }}>
                 <div className="card-top">
                   <div className="guest-info">
                     <span className="guest-name">{a.firstName} {a.lastName}</span>
-                    <span className="guest-school">Escola: {a.schoolCode}</span>
                   </div>
-                  <span className={`status-badge ${isPaid ? 'paid' : 'pending'}`}>
-                    {isPaid ? 'Pago' : 'Pendente'}
-                  </span>
                 </div>
                 
                 <div className="card-middle">
@@ -1284,13 +1269,12 @@ const EntradasManager = () => {
                   ) : (
                     <button
                       onClick={() => handleToggleCheckIn(a)}
-                      disabled={!isPaid}
                       className="btn-validate"
                       style={{
-                        background: isPaid ? 'rgba(74, 222, 128, 0.1)' : 'rgba(255,255,255,0.02)',
-                        border: isPaid ? '1px solid rgba(74, 222, 128, 0.2)' : '1px solid rgba(255,255,255,0.05)',
-                        color: isPaid ? '#4ade80' : 'rgba(255,255,255,0.2)',
-                        cursor: isPaid ? 'pointer' : 'not-allowed'
+                        background: 'rgba(74, 222, 128, 0.1)',
+                        border: '1px solid rgba(74, 222, 128, 0.2)',
+                        color: '#4ade80',
+                        cursor: 'pointer'
                       }}
                     >
                       Validar Entrada
@@ -1472,9 +1456,6 @@ const EntradasManager = () => {
                             <div style={{ fontWeight: '700', fontSize: '0.95rem', color: '#fff' }}>
                               {a.firstName} {a.lastName}
                             </div>
-                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>
-                              Escola: {a.schoolCode}
-                            </div>
                           </div>
                           <button
                             onClick={() => handleToggleCheckIn(a)}
@@ -1653,18 +1634,14 @@ const AttendeeManager = () => {
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>Escola</th>
                 <th>Plano</th>
-                <th>Estado</th>
               </tr>
             </thead>
             <tbody>
               {attendees.map(a => (
                 <tr key={a.id} onClick={() => setSelectedAttendee(a)}>
                   <td>{a.firstName} {a.lastName}</td>
-                  <td>{a.schoolCode}</td>
                   <td>{a.paymentPlan === 'installments' ? '5 Prestações' : 'Total'}</td>
-                  <td>{getStatusBadge(a.status)}</td>
                 </tr>
               ))}
             </tbody>
