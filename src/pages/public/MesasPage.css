@@ -109,31 +109,6 @@
 .sparkle-4 { top: 60vh; right: 6vw; font-size: 1.3rem; animation-delay: 2.2s; }
 .sparkle-5 { top: 80vh; left: 12vw; font-size: 1.4rem; animation-delay: 3.1s; }
 
-/* Decorative Corner Roses */
-.corner-rose {
-  position: absolute;
-  width: 14vw;
-  height: 14vw;
-  max-width: 170px;
-  max-height: 170px;
-  background-image: url('/gala_roses.png');
-  background-size: contain;
-  background-repeat: no-repeat;
-  pointer-events: none;
-  z-index: 6;
-  opacity: 0.9;
-}
-
-.corner-rose.bottom-left {
-  bottom: 25px;
-  left: 25px;
-}
-
-.corner-rose.bottom-right {
-  bottom: 25px;
-  right: 25px;
-  transform: scaleX(-1); /* mirror roses */
-}
 
 /* Left Vertical Seating Plan Ribbon */
 .gala-ribbon {

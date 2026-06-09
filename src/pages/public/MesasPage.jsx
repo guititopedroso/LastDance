@@ -247,9 +247,6 @@ export default function MesasPage() {
       <div className="gala-sparkle sparkle-4">✦</div>
       <div className="gala-sparkle sparkle-5">★</div>
 
-      {/* Decorative Corner Roses */}
-      <div className="corner-rose bottom-left"></div>
-      <div className="corner-rose bottom-right"></div>
 
       {/* Left Vertical Ribbon */}
       <aside className="gala-ribbon">
