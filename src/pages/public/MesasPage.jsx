@@ -9,12 +9,13 @@ import {
   Minimize, 
   ChevronLeft, 
   ChevronRight, 
-  Clock, 
-  Users, 
   Check, 
-  Tv,
-  CheckCircle2,
-  Calendar
+  Grid,
+  Layers,
+  Clock,
+  Settings,
+  Calendar,
+  Users
 } from 'lucide-react';
 import './MesasPage.css';
 
@@ -26,23 +27,57 @@ const normalizeName = (str) => {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // Remove accents
     .replace(/\(.*\)/g, "") // Remove content in parentheses
-    .replace(/12º\s*[a-z0-9]+/gi, "") // Remove 12º class tags (with masculine ordinal indicator)
-    .replace(/12°\s*[a-z0-9]+/gi, "") // Remove 12º class tags (with degree symbol)
-    .replace(/12\s*[a-z0-9]+/gi, "") // Remove 12 class tags
-    .replace(/[^a-z]/g, ""); // Keep only alphabetic characters
+    .replace(/12º\s*[a-z0-9]+/gi, "") 
+    .replace(/12°\s*[a-z0-9]+/gi, "") 
+    .replace(/12\s*[a-z0-9]+/gi, "") 
+    .replace(/[^a-z]/g, ""); 
 };
 
-const PAGE_CYCLE_TIME = 15; // seconds per page
+const PAGE_CYCLE_TIME = 15; // seconds per page in carousel mode
 
 export default function MesasPage() {
   const [registrations, setRegistrations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [layoutMode, setLayoutMode] = useState('overview'); // 'overview' (6x4 grid) or 'carousel' (rotating pages)
+  
+  // Carousel States
   const [currentPage, setCurrentPage] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [secondsRemaining, setSecondsRemaining] = useState(PAGE_CYCLE_TIME);
+  const [tablesPerPage, setTablesPerPage] = useState(6);
+
+  // General States
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [tablesPerPage, setTablesPerPage] = useState(6);
+  const [showControls, setShowControls] = useState(true);
+  
+  const controlsTimeoutRef = useRef(null);
+
+  // Auto-hide controls handler for TV screens
+  const resetControlsTimeout = () => {
+    setShowControls(true);
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
+    controlsTimeoutRef.current = setTimeout(() => {
+      // Keep controls visible if user is not in fullscreen, or hide them
+      setShowControls(false);
+    }, 4000);
+  };
+
+  useEffect(() => {
+    window.addEventListener('mousemove', resetControlsTimeout);
+    window.addEventListener('click', resetControlsTimeout);
+    resetControlsTimeout();
+
+    return () => {
+      window.removeEventListener('mousemove', resetControlsTimeout);
+      window.removeEventListener('click', resetControlsTimeout);
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Live Firebase connection for school code '39GK8FU7' (Escola Secundária de Alcochete)
   useEffect(() => {
@@ -84,12 +119,10 @@ export default function MesasPage() {
     const norm = normalizeName(guestName + ' ' + (guestDetail || ''));
     if (!norm) return false;
 
-    // Exact check on normalized name
     if (registrationMap.has(norm)) {
       return !!registrationMap.get(norm).checkedIn;
     }
 
-    // Fuzzy lookups (includes check)
     for (const [key, value] of registrationMap.entries()) {
       if (key === norm || key.includes(norm) || norm.includes(key)) {
         return !!value.checkedIn;
@@ -108,16 +141,38 @@ export default function MesasPage() {
     ? Math.round((checkedInCount / totalRegistrations) * 100) 
     : 0;
 
-  // Carousel layout partitioning
+  // Grid layout mapping for 'overview' (Full Seating Plan)
+  // Row 1 needs: Mesa 1, Mesa 2, [Center 2025/2026 Badge], Mesa 3, Mesa 4, Mesa 5.
+  // Rows 2-4 need the remaining 18 tables.
+  const overviewGridItems = useMemo(() => {
+    const items = [];
+    if (mesasData.length === 0) return items;
+
+    // Row 1
+    items.push({ type: 'table', data: mesasData[0] }); // Mesa 1
+    items.push({ type: 'table', data: mesasData[1] }); // Mesa 2
+    items.push({ type: 'badge', id: 'center-badge' }); // Center "2025 / 2026"
+    items.push({ type: 'table', data: mesasData[2] }); // Mesa 3
+    items.push({ type: 'table', data: mesasData[3] }); // Mesa 4
+    items.push({ type: 'table', data: mesasData[4] }); // Mesa 5
+
+    // Rows 2-4 (Mesas 6 to 23)
+    for (let i = 5; i < mesasData.length; i++) {
+      items.push({ type: 'table', data: mesasData[i] });
+    }
+    return items;
+  }, []);
+
+  // Carousel mode paging
   const totalPages = Math.ceil(mesasData.length / tablesPerPage);
-  const currentTables = useMemo(() => {
+  const currentCarouselTables = useMemo(() => {
     const start = currentPage * tablesPerPage;
     return mesasData.slice(start, start + tablesPerPage);
   }, [currentPage, tablesPerPage]);
 
-  // Auto-slide effect
+  // Carousel Auto-slide effect
   useEffect(() => {
-    if (!isPlaying) return;
+    if (layoutMode !== 'carousel' || !isPlaying) return;
 
     setSecondsRemaining(PAGE_CYCLE_TIME);
     const interval = setInterval(() => {
@@ -131,7 +186,7 @@ export default function MesasPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isPlaying, totalPages, currentPage]);
+  }, [isPlaying, totalPages, currentPage, layoutMode]);
 
   // Live Clock effect
   useEffect(() => {
@@ -141,7 +196,7 @@ export default function MesasPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fullscreen listener and action
+  // Fullscreen trigger and listener
   const toggleFullscreen = () => {
     const element = document.documentElement;
     if (!document.fullscreenElement) {
@@ -172,196 +227,236 @@ export default function MesasPage() {
     setSecondsRemaining(PAGE_CYCLE_TIME);
   };
 
-  // Formatter for Live Clock
   const formattedTime = currentTime.toLocaleTimeString('pt-PT', {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit'
   });
 
-  const formattedDate = currentTime.toLocaleDateString('pt-PT', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long'
-  });
-
   return (
-    <div className={`mesas-tv-container ${isFullscreen ? 'fullscreen-mode' : ''}`}>
-      {/* Background Orbs */}
-      <div className="bg-orb orb-1"></div>
-      <div className="bg-orb orb-2"></div>
-      <div className="bg-orb orb-3"></div>
+    <div className={`gala-container ${isFullscreen ? 'fullscreen-mode' : ''}`}>
+      {/* Gold Borders */}
+      <div className="gala-outer-border"></div>
+      <div className="gala-inner-border"></div>
 
-      {/* Top Header */}
-      <header className="mesas-tv-header">
-        <div className="header-left">
-          <div className="school-badge">ESAC</div>
-          <div>
-            <h1>Escola Secundária de Alcochete</h1>
-            <p className="subtitle">
-              <Calendar size={14} style={{ marginRight: 6, display: 'inline' }} />
-              Baile de Gala 2026 • Disposição das Mesas
-            </p>
-          </div>
+      {/* Decorative Corner Roses */}
+      <div className="corner-rose bottom-left"></div>
+      <div className="corner-rose bottom-right"></div>
+
+      {/* Left Vertical Ribbon */}
+      <aside className="gala-ribbon">
+        <div className="ribbon-content">
+          <div className="ribbon-cap-icon"></div>
+          <span className="ribbon-text-seating">SEATING</span>
+          <span className="ribbon-text-plan">Plan</span>
         </div>
+        <div className="ribbon-tail"></div>
+      </aside>
 
-        {/* Live Clock */}
-        <div className="header-center">
-          <div className="live-clock">
-            <span className="clock-time">{formattedTime}</span>
-            <span className="clock-date">{formattedDate}</span>
-          </div>
-        </div>
+      {/* Auto-fading Floating Controls Panel */}
+      <div className={`gala-controls-overlay ${showControls ? 'visible' : 'hidden'}`}>
+        <div className="overlay-panel">
+          {/* Mode Switcher */}
+          <button 
+            onClick={() => {
+              setLayoutMode(layoutMode === 'overview' ? 'carousel' : 'overview');
+              setCurrentPage(0);
+            }} 
+            className="control-btn"
+            title="Mudar Layout"
+          >
+            {layoutMode === 'overview' ? <Layers size={14} /> : <Grid size={14} />}
+            <span>{layoutMode === 'overview' ? 'Modo Rotativo' : 'Modo Geral'}</span>
+          </button>
 
-        {/* Control Center */}
-        <div className="header-right">
-          <div className="tv-controls glass-panel">
-            {/* Auto-Slide Play/Pause */}
-            <button 
-              onClick={() => setIsPlaying(!isPlaying)} 
-              className={`control-btn ${isPlaying ? 'active' : ''}`}
-              title={isPlaying ? "Pausar Rotação" : "Iniciar Rotação"}
-            >
-              {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-              <span className="btn-label">{isPlaying ? `Pausar (${secondsRemaining}s)` : "Iniciar"}</span>
-            </button>
-
-            {/* Manual Navigation */}
+          {/* Carousel Navigation */}
+          {layoutMode === 'carousel' && (
             <div className="pagination-group">
-              <button onClick={handlePrevPage} className="control-btn-icon" title="Página Anterior">
-                <ChevronLeft size={16} />
+              <button 
+                onClick={() => setIsPlaying(!isPlaying)} 
+                className={`control-btn-icon ${isPlaying ? 'active' : ''}`}
+                title={isPlaying ? "Pausar Slideshow" : "Iniciar Slideshow"}
+              >
+                {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+              </button>
+              <button onClick={handlePrevPage} className="control-btn-icon">
+                <ChevronLeft size={14} />
               </button>
               <span className="page-indicator">
-                {currentPage + 1} / {totalPages}
+                {currentPage + 1}/{totalPages} {isPlaying && `(${secondsRemaining}s)`}
               </span>
-              <button onClick={handleNextPage} className="control-btn-icon" title="Próxima Página">
-                <ChevronRight size={16} />
+              <button onClick={handleNextPage} className="control-btn-icon">
+                <ChevronRight size={14} />
               </button>
             </div>
+          )}
 
-            {/* Layout Customizer */}
-            <div className="layout-select">
-              <select 
-                value={tablesPerPage} 
-                onChange={(e) => {
-                  setTablesPerPage(Number(e.target.value));
-                  setCurrentPage(0);
-                  setSecondsRemaining(PAGE_CYCLE_TIME);
-                }}
-                className="select-dropdown"
-                title="Mesas por Página"
-              >
-                <option value={4}>4 Mesas</option>
-                <option value={6}>6 Mesas</option>
-                <option value={8}>8 Mesas</option>
-                <option value={9}>9 Mesas</option>
-              </select>
-            </div>
-
-            {/* Fullscreen Trigger */}
-            <button 
-              onClick={toggleFullscreen} 
-              className="control-btn-icon fullscreen-btn"
-              title={isFullscreen ? "Sair de Ecrã Inteiro" : "Ecrã Inteiro"}
+          {/* Tables per Page (in carousel mode) */}
+          {layoutMode === 'carousel' && (
+            <select 
+              value={tablesPerPage} 
+              onChange={(e) => {
+                setTablesPerPage(Number(e.target.value));
+                setCurrentPage(0);
+                setSecondsRemaining(PAGE_CYCLE_TIME);
+              }}
+              className="select-dropdown"
             >
-              {isFullscreen ? <Minimize size={16} /> : <Maximize size={16} />}
-            </button>
-          </div>
-        </div>
-      </header>
+              <option value={4}>4 Mesas</option>
+              <option value={6}>6 Mesas</option>
+              <option value={8}>8 Mesas</option>
+            </select>
+          )}
 
-      {/* Main Grid showing current page's tables */}
-      <main className="mesas-tv-main">
+          {/* Time display helper */}
+          <div className="clock-indicator">
+            <Clock size={14} style={{ marginRight: 6 }} />
+            <span>{formattedTime}</span>
+          </div>
+
+          {/* Fullscreen Button */}
+          <button onClick={toggleFullscreen} className="control-btn-icon" title="Ecrã Inteiro">
+            {isFullscreen ? <Minimize size={14} /> : <Maximize size={14} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Main Board Canvas */}
+      <div className="gala-canvas">
+        {/* Main Header */}
+        <header className="gala-header">
+          <h1 className="gala-main-title">GALA DE FINALISTAS</h1>
+          <p className="gala-school-title">ESCOLA SECUNDÁRIA DE ALCOCHETE</p>
+          <div className="gala-header-divider">
+            <span className="divider-ornament left"></span>
+            <span className="divider-diamond"></span>
+            <span className="divider-ornament right"></span>
+          </div>
+        </header>
+
+        {/* Dynamic Seating Plan Body */}
         {loading ? (
-          <div className="loading-state">
-            <div className="spinner"></div>
-            <p>A sincronizar disposição de mesas em tempo real...</p>
+          <div className="gala-loading">
+            <div className="gold-spinner"></div>
+            <p>A carregar o plano de mesas...</p>
           </div>
         ) : (
-          <div className={`tables-grid cols-${tablesPerPage}`}>
-            {currentTables.map((table) => {
-              // Calculate checked in guests at this table
-              const tableCheckedInCount = table.guests.filter(g => isGuestCheckedIn(g.name, g.detail)).length;
-              const tableTotalCount = table.guests.length;
-              const isTableComplete = tableCheckedInCount === tableTotalCount && tableTotalCount > 0;
+          <div className="gala-board-content">
+            {layoutMode === 'overview' ? (
+              /* Overview Mode (6 columns, 4 rows) */
+              <div className="overview-grid">
+                {overviewGridItems.map((item, idx) => {
+                  if (item.type === 'badge') {
+                    // Center "2025 / 2026" gold ornaments badge
+                    return (
+                      <div key={item.id} className="grid-center-badge">
+                        <div className="ornament-top"></div>
+                        <div className="year-text">2025 / 2026</div>
+                        <div className="ornament-bottom"></div>
+                      </div>
+                    );
+                  }
 
-              return (
-                <div 
-                  key={table.id} 
-                  className={`table-card glass-panel ${isTableComplete ? 'table-completed' : ''}`}
-                >
-                  <div className="table-card-header">
-                    <div>
-                      <h2>{table.name}</h2>
-                      <span className="table-desc">{table.description}</span>
-                    </div>
-                    <div className={`table-fill-badge ${isTableComplete ? 'completed' : ''}`}>
-                      <Users size={12} style={{ marginRight: 4 }} />
-                      <span>{tableCheckedInCount}/{tableTotalCount}</span>
-                    </div>
-                  </div>
+                  const table = item.data;
+                  const tableCheckedInCount = table.guests.filter(g => isGuestCheckedIn(g.name, g.detail)).length;
+                  const tableTotalCount = table.guests.length;
+                  const isTableComplete = tableCheckedInCount === tableTotalCount && tableTotalCount > 0;
 
-                  <div className="table-guests-list">
-                    {table.guests.map((guest, idx) => {
-                      const isPresent = isGuestCheckedIn(guest.name, guest.detail);
-                      
-                      return (
-                        <div 
-                          key={idx} 
-                          className={`guest-row ${isPresent ? 'present' : 'absent'}`}
-                        >
-                          <div className="guest-status-indicator">
-                            {isPresent ? (
-                              <div className="status-dot present">
-                                <Check size={10} strokeWidth={3} />
-                              </div>
-                            ) : (
-                              <div className="status-dot absent"></div>
-                            )}
-                          </div>
-                          
-                          <div className="guest-info">
-                            <span className="guest-name">{guest.name}</span>
-                            {guest.detail && (
-                              <span className="guest-detail">{guest.detail}</span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+                  return (
+                    <div 
+                      key={table.id} 
+                      className={`gala-card ${isTableComplete ? 'table-complete' : ''}`}
+                    >
+                      <div className="gala-card-header">
+                        <h2>MESA {table.id}</h2>
+                      </div>
+                      <div className="gala-card-guests">
+                        {table.guests.map((guest, gIdx) => {
+                          const isPresent = isGuestCheckedIn(guest.name, guest.detail);
+                          return (
+                            <span 
+                              key={gIdx} 
+                              className={`gala-guest-name ${isPresent ? 'present' : 'absent'}`}
+                            >
+                              {guest.name}
+                              {guest.detail && (
+                                <span className="class-badge"> {guest.detail.replace(/[()]/g, '')}</span>
+                              )}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Carousel Mode */
+              <div className={`carousel-grid cols-${tablesPerPage}`}>
+                {currentCarouselTables.map((table) => {
+                  const tableCheckedInCount = table.guests.filter(g => isGuestCheckedIn(g.name, g.detail)).length;
+                  const tableTotalCount = table.guests.length;
+                  const isTableComplete = tableCheckedInCount === tableTotalCount && tableTotalCount > 0;
+
+                  return (
+                    <div 
+                      key={table.id} 
+                      className={`gala-card large ${isTableComplete ? 'table-complete' : ''}`}
+                    >
+                      <div className="gala-card-header">
+                        <h2>MESA {table.id}</h2>
+                        <span className="card-subtitle">{table.description}</span>
+                      </div>
+                      <div className="gala-card-guests">
+                        {table.guests.map((guest, gIdx) => {
+                          const isPresent = isGuestCheckedIn(guest.name, guest.detail);
+                          return (
+                            <div 
+                              key={gIdx} 
+                              className={`gala-guest-row ${isPresent ? 'present' : 'absent'}`}
+                            >
+                              <span className="gala-guest-name">
+                                {guest.name}
+                                {guest.detail && (
+                                  <span className="class-badge"> {guest.detail.replace(/[()]/g, '')}</span>
+                                )}
+                              </span>
+                              {isPresent && <Check size={12} className="check-gold-icon" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
-      </main>
 
-      {/* Bottom Check-in Progress Bar */}
-      <footer className="mesas-tv-footer glass-panel">
-        <div className="progress-info">
-          <div className="progress-label">
-            <CheckCircle2 size={16} className="pulse-icon" />
-            <span>Fluxo de Entradas no Baile:</span>
+        {/* Elegant Bottom Footer & Real-time Progress Bar */}
+        <footer className="gala-footer">
+          {/* Progress bar container integrated nicely */}
+          <div className="gala-progress-container">
+            <div className="progress-details">
+              <span>CONTROLO DE ENTRADAS:</span>
+              <span className="percentage-counter">{checkedInCount} / {totalRegistrations} PRESENTES ({checkInPercentage}%)</span>
+            </div>
+            <div className="gold-progress-bar-wrapper">
+              <div 
+                className="gold-progress-bar-fill"
+                style={{ width: `${checkInPercentage}%` }}
+              >
+                <div className="progress-bar-shine"></div>
+              </div>
+            </div>
           </div>
-          <div className="progress-numbers">
-            <span className="current-present">{checkedInCount}</span>
-            <span className="separator">/</span>
-            <span className="total-expected">{totalRegistrations}</span>
-            <span className="unit">Pessoas Presentes</span>
-          </div>
-        </div>
 
-        <div className="progress-bar-wrapper">
-          <div 
-            className="progress-bar-fill" 
-            style={{ width: `${checkInPercentage}%` }}
-          >
-            <div className="progress-bar-glow"></div>
-            <div className="progress-percentage-bubble">{checkInPercentage}%</div>
-          </div>
-        </div>
-      </footer>
+          <p className="gala-footer-thankyou">
+            OBRIGADO POR FAZEREM PARTE DESTA NOITE INESQUECÍVEL!
+          </p>
+        </footer>
+      </div>
     </div>
   );
 }

@@ -1,665 +1,742 @@
 /* ==========================================================================
-   MESAS TV DASHBOARD STYLES
-   Optimized for large displays, smart TVs, and real-time visualization.
+   GALA DE FINALISTAS - LUXURY SEATING PLAN STYLES
+   Inspired by classic printed gold-foil seating plan posters.
+   Burgundy velvet background, gold borders, cream oval cards, and corner roses.
    ========================================================================== */
 
-   :root {
-    --tv-bg: #030303;
-    --tv-accent: #ff8c00;
-    --tv-accent-rgb: 255, 140, 0;
-    --tv-success: #10b981;
-    --tv-success-rgb: 16, 185, 129;
-    --tv-text: #ffffff;
-    --tv-text-muted: #94a3b8;
-    --tv-glass-bg: rgba(15, 15, 25, 0.6);
-    --tv-glass-border: rgba(255, 255, 255, 0.07);
-    --tv-card-bg: rgba(20, 20, 30, 0.55);
-    --tv-card-border: rgba(255, 255, 255, 0.05);
-  }
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;800;900&family=Dancing+Script:wght@600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --gala-burgundy-dark: #1F0008;
+  --gala-burgundy-mid: #380210;
+  --gala-burgundy-light: #5A081D;
+  --gala-gold: #d4af37;
+  --gala-gold-light: #f3e5ab;
+  --gala-gold-dark: #aa8010;
+  --gala-cream: #FFFDF9;
+  --gala-text-dark: #1F0008;
+  --gala-text-gold: #FFF0D0;
   
-  /* Container & Layout */
-  .mesas-tv-container {
-    min-height: 100vh;
-    background-color: var(--tv-bg);
-    color: var(--tv-text);
-    font-family: 'Outfit', sans-serif;
-    padding: 24px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    position: relative;
-    overflow: hidden;
-    box-sizing: border-box;
+  --gala-gold-gradient: linear-gradient(135deg, #aa8010 0%, #d4af37 50%, #f3e5ab 75%, #d4af37 90%, #aa8010 100%);
+  --gala-velvet-gradient: linear-gradient(135deg, var(--gala-burgundy-dark) 0%, var(--gala-burgundy-mid) 50%, var(--gala-burgundy-dark) 100%);
+}
+
+/* Base Container & Fullscreen setup */
+.gala-container {
+  min-height: 100vh;
+  width: 100%;
+  background: var(--gala-velvet-gradient);
+  color: #ffffff;
+  font-family: 'Outfit', sans-serif;
+  padding: 40px 60px 40px 140px; /* Leave padding on the left for the ribbon */
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.gala-container.fullscreen-mode {
+  padding: 45px 70px 45px 150px;
+  cursor: none; /* Hide cursor on smart TV display in full screen */
+}
+
+/* Elegant Gold Double-Border Frame */
+.gala-outer-border {
+  position: absolute;
+  inset: 12px;
+  border: 1.5px solid rgba(212, 175, 55, 0.4);
+  pointer-events: none;
+  z-index: 5;
+  border-radius: 4px;
+}
+
+.gala-inner-border {
+  position: absolute;
+  inset: 20px;
+  border: 3px double var(--gala-gold);
+  pointer-events: none;
+  z-index: 5;
+  border-radius: 4px;
+}
+
+/* Corner Rose Ornaments (from generated image) */
+.corner-rose {
+  position: absolute;
+  width: 250px;
+  height: 250px;
+  background-image: url('/gala_roses.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 6;
+  opacity: 0.9;
+}
+
+.corner-rose.bottom-left {
+  bottom: 15px;
+  left: 15px;
+  transform: rotate(0deg);
+}
+
+.corner-rose.bottom-right {
+  bottom: 15px;
+  right: 15px;
+  transform: scaleX(-1); /* Flip horizontally for the right corner */
+}
+
+/* Left Vertical Seating Plan Ribbon */
+.gala-ribbon {
+  position: absolute;
+  top: 0;
+  left: 45px;
+  width: 80px;
+  height: 320px;
+  background: linear-gradient(to bottom, #4E040E 0%, #200005 100%);
+  border-left: 2px solid var(--gala-gold);
+  border-right: 2px solid var(--gala-gold);
+  z-index: 8;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 35px;
+}
+
+/* V-cut for the ribbon tail */
+.gala-ribbon::after {
+  content: '';
+  position: absolute;
+  bottom: -20px;
+  left: -2px; /* align with border offset */
+  width: 80px;
+  height: 20px;
+  background: #200005;
+  border-left: 2px solid var(--gala-gold);
+  border-right: 2px solid var(--gala-gold);
+  clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+}
+
+.ribbon-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--gala-gold);
+  width: 100%;
+}
+
+/* Graduation cap logo draw in CSS */
+.ribbon-cap-icon {
+  width: 32px;
+  height: 32px;
+  position: relative;
+  margin-bottom: 25px;
+  background: var(--gala-gold-gradient);
+  clip-path: polygon(50% 0%, 100% 30%, 50% 60%, 0% 30%); /* diamond cap top */
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.ribbon-cap-icon::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 25%;
+  width: 50%;
+  height: 6px;
+  background: var(--gala-gold-gradient);
+  border-radius: 0 0 4px 4px;
+}
+
+.ribbon-text-seating {
+  font-family: 'Cinzel', serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  text-transform: uppercase;
+  background: var(--gala-gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 5px;
+}
+
+.ribbon-text-plan {
+  font-family: 'Dancing Script', cursive;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--gala-gold-light);
+  transform: rotate(-10deg) translateY(5px);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* Auto-fading Controls Overlay styling */
+.gala-controls-overlay {
+  position: fixed;
+  top: 30px;
+  right: 45px;
+  z-index: 100;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.gala-controls-overlay.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.gala-controls-overlay.hidden {
+  opacity: 0;
+  transform: translateY(-20px);
+  pointer-events: none;
+}
+
+.overlay-panel {
+  background: rgba(31, 0, 8, 0.85);
+  border: 1.5px solid var(--gala-gold);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  border-radius: 12px;
+  padding: 6px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.control-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: var(--gala-gold-light);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.control-btn:hover {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: var(--gala-gold);
+  color: white;
+}
+
+.control-btn-icon {
+  background: none;
+  border: none;
+  color: var(--gala-gold);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.control-btn-icon:hover {
+  background: rgba(212, 175, 55, 0.15);
+  color: white;
+}
+
+.control-btn-icon.active {
+  background: rgba(212, 175, 55, 0.2);
+  color: var(--gala-gold-light);
+}
+
+.pagination-group {
+  display: flex;
+  align-items: center;
+  background: rgba(0,0,0,0.3);
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.page-indicator {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: white;
+  padding: 0 10px;
+}
+
+.select-dropdown {
+  background: #1F0008;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: var(--gala-gold-light);
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  outline: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.clock-indicator {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gala-gold);
+  display: flex;
+  align-items: center;
+  border-left: 1px solid rgba(212, 175, 55, 0.2);
+  padding-left: 14px;
+}
+
+/* Seating Plan Main Canvas */
+.gala-canvas {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 10;
+  position: relative;
+}
+
+/* Header Text Styles */
+.gala-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.gala-main-title {
+  font-family: 'Cinzel', serif;
+  font-size: 2.8rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  margin-bottom: 6px;
+  background: var(--gala-gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.gala-school-title {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gala-gold);
+  letter-spacing: 0.25em;
+  opacity: 0.95;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Decorative Ornaments */
+.gala-header-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.divider-ornament {
+  height: 2px;
+  width: 140px;
+  background: linear-gradient(to right, transparent, var(--gala-gold), transparent);
+  position: relative;
+}
+
+.divider-ornament.left::after {
+  content: '✿';
+  position: absolute;
+  right: -5px;
+  top: -8px;
+  color: var(--gala-gold);
+  font-size: 0.75rem;
+}
+
+.divider-ornament.right::after {
+  content: '✿';
+  position: absolute;
+  left: -5px;
+  top: -8px;
+  color: var(--gala-gold);
+  font-size: 0.75rem;
+}
+
+.divider-diamond {
+  width: 10px;
+  height: 10px;
+  background: var(--gala-gold-gradient);
+  transform: rotate(45deg);
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
+}
+
+/* Seating grid */
+.gala-board-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 10px 0 30px;
+}
+
+.gala-loading {
+  text-align: center;
+  color: var(--gala-gold-light);
+}
+
+.gold-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(212,175,55,0.1);
+  border-top-color: var(--gala-gold);
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  animation: spin 1s linear infinite;
+}
+
+/* Grid for Overview: 6 Columns, 4 Rows */
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 20px 22px;
+  width: 100%;
+  max-width: 1550px;
+  align-items: center;
+  justify-items: center;
+}
+
+/* Seating Card Design (Oval Cards) */
+.gala-card {
+  width: 215px;
+  height: 270px;
+  border-radius: 50% / 40%; /* Creates a beautiful vertical oval shape */
+  background: var(--gala-cream);
+  border: 1.5px solid var(--gala-gold);
+  box-shadow: 
+    0 10px 25px rgba(0, 0, 0, 0.55),
+    inset 0 0 12px rgba(212, 175, 55, 0.2);
+  padding: 30px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  position: relative;
+}
+
+.gala-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.7),
+    0 0 15px rgba(212, 175, 55, 0.3),
+    inset 0 0 12px rgba(212, 175, 55, 0.2);
+  border-color: var(--gala-gold-light);
+}
+
+/* Glow completed table cards */
+.gala-card.table-complete {
+  border-color: #6ee7b7;
+  box-shadow: 
+    0 10px 25px rgba(0, 0, 0, 0.55),
+    0 0 15px rgba(110, 231, 183, 0.2),
+    inset 0 0 12px rgba(110, 231, 183, 0.1);
+}
+
+.gala-card-header {
+  border-bottom: 1px solid rgba(139, 92, 26, 0.15);
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+  width: 75%;
+  text-align: center;
+}
+
+.gala-card-header h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #380210; /* Dark wine red header inside the cards */
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+}
+
+.gala-card.large .gala-card-header h2 {
+  font-size: 1.3rem;
+}
+
+.card-subtitle {
+  font-size: 0.72rem;
+  color: #64748b;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+/* Guests list inside cards */
+.gala-card-guests {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.gala-guest-name {
+  font-size: 0.74rem;
+  line-height: 1.25;
+  color: #1F0008;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.class-badge {
+  font-size: 0.65rem;
+  color: #7A6267;
+  font-weight: 500;
+}
+
+/* Present guest style (elegant contrast) */
+.gala-guest-name.present {
+  color: #8D001C; /* Elegant deep velvet red */
+  font-weight: 800;
+  text-shadow: 0 0 1px rgba(141, 0, 28, 0.15);
+}
+
+.gala-guest-name.present::before {
+  content: '• ';
+  color: var(--gala-gold-dark);
+  font-weight: 900;
+}
+
+.gala-guest-name.absent {
+  opacity: 0.55;
+  color: #4A353A;
+}
+
+/* Grid Center "2025 / 2026" Badge */
+.grid-center-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  text-align: center;
+  height: 250px;
+}
+
+.grid-center-badge .year-text {
+  font-family: 'Cinzel', serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--gala-gold);
+  letter-spacing: 0.05em;
+  margin: 15px 0;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.grid-center-badge .ornament-top {
+  width: 60px;
+  height: 15px;
+  background-image: radial-gradient(circle, var(--gala-gold) 1px, transparent 1px);
+  background-size: 8px 8px;
+  position: relative;
+}
+
+.grid-center-badge .ornament-top::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 10%;
+  width: 80%;
+  height: 1px;
+  background: var(--gala-gold);
+}
+
+.grid-center-badge .ornament-bottom {
+  width: 60px;
+  height: 15px;
+  background-image: radial-gradient(circle, var(--gala-gold) 1px, transparent 1px);
+  background-size: 8px 8px;
+  position: relative;
+}
+
+.grid-center-badge .ornament-bottom::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  width: 80%;
+  height: 1px;
+  background: var(--gala-gold);
+}
+
+/* Carousel Grid Layout (for rotating pages) */
+.carousel-grid {
+  display: grid;
+  gap: 30px;
+  width: 100%;
+  max-width: 1300px;
+  justify-items: center;
+}
+
+.carousel-grid.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.carousel-grid.cols-6 { grid-template-columns: repeat(3, 1fr); }
+.carousel-grid.cols-8 { grid-template-columns: repeat(4, 1fr); }
+
+.gala-card.large {
+  width: 250px;
+  height: 320px;
+  padding: 35px 22px;
+}
+
+.gala-card.large .gala-guest-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.gala-card.large .gala-guest-row.present {
+  background: rgba(141, 0, 28, 0.03);
+}
+
+.check-gold-icon {
+  color: var(--gala-gold-dark);
+}
+
+/* Elegant Bottom Footer */
+.gala-footer {
+  text-align: center;
+  border-top: 1.5px solid rgba(212, 175, 55, 0.3);
+  padding-top: 25px;
+  margin-top: auto;
+}
+
+/* Dynamic Seating Progress Bar */
+.gala-progress-container {
+  max-width: 600px;
+  margin: 0 auto 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress-details {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--gala-gold);
+  letter-spacing: 0.05em;
+}
+
+.percentage-counter {
+  color: white;
+}
+
+.gold-progress-bar-wrapper {
+  width: 100%;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.gold-progress-bar-fill {
+  height: 100%;
+  background: var(--gala-gold-gradient);
+  border-radius: 10px;
+  transition: width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+  position: relative;
+}
+
+.progress-bar-shine {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  background-size: 200% 100%;
+  animation: shine 3s infinite linear;
+}
+
+.gala-footer-thankyou {
+  font-family: 'Cinzel', serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--gala-gold);
+  letter-spacing: 0.25em;
+  opacity: 0.95;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+/* Animations */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes shine {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Responsive / Screen Adjustments */
+@media (max-width: 1550px) {
+  .gala-container {
+    padding-left: 130px;
   }
-  
-  /* Fullscreen Mode Overrides */
-  .mesas-tv-container.fullscreen-mode {
-    padding: 30px;
-    cursor: none; /* Hide cursor on TV displays in full-screen */
+  .overview-grid {
+    gap: 12px 14px;
   }
-  
-  /* Abstract Glass Panels */
-  .glass-panel {
-    background: var(--tv-glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--tv-glass-border);
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  .gala-card {
+    width: 195px;
+    height: 250px;
+    padding: 24px 14px;
   }
-  
-  /* Ambient Floating Orbs */
-  .bg-orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.15;
-    z-index: 0;
-    pointer-events: none;
-    animation: drift 25s infinite alternate ease-in-out;
+  .gala-guest-name {
+    font-size: 0.68rem;
   }
-  
-  .orb-1 {
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(var(--tv-accent-rgb), 0.5) 0%, transparent 80%);
-    top: -100px;
-    left: -100px;
+  .gala-main-title {
+    font-size: 2.3rem;
   }
-  
-  .orb-2 {
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, transparent 85%);
-    bottom: -150px;
-    right: -100px;
-    animation-delay: -5s;
+}
+
+@media (max-width: 1300px) {
+  .overview-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
-  
-  .orb-3 {
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(var(--tv-success-rgb), 0.3) 0%, transparent 80%);
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    animation-delay: -10s;
+  .grid-center-badge {
+    display: none; /* Hide year badge when columns scale down */
   }
-  
-  @keyframes drift {
-    0% { transform: translate(0, 0) scale(1); }
-    50% { transform: translate(60px, -40px) scale(1.1); }
-    100% { transform: translate(-40px, 50px) scale(0.95); }
+}
+
+@media (max-width: 900px) {
+  .gala-container {
+    padding: 30px 25px 30px 25px; /* Remove ribbon margins */
   }
-  
-  /* Header Section */
-  .mesas-tv-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-    z-index: 10;
-    position: relative;
-    flex-wrap: wrap;
-    gap: 20px;
+  .gala-ribbon {
+    display: none; /* Hide vertical ribbon on smaller tablets/mobiles */
   }
-  
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
+  .overview-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
-  
-  .school-badge {
-    background: linear-gradient(135deg, var(--tv-accent) 0%, #ffb347 100%);
-    color: #000;
-    font-weight: 900;
-    padding: 12px 18px;
-    border-radius: 12px;
-    font-size: 1.4rem;
-    letter-spacing: 0.1em;
-    box-shadow: 0 4px 15px rgba(var(--tv-accent-rgb), 0.3);
+}
+
+@media (max-width: 500px) {
+  .overview-grid {
+    grid-template-columns: 1fr;
   }
-  
-  .header-left h1 {
+  .gala-main-title {
     font-size: 1.8rem;
-    font-weight: 850;
-    letter-spacing: -0.02em;
-    margin-bottom: 4px;
-    background: linear-gradient(to right, #fff 40%, rgba(255, 255, 255, 0.7));
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
   }
-  
-  .header-left .subtitle {
-    font-size: 0.95rem;
-    color: var(--tv-text-muted);
-    font-weight: 500;
-  }
-  
-  /* Clock Panel */
-  .header-center {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-  }
-  
-  .live-clock {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 10px 24px;
-    border-radius: 40px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    box-shadow: inset 0 2px 4px rgba(255,255,255,0.02);
-  }
-  
-  .clock-time {
-    font-family: 'monospace';
-    font-size: 1.6rem;
-    font-weight: 700;
-    color: var(--tv-accent);
-    letter-spacing: 0.05em;
-    text-shadow: 0 0 10px rgba(var(--tv-accent-rgb), 0.3);
-  }
-  
-  .clock-date {
-    font-size: 0.9rem;
-    color: var(--tv-text-muted);
-    text-transform: capitalize;
-    border-left: 1px solid rgba(255, 255, 255, 0.15);
-    padding-left: 16px;
-  }
-  
-  /* Control Center */
-  .tv-controls {
-    display: flex;
-    align-items: center;
-    padding: 6px 12px;
-    gap: 12px;
-  }
-  
-  .control-btn {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.85rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-  
-  .control-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-  
-  .control-btn.active {
-    background: rgba(var(--tv-accent-rgb), 0.15);
-    border-color: rgba(var(--tv-accent-rgb), 0.4);
-    color: var(--tv-accent);
-  }
-  
-  .pagination-group {
-    display: flex;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 10px;
-    padding: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.03);
-  }
-  
-  .control-btn-icon {
-    background: none;
-    border: none;
-    color: var(--tv-text-muted);
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  
-  .control-btn-icon:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: white;
-  }
-  
-  .page-indicator {
-    padding: 0 12px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: white;
-    min-width: 60px;
-    text-align: center;
-  }
-  
-  /* Layout Selector */
-  .layout-select select {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    color: white;
-    padding: 8px 12px;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 0.85rem;
-    outline: none;
-    cursor: pointer;
-    font-family: inherit;
-  }
-  
-  .layout-select select option {
-    background: #111;
-    color: white;
-  }
-  
-  /* Grid Main Area */
-  .mesas-tv-main {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    margin-bottom: 24px;
-    z-index: 10;
-  }
-  
-  .loading-state {
-    text-align: center;
-    color: var(--tv-text-muted);
-  }
-  
-  .spinner {
-    width: 48px;
-    height: 48px;
-    border: 4px solid rgba(255,255,255,0.05);
-    border-top-color: var(--tv-accent);
-    border-radius: 50%;
-    margin: 0 auto 16px;
-    animation: spin 1s linear infinite;
-  }
-  
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-  
-  /* Grid Adaptive Column Configurations */
-  .tables-grid {
-    display: grid;
-    gap: 20px;
-    width: 100%;
-    height: 100%;
-  }
-  
-  .tables-grid.cols-4 {
-    grid-template-columns: repeat(4, 1fr);
-  }
-  
-  .tables-grid.cols-6 {
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(2, 1fr);
-  }
-  
-  .tables-grid.cols-8 {
-    grid-template-columns: repeat(4, 1fr);
-    grid-template-rows: repeat(2, 1fr);
-  }
-  
-  .tables-grid.cols-9 {
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(3, 1fr);
-    gap: 15px;
-  }
-  
-  /* Card Layout */
-  .table-card {
-    background: var(--tv-card-bg);
-    border: 1px solid var(--tv-card-border);
-    border-radius: 20px;
-    padding: 20px 24px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    overflow: hidden;
-  }
-  
-  /* Card Completed Glow */
-  .table-card.table-completed {
-    border-color: rgba(var(--tv-success-rgb), 0.3);
-    box-shadow: 0 0 25px rgba(var(--tv-success-rgb), 0.15);
-    background: linear-gradient(135deg, rgba(var(--tv-success-rgb), 0.05) 0%, var(--tv-card-bg) 100%);
-  }
-  
-  .table-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-    padding-bottom: 12px;
-    margin-bottom: 14px;
-  }
-  
-  .table-card-header h2 {
-    font-size: 1.4rem;
-    font-weight: 800;
-    color: white;
-    letter-spacing: -0.01em;
-    line-height: 1.2;
-  }
-  
-  .table-desc {
+  .gala-school-title {
     font-size: 0.8rem;
-    color: var(--tv-text-muted);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
   }
-  
-  .table-fill-badge {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 4px 10px;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    color: white;
-  }
-  
-  .table-fill-badge.completed {
-    background: rgba(var(--tv-success-rgb), 0.2);
-    border-color: rgba(var(--tv-success-rgb), 0.4);
-    color: #6ee7b7;
-    animation: pulse-completed 2s infinite ease-in-out;
-  }
-  
-  @keyframes pulse-completed {
-    0%, 100% { transform: scale(1); opacity: 0.9; }
-    50% { transform: scale(1.05); opacity: 1; }
-  }
-  
-  /* Card Seats List */
-  .table-guests-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    flex: 1;
-    overflow-y: auto;
-    scrollbar-width: none; /* Firefox */
-  }
-  
-  .table-guests-list::-webkit-scrollbar {
-    display: none; /* Safari and Chrome */
-  }
-  
-  .guest-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 6px 8px;
-    border-radius: 10px;
-    transition: all 0.3s;
-  }
-  
-  .guest-row.present {
-    background: rgba(var(--tv-success-rgb), 0.05);
-    border: 1px solid rgba(var(--tv-success-rgb), 0.08);
-  }
-  
-  .guest-row.absent {
-    opacity: 0.5;
-  }
-  
-  /* Status Indicator Dot/Check */
-  .status-dot {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  }
-  
-  .status-dot.present {
-    background: var(--tv-success);
-    color: #000;
-    box-shadow: 0 0 10px rgba(var(--tv-success-rgb), 0.6);
-  }
-  
-  .status-dot.absent {
-    background: transparent;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-  }
-  
-  .guest-info {
-    display: flex;
-    flex-direction: column;
-    line-height: 1.2;
-  }
-  
-  .guest-name {
-    font-size: 0.92rem;
-    font-weight: 700;
-    color: white;
-  }
-  
-  .guest-row.present .guest-name {
-    color: #e2e8f0;
-  }
-  
-  .guest-detail {
-    font-size: 0.72rem;
-    color: var(--tv-text-muted);
-    font-weight: 600;
-  }
-  
-  /* Footer Section & Progress Bar */
-  .mesas-tv-footer {
-    display: flex;
-    align-items: center;
-    padding: 20px 32px;
-    gap: 40px;
-    z-index: 10;
-    position: relative;
-    margin-top: auto;
-  }
-  
-  .progress-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 320px;
-  }
-  
-  .progress-label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--tv-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  
-  .pulse-icon {
-    color: var(--tv-accent);
-    animation: pulse-glow 2s infinite ease-in-out;
-  }
-  
-  @keyframes pulse-glow {
-    0%, 100% { transform: scale(1); opacity: 0.7; }
-    50% { transform: scale(1.2); opacity: 1; }
-  }
-  
-  .progress-numbers {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-  }
-  
-  .current-present {
-    font-size: 2.2rem;
-    font-weight: 900;
-    color: white;
-    line-height: 1;
-  }
-  
-  .progress-numbers .separator {
-    color: rgba(255, 255, 255, 0.2);
-    font-size: 1.4rem;
-    font-weight: 300;
-  }
-  
-  .total-expected {
-    color: rgba(255, 255, 255, 0.6);
-    font-size: 1.3rem;
-    font-weight: 700;
-  }
-  
-  .progress-numbers .unit {
-    font-size: 0.85rem;
-    color: var(--tv-text-muted);
-    font-weight: 600;
-    margin-left: 8px;
-  }
-  
-  /* Progress Bar UI */
-  .progress-bar-wrapper {
-    flex: 1;
-    height: 24px;
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 30px;
-    position: relative;
-    overflow: visible;
-  }
-  
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #ff8c00 0%, #ffb347 100%);
-    border-radius: 30px;
-    position: relative;
-    transition: width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-    box-shadow: 0 0 20px rgba(var(--tv-accent-rgb), 0.4);
-  }
-  
-  .progress-bar-glow {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-    background-size: 200% 100%;
-    border-radius: 30px;
-    animation: shine 4s infinite linear;
-  }
-  
-  @keyframes shine {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-  }
-  
-  .progress-percentage-bubble {
-    position: absolute;
-    right: -15px;
-    top: -38px;
-    background: var(--tv-accent);
-    color: black;
-    font-weight: 900;
-    font-size: 0.85rem;
-    padding: 4px 8px;
-    border-radius: 6px;
-    box-shadow: 0 5px 15px rgba(var(--tv-accent-rgb), 0.4);
-    animation: bounce 2s infinite ease-in-out;
-  }
-  
-  .progress-percentage-bubble::after {
-    content: '';
-    position: absolute;
-    bottom: -6px;
-    left: 50%;
-    transform: translateX(-50%);
-    border-width: 6px 6px 0;
-    border-style: solid;
-    border-color: var(--tv-accent) transparent;
-  }
-  
-  @keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
-  }
-  
-  /* Responsive Breakpoints & Smart TV Adjustments */
-  @media (max-width: 1400px) {
-    .header-left h1 {
-      font-size: 1.5rem;
-    }
-    .clock-time {
-      font-size: 1.4rem;
-    }
-  }
-  
-  @media (max-width: 1200px) {
-    .mesas-tv-header {
-      flex-direction: column;
-      align-items: stretch;
-    }
-    .header-center {
-      justify-content: flex-start;
-    }
-    .header-right {
-      display: flex;
-      justify-content: flex-end;
-    }
-    .tables-grid.cols-6 {
-      grid-template-columns: repeat(2, 1fr);
-      grid-template-rows: repeat(3, 1fr);
-    }
-    .tables-grid.cols-4 {
-      grid-template-columns: repeat(2, 1fr);
-    }
-    .mesas-tv-footer {
-      flex-direction: column;
-      gap: 20px;
-      align-items: stretch;
-    }
-    .progress-info {
-      min-width: unset;
-    }
-  }
-  
-  @media (max-width: 768px) {
-    .tables-grid.cols-6, .tables-grid.cols-4, .tables-grid.cols-8, .tables-grid.cols-9 {
-      grid-template-columns: 1fr !important;
-      grid-template-rows: unset !important;
-    }
-    .live-clock {
-      width: 100%;
-      justify-content: center;
-    }
-    .tv-controls {
-      flex-wrap: wrap;
-      width: 100%;
-    }
-    .pagination-group {
-      flex: 1;
-      justify-content: center;
-    }
-    .btn-label {
-      display: none;
-    }
-  }
+}
