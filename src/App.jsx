@@ -18,6 +18,7 @@ const PrivacyPolicy = lazy(() => import('./pages/public/PrivacyPolicy'));
 const Terms = lazy(() => import('./pages/public/Terms'));
 const StarCanvas = lazy(() => import('./components/StarCanvas'));
 const InstallAppBanner = lazy(() => import('./components/InstallAppBanner'));
+const MesasPage = lazy(() => import('./pages/public/MesasPage'));
 
 // Lazy load PWA WebApp pages
 const AppLayout = lazy(() => import('./pages/app/AppLayout'));
@@ -75,6 +76,9 @@ function App() {
           <Routes>
             {/* Admin routes don't show the main Navbar */}
             <Route path="/admin/*" element={<AdminDashboard />} />
+            
+            {/* Mesas dashboard page without main Navbar/Footer for TV view */}
+            <Route path="/mesas" element={<MesasPage />} />
             
             {/* App (PWA) routes - separate layout, no main Navbar/Footer */}
             <Route path="/app" element={<AppLayout />}>
