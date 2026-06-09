@@ -12,8 +12,7 @@ import {
   Check, 
   Grid,
   Layers,
-  Clock,
-  Sparkles
+  Clock
 } from 'lucide-react';
 import './MesasPage.css';
 
@@ -138,28 +137,6 @@ export default function MesasPage() {
     ? Math.round((checkedInCount / totalRegistrations) * 100) 
     : 0;
 
-  // Grid layout mapping for 'overview' (Full Seating Plan)
-  // Row 1 needs: Mesa 1, Mesa 2, [Center 2025/2026 Badge], Mesa 3, Mesa 4, Mesa 5.
-  // Rows 2-4 need the remaining 18 tables.
-  const overviewGridItems = useMemo(() => {
-    const items = [];
-    if (mesasData.length === 0) return items;
-
-    // Row 1
-    items.push({ type: 'table', data: mesasData[0] }); // Mesa 1
-    items.push({ type: 'table', data: mesasData[1] }); // Mesa 2
-    items.push({ type: 'badge', id: 'center-badge' }); // Center "2025 / 2026"
-    items.push({ type: 'table', data: mesasData[2] }); // Mesa 3
-    items.push({ type: 'table', data: mesasData[3] }); // Mesa 4
-    items.push({ type: 'table', data: mesasData[4] }); // Mesa 5
-
-    // Rows 2-4 (Mesas 6 to 23)
-    for (let i = 5; i < mesasData.length; i++) {
-      items.push({ type: 'table', data: mesasData[i] });
-    }
-    return items;
-  }, []);
-
   // Carousel mode paging
   const totalPages = Math.ceil(mesasData.length / tablesPerPage);
   const currentCarouselTables = useMemo(() => {
@@ -246,7 +223,6 @@ export default function MesasPage() {
       <div className="gala-sparkle sparkle-3">★</div>
       <div className="gala-sparkle sparkle-4">✦</div>
       <div className="gala-sparkle sparkle-5">★</div>
-
 
       {/* Left Vertical Ribbon */}
       <aside className="gala-ribbon">
@@ -339,6 +315,7 @@ export default function MesasPage() {
         <header className="gala-header">
           <h1 className="gala-main-title">GALA DE FINALISTAS</h1>
           <p className="gala-school-title">ESCOLA SECUNDÁRIA DE ALCOCHETE</p>
+          <div className="gala-year-badge">2025 / 2026</div>
           <div className="gala-header-divider">
             <span className="divider-ornament left"></span>
             <span className="divider-diamond"></span>
@@ -357,19 +334,7 @@ export default function MesasPage() {
             {layoutMode === 'overview' ? (
               /* Overview Mode (6 columns, 4 rows) */
               <div className="overview-grid">
-                {overviewGridItems.map((item, idx) => {
-                  if (item.type === 'badge') {
-                    // Center "2025 / 2026" gold ornaments badge
-                    return (
-                      <div key={item.id} className="grid-center-badge">
-                        <div className="ornament-top"></div>
-                        <div className="year-text">2025 / 2026</div>
-                        <div className="ornament-bottom"></div>
-                      </div>
-                    );
-                  }
-
-                  const table = item.data;
+                {mesasData.map((table) => {
                   const tableCheckedInCount = table.guests.filter(g => isGuestCheckedIn(g.name, g.detail)).length;
                   const tableTotalCount = table.guests.length;
                   const isTableComplete = tableCheckedInCount === tableTotalCount && tableTotalCount > 0;

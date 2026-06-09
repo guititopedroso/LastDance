@@ -884,7 +884,7 @@ const EntradasManager = () => {
       `${a.firstName} ${a.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
       a.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       a.phone?.includes(searchQuery);
-    return matchesSchool && matchesSearch;
+    return matchesSchool && matchesSearch && !a.checkedIn;
   });
 
   const sortedAttendees = [...filteredAttendees].sort((a, b) => {
