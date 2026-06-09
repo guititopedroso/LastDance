@@ -11,7 +11,9 @@ const AdminLogin = ({ onLogin }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (password === 'lddc2026') {
-      onLogin();
+      onLogin('admin');
+    } else if (password === 'staffld2026') {
+      onLogin('staff');
     } else {
       setError(true);
       setTimeout(() => setError(false), 2000);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LayoutDashboard, 
@@ -49,15 +49,21 @@ const AdminDashboard = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(
     sessionStorage.getItem('adminAuth') === 'true'
   );
+  const [adminRole, setAdminRole] = useState(
+    sessionStorage.getItem('adminRole') || 'admin'
+  );
   
+  const navigate = useNavigate();
   const location = useLocation();
+
   const getInitialTab = () => {
     const path = location.pathname;
+    const role = sessionStorage.getItem('adminRole') || 'admin';
     if (path.includes('/entradas')) return 'entradas';
     if (path.includes('/codes')) return 'codes';
     if (path.includes('/attendees')) return 'attendees';
     if (path.includes('/premios')) return 'premios';
-    return 'overview';
+    return role === 'staff' ? 'entradas' : 'overview';
   };
 
   const [activeTab, setActiveTab] = useState(getInitialTab());
@@ -69,12 +75,35 @@ const AdminDashboard = () => {
     else if (path.includes('/codes')) setActiveTab('codes');
     else if (path.includes('/attendees')) setActiveTab('attendees');
     else if (path.includes('/premios')) setActiveTab('premios');
-    else setActiveTab('overview');
-  }, [location]);
+    else setActiveTab(adminRole === 'staff' ? 'entradas' : 'overview');
+  }, [location, adminRole]);
 
-  const handleLogin = () => {
+  // Redirection for staff attempting to access admin-only pages
+  useEffect(() => {
+    if (isAuthenticated && adminRole === 'staff') {
+      const path = location.pathname;
+      if (!path.includes('/entradas') && !path.includes('/premios')) {
+        setActiveTab('entradas');
+        navigate('/admin/entradas', { replace: true });
+      }
+    }
+  }, [location.pathname, isAuthenticated, adminRole, navigate]);
+
+  const handleLogin = (role) => {
     sessionStorage.setItem('adminAuth', 'true');
+    sessionStorage.setItem('adminRole', role);
+    setAdminRole(role);
     setIsAuthenticated(true);
+    if (role === 'staff') {
+      setActiveTab('entradas');
+      navigate('/admin/entradas');
+    }
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('adminAuth');
+    sessionStorage.removeItem('adminRole');
+    setIsAuthenticated(false);
   };
 
   if (!isAuthenticated) {
@@ -86,7 +115,7 @@ const AdminDashboard = () => {
       <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: '10px' }}>
         <div className="admin-logo-wrapper">
           <img src="/logo_transparent.webp" alt="Last Dance" className="admin-logo-img" />
-          <span className="badge-admin">Admin</span>
+          <span className="badge-admin">{adminRole === 'admin' ? 'Admin' : 'Staff'}</span>
         </div>
         <button 
           onClick={() => setIsSidebarOpen(false)} 
@@ -105,24 +134,30 @@ const AdminDashboard = () => {
         </button>
       </div>
       <nav className="sidebar-nav">
-        <Link to="/admin" className={activeTab === 'overview' ? 'active' : ''} onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }}>
-          <LayoutDashboard size={20} /> <span>Painel Geral</span>
-        </Link>
-        <Link to="/admin/codes" className={activeTab === 'codes' ? 'active' : ''} onClick={() => { setActiveTab('codes'); setIsSidebarOpen(false); }}>
-          <Key size={20} /> <span>Códigos de Escola</span>
-        </Link>
+        {adminRole === 'admin' && (
+          <Link to="/admin" className={activeTab === 'overview' ? 'active' : ''} onClick={() => { setActiveTab('overview'); setIsSidebarOpen(false); }}>
+            <LayoutDashboard size={20} /> <span>Painel Geral</span>
+          </Link>
+        )}
+        {adminRole === 'admin' && (
+          <Link to="/admin/codes" className={activeTab === 'codes' ? 'active' : ''} onClick={() => { setActiveTab('codes'); setIsSidebarOpen(false); }}>
+            <Key size={20} /> <span>Códigos de Escola</span>
+          </Link>
+        )}
         <Link to="/admin/entradas" className={activeTab === 'entradas' ? 'active' : ''} onClick={() => { setActiveTab('entradas'); setIsSidebarOpen(false); }}>
           <Ticket size={20} /> <span>Entradas</span>
         </Link>
-        <Link to="/admin/attendees" className={activeTab === 'attendees' ? 'active' : ''} onClick={() => { setActiveTab('attendees'); setIsSidebarOpen(false); }}>
-          <Users size={20} /> <span>Gestão de Inscritos</span>
-        </Link>
+        {adminRole === 'admin' && (
+          <Link to="/admin/attendees" className={activeTab === 'attendees' ? 'active' : ''} onClick={() => { setActiveTab('attendees'); setIsSidebarOpen(false); }}>
+            <Users size={20} /> <span>Gestão de Inscritos</span>
+          </Link>
+        )}
         <Link to="/admin/premios" className={activeTab === 'premios' ? 'active' : ''} onClick={() => { setActiveTab('premios'); setIsSidebarOpen(false); }} style={{ color: activeTab === 'premios' ? '#e11d48' : undefined }}>
           <Trophy size={20} /> <span>Prémios / Votação</span>
         </Link>
       </nav>
       <div className="sidebar-footer">
-        <Link to="/" className="btn-logout"><LogOut size={18} /> <span>Sair</span></Link>
+        <Link to="/" className="btn-logout" onClick={handleLogout}><LogOut size={18} /> <span>Sair</span></Link>
       </div>
     </div>
   );
@@ -148,7 +183,7 @@ const AdminDashboard = () => {
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <img src="/logo_transparent.webp" alt="Last Dance" style={{ height: '32px' }} />
-          <span className="badge-admin" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>Admin</span>
+          <span className="badge-admin" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>{adminRole === 'admin' ? 'Admin' : 'Staff'}</span>
         </div>
         <div style={{ width: '24px' }} /* Balance space */ />
       </div>
@@ -175,11 +210,12 @@ const AdminDashboard = () => {
       <Sidebar />
       <div className="admin-content">
         <Routes>
-          <Route path="/" element={<Overview />} />
-          <Route path="/codes" element={<CodeManager />} />
+          {adminRole === 'admin' && <Route path="/" element={<Overview />} />}
+          {adminRole === 'admin' && <Route path="/codes" element={<CodeManager />} />}
           <Route path="/entradas" element={<EntradasManager />} />
-          <Route path="/attendees" element={<AttendeeManager />} />
+          {adminRole === 'admin' && <Route path="/attendees" element={<AttendeeManager />} />}
           <Route path="/premios" element={<PremiosManager />} />
+          <Route path="*" element={<Navigate to="/admin/entradas" replace />} />
         </Routes>
       </div>
     </div>
