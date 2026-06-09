@@ -13,9 +13,7 @@ import {
   Grid,
   Layers,
   Clock,
-  Settings,
-  Calendar,
-  Users
+  Sparkles
 } from 'lucide-react';
 import './MesasPage.css';
 
@@ -60,7 +58,6 @@ export default function MesasPage() {
       clearTimeout(controlsTimeoutRef.current);
     }
     controlsTimeoutRef.current = setTimeout(() => {
-      // Keep controls visible if user is not in fullscreen, or hide them
       setShowControls(false);
     }, 4000);
   };
@@ -239,6 +236,17 @@ export default function MesasPage() {
       <div className="gala-outer-border"></div>
       <div className="gala-inner-border"></div>
 
+      {/* Side Decorative Accents */}
+      <div className="gala-side-light left-glow"></div>
+      <div className="gala-side-light right-glow"></div>
+
+      {/* Ambient Sparkles */}
+      <div className="gala-sparkle sparkle-1">★</div>
+      <div className="gala-sparkle sparkle-2">✦</div>
+      <div className="gala-sparkle sparkle-3">★</div>
+      <div className="gala-sparkle sparkle-4">✦</div>
+      <div className="gala-sparkle sparkle-5">★</div>
+
       {/* Decorative Corner Roses */}
       <div className="corner-rose bottom-left"></div>
       <div className="corner-rose bottom-right"></div>
@@ -251,6 +259,13 @@ export default function MesasPage() {
           <span className="ribbon-text-plan">Plan</span>
         </div>
         <div className="ribbon-tail"></div>
+      </aside>
+
+      {/* Right Vertical Accent Divider */}
+      <aside className="gala-right-accent">
+        <div className="accent-line"></div>
+        <div className="accent-ornament">◈</div>
+        <div className="accent-line-short"></div>
       </aside>
 
       {/* Auto-fading Floating Controls Panel */}

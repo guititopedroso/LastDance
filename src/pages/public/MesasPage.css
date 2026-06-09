@@ -21,27 +21,28 @@
   --gala-velvet-gradient: linear-gradient(135deg, var(--gala-burgundy-dark) 0%, var(--gala-burgundy-mid) 50%, var(--gala-burgundy-dark) 100%);
 }
 
-/* Base Container & Fullscreen setup */
+/* Base Container - Lock to 100vh height to avoid scrolling completely */
 .gala-container {
-  min-height: 100vh;
-  width: 100%;
+  height: 100vh;
+  max-height: 100vh;
+  width: 100vw;
   background: var(--gala-velvet-gradient);
   color: #ffffff;
   font-family: 'Outfit', sans-serif;
-  padding: 40px 60px 40px 140px; /* Leave padding on the left for the ribbon */
+  padding: 3vh 4vw 2.2vh 11vw; /* Layout paddings based on viewport sizes */
   display: flex;
   flex-direction: column;
   position: relative;
-  overflow-x: hidden;
+  overflow: hidden; /* Lock all scrollbars */
   box-sizing: border-box;
 }
 
 .gala-container.fullscreen-mode {
-  padding: 45px 70px 45px 150px;
+  padding: 3.5vh 5vw 2.5vh 12vw;
   cursor: none; /* Hide cursor on smart TV display in full screen */
 }
 
-/* Elegant Gold Double-Border Frame */
+/* Elegant Gold Double-Border Frame with animation */
 .gala-outer-border {
   position: absolute;
   inset: 12px;
@@ -51,6 +52,11 @@
   border-radius: 4px;
 }
 
+@keyframes border-glow {
+  0%, 100% { border-color: rgba(212, 175, 55, 0.75); box-shadow: 0 0 10px rgba(212, 175, 55, 0.15); }
+  50% { border-color: rgba(212, 175, 55, 1); box-shadow: 0 0 20px rgba(212, 175, 55, 0.35); }
+}
+
 .gala-inner-border {
   position: absolute;
   inset: 20px;
@@ -58,13 +64,58 @@
   pointer-events: none;
   z-index: 5;
   border-radius: 4px;
+  animation: border-glow 5s infinite ease-in-out;
 }
 
-/* Corner Rose Ornaments (from generated image) */
+/* Side Lighting/Glow Effects */
+.gala-side-light {
+  position: absolute;
+  top: 0;
+  width: 300px;
+  height: 100%;
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0.3;
+}
+
+.gala-side-light.left-glow {
+  left: 0;
+  background: radial-gradient(ellipse at left, rgba(212, 175, 55, 0.3) 0%, transparent 70%);
+}
+
+.gala-side-light.right-glow {
+  right: 0;
+  background: radial-gradient(ellipse at right, rgba(212, 175, 55, 0.3) 0%, transparent 70%);
+}
+
+/* Ambient Sparkle Ornaments */
+@keyframes sparkle-pulse {
+  0%, 100% { opacity: 0; transform: scale(0.6) rotate(0deg); text-shadow: 0 0 0px transparent; }
+  50% { opacity: 0.95; transform: scale(1.3) rotate(180deg); text-shadow: 0 0 10px rgba(212, 175, 55, 0.8); }
+}
+
+.gala-sparkle {
+  position: absolute;
+  color: var(--gala-gold-light);
+  font-weight: bold;
+  animation: sparkle-pulse 4.5s infinite ease-in-out;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.sparkle-1 { top: 8vh; left: 16vw; font-size: 1.8rem; animation-delay: 0s; }
+.sparkle-2 { top: 11vh; right: 14vw; font-size: 1.2rem; animation-delay: 1.5s; }
+.sparkle-3 { top: 45vh; left: 8vw; font-size: 1.5rem; animation-delay: 0.8s; }
+.sparkle-4 { top: 60vh; right: 6vw; font-size: 1.3rem; animation-delay: 2.2s; }
+.sparkle-5 { top: 80vh; left: 12vw; font-size: 1.4rem; animation-delay: 3.1s; }
+
+/* Decorative Corner Roses */
 .corner-rose {
   position: absolute;
-  width: 250px;
-  height: 250px;
+  width: 14vw;
+  height: 14vw;
+  max-width: 170px;
+  max-height: 170px;
   background-image: url('/gala_roses.png');
   background-size: contain;
   background-repeat: no-repeat;
@@ -74,15 +125,14 @@
 }
 
 .corner-rose.bottom-left {
-  bottom: 15px;
-  left: 15px;
-  transform: rotate(0deg);
+  bottom: 25px;
+  left: 25px;
 }
 
 .corner-rose.bottom-right {
-  bottom: 15px;
-  right: 15px;
-  transform: scaleX(-1); /* Flip horizontally for the right corner */
+  bottom: 25px;
+  right: 25px;
+  transform: scaleX(-1); /* mirror roses */
 }
 
 /* Left Vertical Seating Plan Ribbon */
@@ -91,7 +141,7 @@
   top: 0;
   left: 45px;
   width: 80px;
-  height: 320px;
+  height: 35vh; /* Scale ribbon based on viewport height */
   background: linear-gradient(to bottom, #4E040E 0%, #200005 100%);
   border-left: 2px solid var(--gala-gold);
   border-right: 2px solid var(--gala-gold);
@@ -100,15 +150,14 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 35px;
+  padding-top: 3vh;
 }
 
-/* V-cut for the ribbon tail */
 .gala-ribbon::after {
   content: '';
   position: absolute;
   bottom: -20px;
-  left: -2px; /* align with border offset */
+  left: -2px;
   width: 80px;
   height: 20px;
   background: #200005;
@@ -125,14 +174,13 @@
   width: 100%;
 }
 
-/* Graduation cap logo draw in CSS */
 .ribbon-cap-icon {
   width: 32px;
   height: 32px;
   position: relative;
-  margin-bottom: 25px;
+  margin-bottom: 2vh;
   background: var(--gala-gold-gradient);
-  clip-path: polygon(50% 0%, 100% 30%, 50% 60%, 0% 30%); /* diamond cap top */
+  clip-path: polygon(50% 0%, 100% 30%, 50% 60%, 0% 30%);
   box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
 
@@ -149,7 +197,7 @@
 
 .ribbon-text-seating {
   font-family: 'Cinzel', serif;
-  font-size: 0.9rem;
+  font-size: 1.8vh;
   font-weight: 700;
   letter-spacing: 0.25em;
   writing-mode: vertical-rl;
@@ -159,23 +207,46 @@
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  margin-bottom: 5px;
+  margin-bottom: 0.5vh;
 }
 
 .ribbon-text-plan {
   font-family: 'Dancing Script', cursive;
-  font-size: 2.2rem;
+  font-size: 4vh;
   font-weight: 700;
   color: var(--gala-gold-light);
-  transform: rotate(-10deg) translateY(5px);
+  transform: rotate(-10deg) translateY(0.5vh);
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
 
-/* Auto-fading Controls Overlay styling */
+/* Right Vertical Accent Divider */
+.gala-right-accent {
+  position: absolute;
+  top: 0;
+  right: 45px;
+  width: 2px;
+  height: 35vh;
+  background: linear-gradient(to bottom, var(--gala-gold) 0%, rgba(212, 175, 55, 0.1) 70%, transparent 100%);
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.gala-right-accent .accent-ornament {
+  color: var(--gala-gold);
+  font-size: 2.2vh;
+  margin-top: 3.5vh;
+  text-shadow: 0 0 8px rgba(212, 175, 55, 0.6);
+  animation: border-glow 5s infinite ease-in-out;
+}
+
+/* Auto-fading Controls Overlay */
 .gala-controls-overlay {
   position: fixed;
-  top: 30px;
-  right: 45px;
+  top: 25px;
+  right: 60px;
   z-index: 100;
   transition: opacity 0.5s ease, transform 0.5s ease;
 }
@@ -192,9 +263,9 @@
 }
 
 .overlay-panel {
-  background: rgba(31, 0, 8, 0.85);
+  background: rgba(31, 0, 8, 0.9);
   border: 1.5px solid var(--gala-gold);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
   border-radius: 12px;
   padding: 6px 16px;
   display: flex;
@@ -288,27 +359,29 @@
 
 /* Seating Plan Main Canvas */
 .gala-canvas {
-  flex: 1;
+  height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   z-index: 10;
   position: relative;
+  overflow: hidden;
 }
 
-/* Header Text Styles */
+/* Header Text Styles - Scaled via vh to fit screens perfectly */
 .gala-header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 0.8vh;
+  flex-shrink: 0;
 }
 
 .gala-main-title {
   font-family: 'Cinzel', serif;
-  font-size: 2.8rem;
+  font-size: 5.2vh; /* Scaled text height */
   font-weight: 900;
   letter-spacing: 0.08em;
   line-height: 1.1;
-  margin-bottom: 6px;
+  margin-bottom: 0.3vh;
   background: var(--gala-gold-gradient);
   -webkit-background-clip: text;
   background-clip: text;
@@ -318,7 +391,7 @@
 
 .gala-school-title {
   font-family: 'Cinzel', serif;
-  font-size: 1.1rem;
+  font-size: 2.1vh; /* Scaled subtitle text height */
   font-weight: 600;
   color: var(--gala-gold);
   letter-spacing: 0.25em;
@@ -326,18 +399,18 @@
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* Decorative Ornaments */
+/* Decorative Divider Ornaments */
 .gala-header-divider {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 15px;
-  margin-top: 10px;
+  margin-top: 0.5vh;
 }
 
 .divider-ornament {
-  height: 2px;
-  width: 140px;
+  height: 1px;
+  width: 10vw;
   background: linear-gradient(to right, transparent, var(--gala-gold), transparent);
   position: relative;
 }
@@ -348,7 +421,7 @@
   right: -5px;
   top: -8px;
   color: var(--gala-gold);
-  font-size: 0.75rem;
+  font-size: 1.2vh;
 }
 
 .divider-ornament.right::after {
@@ -357,24 +430,25 @@
   left: -5px;
   top: -8px;
   color: var(--gala-gold);
-  font-size: 0.75rem;
+  font-size: 1.2vh;
 }
 
 .divider-diamond {
-  width: 10px;
-  height: 10px;
+  width: 0.9vh;
+  height: 0.9vh;
   background: var(--gala-gold-gradient);
   transform: rotate(45deg);
   box-shadow: 0 0 8px rgba(212, 175, 55, 0.5);
 }
 
-/* Seating grid */
+/* Seating grid - Locked and centered inside available height */
 .gala-board-content {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 10px 0 30px;
+  overflow: hidden;
+  margin: 0.5vh 0;
 }
 
 .gala-loading {
@@ -392,96 +466,89 @@
   animation: spin 1s linear infinite;
 }
 
-/* Grid for Overview: 6 Columns, 4 Rows */
+/* Grid for Overview: 6 Columns, 4 Rows (Fits exactly in viewport height) */
 .overview-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  gap: 20px 22px;
+  grid-template-rows: repeat(4, 1fr);
+  gap: 1vh 1.4vw; /* Minimal row gap and viewport-scaled column gap */
   width: 100%;
-  max-width: 1550px;
+  height: 100%;
+  max-width: 82vw;
   align-items: center;
   justify-items: center;
 }
 
-/* Seating Card Design (Oval Cards) */
+/* Seating Card Design (Oval Cards) - Scaled via vh/vw to prevent overflow */
 .gala-card {
-  width: 215px;
-  height: 270px;
-  border-radius: 50% / 40%; /* Creates a beautiful vertical oval shape */
+  width: 11.5vw;
+  height: 15.0vh; /* Fits 4 rows perfectly inside 68vh content height */
+  border-radius: 50%; /* Vertical oval shape when height is larger */
   background: var(--gala-cream);
   border: 1.5px solid var(--gala-gold);
   box-shadow: 
-    0 10px 25px rgba(0, 0, 0, 0.55),
-    inset 0 0 12px rgba(212, 175, 55, 0.2);
-  padding: 30px 18px;
+    0 8px 20px rgba(0, 0, 0, 0.5),
+    inset 0 0 10px rgba(212, 175, 55, 0.15);
+  padding: 1.4vh 0.7vw;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
   position: relative;
+  box-sizing: border-box;
 }
 
 .gala-card:hover {
-  transform: translateY(-5px) scale(1.02);
+  transform: translateY(-3px) scale(1.02);
   box-shadow: 
-    0 15px 35px rgba(0, 0, 0, 0.7),
-    0 0 15px rgba(212, 175, 55, 0.3),
-    inset 0 0 12px rgba(212, 175, 55, 0.2);
+    0 12px 30px rgba(0, 0, 0, 0.65),
+    0 0 12px rgba(212, 175, 55, 0.3),
+    inset 0 0 10px rgba(212, 175, 55, 0.15);
   border-color: var(--gala-gold-light);
 }
 
-/* Glow completed table cards */
 .gala-card.table-complete {
-  border-color: #6ee7b7;
+  border-color: #10b981;
   box-shadow: 
-    0 10px 25px rgba(0, 0, 0, 0.55),
-    0 0 15px rgba(110, 231, 183, 0.2),
-    inset 0 0 12px rgba(110, 231, 183, 0.1);
+    0 8px 20px rgba(0, 0, 0, 0.5),
+    0 0 15px rgba(16, 185, 129, 0.25),
+    inset 0 0 10px rgba(16, 185, 129, 0.15);
 }
 
 .gala-card-header {
   border-bottom: 1px solid rgba(139, 92, 26, 0.15);
-  padding-bottom: 4px;
-  margin-bottom: 8px;
-  width: 75%;
+  padding-bottom: 2px;
+  margin-bottom: 4px;
+  width: 80%;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .gala-card-header h2 {
   font-family: 'Cinzel', serif;
-  font-size: 1.05rem;
+  font-size: 1.5vh; /* Header scales with screen height */
   font-weight: 800;
-  color: #380210; /* Dark wine red header inside the cards */
-  letter-spacing: 0.05em;
+  color: #380210;
+  letter-spacing: 0.03em;
   line-height: 1.1;
 }
 
-.gala-card.large .gala-card-header h2 {
-  font-size: 1.3rem;
-}
-
-.card-subtitle {
-  font-size: 0.72rem;
-  color: #64748b;
-  font-weight: 500;
-  text-transform: uppercase;
-}
-
-/* Guests list inside cards */
+/* Guests list inside cards - Scroll hidden and tightly sized */
 .gala-card-guests {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2.5px;
+  gap: 1.5px;
   width: 100%;
+  flex: 1;
   overflow: hidden;
 }
 
 .gala-guest-name {
-  font-size: 0.74rem;
-  line-height: 1.25;
+  font-size: 0.76vh; /* Crucial: scales font height perfectly so 12 people fit in 15vh card */
+  line-height: 1.2;
   color: #1F0008;
   font-weight: 500;
   text-align: center;
@@ -489,17 +556,18 @@
   text-overflow: ellipsis;
   overflow: hidden;
   max-width: 100%;
+  display: block;
 }
 
 .class-badge {
-  font-size: 0.65rem;
+  font-size: 0.65vh;
   color: #7A6267;
   font-weight: 500;
 }
 
-/* Present guest style (elegant contrast) */
+/* Present guest style */
 .gala-guest-name.present {
-  color: #8D001C; /* Elegant deep velvet red */
+  color: #8D001C;
   font-weight: 800;
   text-shadow: 0 0 1px rgba(141, 0, 28, 0.15);
 }
@@ -515,32 +583,33 @@
   color: #4A353A;
 }
 
-/* Grid Center "2025 / 2026" Badge */
+/* Grid Center "2025 / 2026" Badge inside Grid */
 .grid-center-badge {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 10px;
   text-align: center;
-  height: 250px;
+  width: 11.5vw;
+  height: 15.0vh;
 }
 
 .grid-center-badge .year-text {
   font-family: 'Cinzel', serif;
-  font-size: 1.4rem;
+  font-size: 2.1vh;
   font-weight: 700;
   color: var(--gala-gold);
   letter-spacing: 0.05em;
-  margin: 15px 0;
+  margin: 1vh 0;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
-.grid-center-badge .ornament-top {
-  width: 60px;
-  height: 15px;
+.grid-center-badge .ornament-top,
+.grid-center-badge .ornament-bottom {
+  width: 50px;
+  height: 8px;
   background-image: radial-gradient(circle, var(--gala-gold) 1px, transparent 1px);
-  background-size: 8px 8px;
+  background-size: 6px 6px;
   position: relative;
 }
 
@@ -554,14 +623,6 @@
   background: var(--gala-gold);
 }
 
-.grid-center-badge .ornament-bottom {
-  width: 60px;
-  height: 15px;
-  background-image: radial-gradient(circle, var(--gala-gold) 1px, transparent 1px);
-  background-size: 8px 8px;
-  position: relative;
-}
-
 .grid-center-badge .ornament-bottom::after {
   content: '';
   position: absolute;
@@ -572,12 +633,14 @@
   background: var(--gala-gold);
 }
 
-/* Carousel Grid Layout (for rotating pages) */
+/* Carousel Grid Layout */
 .carousel-grid {
   display: grid;
   gap: 30px;
   width: 100%;
-  max-width: 1300px;
+  height: 100%;
+  max-width: 75vw;
+  align-items: center;
   justify-items: center;
 }
 
@@ -586,9 +649,14 @@
 .carousel-grid.cols-8 { grid-template-columns: repeat(4, 1fr); }
 
 .gala-card.large {
-  width: 250px;
-  height: 320px;
-  padding: 35px 22px;
+  width: 16vw;
+  height: 52vh;
+  border-radius: 30px; /* Slightly softer rounded corners for large cards */
+  padding: 3vh 2vw;
+}
+
+.gala-card.large .gala-card-header h2 {
+  font-size: 2.5vh;
 }
 
 .gala-card.large .gala-guest-row {
@@ -596,9 +664,12 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 4px 6px;
+  padding: 0.4vh 0.6vw;
   border-radius: 6px;
-  transition: background-color 0.2s;
+}
+
+.gala-card.large .gala-guest-name {
+  font-size: 1.6vh;
 }
 
 .gala-card.large .gala-guest-row.present {
@@ -613,23 +684,25 @@
 .gala-footer {
   text-align: center;
   border-top: 1.5px solid rgba(212, 175, 55, 0.3);
-  padding-top: 25px;
+  padding-top: 1.5vh;
   margin-top: auto;
+  flex-shrink: 0;
 }
 
 /* Dynamic Seating Progress Bar */
 .gala-progress-container {
+  width: 40vw;
   max-width: 600px;
-  margin: 0 auto 20px;
+  margin: 0 auto 0.8vh;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
 .progress-details {
   display: flex;
   justify-content: space-between;
-  font-size: 0.8rem;
+  font-size: 1.3vh;
   font-weight: 700;
   color: var(--gala-gold);
   letter-spacing: 0.05em;
@@ -641,7 +714,7 @@
 
 .gold-progress-bar-wrapper {
   width: 100%;
-  height: 12px;
+  height: 1.2vh;
   background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(212, 175, 55, 0.3);
   border-radius: 10px;
@@ -669,12 +742,13 @@
 
 .gala-footer-thankyou {
   font-family: 'Cinzel', serif;
-  font-size: 1.05rem;
+  font-size: 1.8vh;
   font-weight: 700;
   color: var(--gala-gold);
   letter-spacing: 0.25em;
   opacity: 0.95;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+  margin-top: 0.3vh;
 }
 
 /* Animations */
@@ -690,27 +764,21 @@
 /* Responsive / Screen Adjustments */
 @media (max-width: 1550px) {
   .gala-container {
-    padding-left: 130px;
-  }
-  .overview-grid {
-    gap: 12px 14px;
-  }
-  .gala-card {
-    width: 195px;
-    height: 250px;
-    padding: 24px 14px;
-  }
-  .gala-guest-name {
-    font-size: 0.68rem;
-  }
-  .gala-main-title {
-    font-size: 2.3rem;
+    padding-left: 12vw;
   }
 }
 
 @media (max-width: 1300px) {
   .overview-grid {
     grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(6, 1fr);
+  }
+  .gala-card {
+    width: 17vw;
+    height: 10.5vh;
+  }
+  .gala-guest-name {
+    font-size: 0.65vh;
   }
   .grid-center-badge {
     display: none; /* Hide year badge when columns scale down */
@@ -719,24 +787,27 @@
 
 @media (max-width: 900px) {
   .gala-container {
-    padding: 30px 25px 30px 25px; /* Remove ribbon margins */
+    padding: 3vh 2.5vw;
   }
-  .gala-ribbon {
-    display: none; /* Hide vertical ribbon on smaller tablets/mobiles */
+  .gala-ribbon, .gala-right-accent {
+    display: none; /* Hide vertical accents on smaller tablets/mobiles */
   }
   .overview-grid {
     grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(12, 1fr);
+  }
+  .gala-card {
+    width: 35vw;
+    height: 5.5vh;
   }
 }
 
 @media (max-width: 500px) {
   .overview-grid {
     grid-template-columns: 1fr;
+    grid-template-rows: repeat(23, 1fr);
   }
-  .gala-main-title {
-    font-size: 1.8rem;
-  }
-  .gala-school-title {
-    font-size: 0.8rem;
+  .gala-card {
+    width: 70vw;
   }
 }
