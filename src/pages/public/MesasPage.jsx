@@ -224,23 +224,6 @@ export default function MesasPage() {
       <div className="gala-sparkle sparkle-4">✦</div>
       <div className="gala-sparkle sparkle-5">★</div>
 
-      {/* Left Vertical Ribbon */}
-      <aside className="gala-ribbon">
-        <div className="ribbon-content">
-          <div className="ribbon-cap-icon"></div>
-          <span className="ribbon-text-seating">SEATING</span>
-          <span className="ribbon-text-plan">Plan</span>
-        </div>
-        <div className="ribbon-tail"></div>
-      </aside>
-
-      {/* Right Vertical Accent Divider */}
-      <aside className="gala-right-accent">
-        <div className="accent-line"></div>
-        <div className="accent-ornament">◈</div>
-        <div className="accent-line-short"></div>
-      </aside>
-
       {/* Auto-fading Floating Controls Panel */}
       <div className={`gala-controls-overlay ${showControls ? 'visible' : 'hidden'}`}>
         <div className="overlay-panel">
@@ -313,6 +296,10 @@ export default function MesasPage() {
       <div className="gala-canvas">
         {/* Main Header */}
         <header className="gala-header">
+          <div className="gala-horizontal-ribbon">
+            <div className="ribbon-cap-icon-mini"></div>
+            <span className="ribbon-text-seating-horiz">SEATING PLAN</span>
+          </div>
           <h1 className="gala-main-title">GALA DE FINALISTAS</h1>
           <p className="gala-school-title">ESCOLA SECUNDÁRIA DE ALCOCHETE</p>
           <div className="gala-year-badge">2025 / 2026</div>
