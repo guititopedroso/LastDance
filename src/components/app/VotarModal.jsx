@@ -23,6 +23,7 @@ const getAvatarColorByName = (name) => {
 const VotarModal = ({ categoria, currentNif, currentName, codigoEscola, onVotar, onClose }) => {
   const [votedName, setVotedName] = useState('');
   const [confirming, setConfirming] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -52,6 +53,10 @@ const VotarModal = ({ categoria, currentNif, currentName, codigoEscola, onVotar,
     await onVotar(normalizedNif, cleanVotedName);
   };
 
+  const filteredOptions = (categoria.opcoes || []).filter(opt =>
+    opt.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <>
       {/* Backdrop */}
@@ -80,46 +85,111 @@ const VotarModal = ({ categoria, currentNif, currentName, codigoEscola, onVotar,
               <div className="modal-categoria-tag">
                 {categoria.emoji} {categoria.titulo}
               </div>
-              <h2 className="modal-title">Votação por Nome</h2>
+              <h2 className="modal-title">
+                {categoria.tipo === 'opcoes' ? 'Escolha uma Opção' : 'Votação por Nome'}
+              </h2>
             </div>
             <button id="votar-modal-close" className="btn btn-icon" onClick={onClose}>✕</button>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="modal-vote-form" style={{ padding: '0 20px 10px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div className="input-group-simple" style={{ width: '100%' }}>
-              <label htmlFor="vote-name-input" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>
-                Escreve o nome da pessoa em quem queres votar:
-              </label>
-              <input
-                id="vote-name-input"
-                type="text"
-                placeholder="Nome Completo (Ex: João Silva)"
-                value={votedName}
-                onChange={e => setVotedName(e.target.value)}
-                required
-                autoComplete="off"
-                style={{
-                  width: '100%',
-                  padding: '14px 16px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--border)',
-                  background: 'var(--bg-input)',
-                  color: '#fff',
-                  fontSize: '1rem',
-                  outline: 'none'
-                }}
-              />
+          {categoria.tipo === 'opcoes' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Search Bar */}
+              <div className="modal-search" style={{ margin: '0 20px 8px' }}>
+                <span className="modal-search-icon">🔍</span>
+                <input
+                  type="text"
+                  className="modal-search-input"
+                  placeholder="Pesquisar opção..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              {/* Options List */}
+              <div className="modal-list" style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {filteredOptions.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px 0', fontSize: '0.9rem', fontStyle: 'italic' }}>
+                    Nenhuma opção encontrada
+                  </p>
+                ) : (
+                  filteredOptions.map(opt => {
+                    const isMe = currentName && opt.toLowerCase() === currentName.toLowerCase();
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        className={`aluno-item ${isMe ? 'aluno-item--me' : ''}`}
+                        disabled={isMe}
+                        onClick={() => {
+                          setVotedName(opt);
+                          setConfirming(true);
+                        }}
+                      >
+                        <div 
+                          className="aluno-avatar avatar" 
+                          style={{ 
+                            backgroundColor: getAvatarColorByName(opt),
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#fff',
+                            fontWeight: '700',
+                            fontSize: '0.85rem'
+                          }}
+                        >
+                          {getInitials(opt)}
+                        </div>
+                        <div className="aluno-info">
+                          <span className="aluno-name">{opt}</span>
+                          {isMe && <span className="aluno-turma">(Não podes votar em ti próprio)</span>}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
-            <button
-              type="submit"
-              id="votar-submit-btn"
-              className="btn btn-primary"
-              style={{ width: '100%', padding: '14px', borderRadius: '8px', fontWeight: '800', fontSize: '1rem' }}
-            >
-              Votar 🗳️
-            </button>
-          </form>
+          ) : (
+            /* Form */
+            <form onSubmit={handleSubmit} className="modal-vote-form" style={{ padding: '0 20px 10px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div className="input-group-simple" style={{ width: '100%' }}>
+                <label htmlFor="vote-name-input" style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>
+                  Escreve o nome da pessoa em quem queres votar:
+                </label>
+                <input
+                  id="vote-name-input"
+                  type="text"
+                  placeholder="Nome Completo (Ex: João Silva)"
+                  value={votedName}
+                  onChange={e => setVotedName(e.target.value)}
+                  required
+                  autoComplete="off"
+                  style={{
+                    width: '100%',
+                    padding: '14px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-input)',
+                    color: '#fff',
+                    fontSize: '1rem',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+              <button
+                type="submit"
+                id="votar-submit-btn"
+                className="btn btn-primary"
+                style={{ width: '100%', padding: '14px', borderRadius: '8px', fontWeight: '800', fontSize: '1rem' }}
+              >
+                Votar 🗳️
+              </button>
+            </form>
+          )}
         </motion.div>
       </div>
 

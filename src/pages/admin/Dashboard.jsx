@@ -326,7 +326,7 @@ const parseGuestsFromText = (text) => {
     
     const rest = numMatch[2].trim();
     
-    const match = rest.match(/^(.*?)\s*-\s*(ALL-ACCESS|Apenas Cocktail|Só Cocktail|Cocktail\s*\+\s*Jantar)$/i);
+    const match = rest.match(/^(.*?)\s*-\s*(ALL-ACCESS|Apenas Cocktail|Só Cocktail|Cocktail\s*\+\s*Jantar|Cocktail\s*\+\s*Festa|Só Festa)$/i);
     if (match) {
       const name = match[1].trim();
       const rawStatus = match[2].trim().toLowerCase();
@@ -334,6 +334,10 @@ const parseGuestsFromText = (text) => {
       
       if (rawStatus.includes('jantar')) {
         ticketType = 'Cocktail + Jantar';
+      } else if (rawStatus.includes('festa') && rawStatus.includes('cocktail')) {
+        ticketType = 'Cocktail + Festa';
+      } else if (rawStatus.includes('festa')) {
+        ticketType = 'Só Festa';
       } else if (rawStatus.includes('cocktail')) {
         ticketType = 'Só Cocktail';
       } else {
@@ -909,8 +913,11 @@ const EntradasManager = () => {
   const getTicketType = (attendee) => {
     if (attendee.ticketType) return attendee.ticketType;
     const hash = attendee.firstName.charCodeAt(0) + (attendee.lastName ? attendee.lastName.charCodeAt(0) : 0);
-    if (hash % 3 === 0) return 'Só Cocktail';
-    if (hash % 3 === 1) return 'Cocktail + Jantar';
+    const mod = hash % 5;
+    if (mod === 0) return 'Só Cocktail';
+    if (mod === 1) return 'Cocktail + Jantar';
+    if (mod === 2) return 'Cocktail + Festa';
+    if (mod === 3) return 'Só Festa';
     return 'All-Access';
   };
 
@@ -946,6 +953,8 @@ const EntradasManager = () => {
 
   const cocktailStats = getStatsForType('Só Cocktail');
   const dinnerStats = getStatsForType('Cocktail + Jantar');
+  const cocktailPartyStats = getStatsForType('Cocktail + Festa');
+  const partyStats = getStatsForType('Só Festa');
   const allAccessStats = getStatsForType('All-Access');
 
   return (
@@ -1040,6 +1049,8 @@ const EntradasManager = () => {
                 <option value="All-Access">All-Access</option>
                 <option value="Só Cocktail">Só Cocktail</option>
                 <option value="Cocktail + Jantar">Cocktail + Jantar</option>
+                <option value="Cocktail + Festa">Cocktail + Festa</option>
+                <option value="Só Festa">Só Festa</option>
               </select>
             </div>
             
@@ -1110,6 +1121,50 @@ const EntradasManager = () => {
           </div>
           <h2 className="card-value">
             {dinnerStats.checkedIn} <span>/ {dinnerStats.total}</span>
+          </h2>
+          <p className="card-desc">Entraram no evento</p>
+        </motion.div>
+
+        {/* Cocktail + Festa - Emerald */}
+        <motion.div 
+          onClick={() => setActiveStatsModal('Cocktail + Festa')}
+          whileHover={{ y: -5, scale: 1.02, borderColor: 'rgba(52, 211, 153, 0.4)' }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          className="glass-card entradas-stat-card" 
+          style={{
+            background: 'linear-gradient(135deg, rgba(52, 211, 153, 0.08) 0%, rgba(52, 211, 153, 0.02) 100%)',
+            border: '1px solid rgba(52, 211, 153, 0.15)'
+          }}
+        >
+          <div className="card-header">
+            <span className="card-title" style={{ color: '#34d399' }}>Cocktail + Festa</span>
+            <span style={{ fontSize: '20px' }}>🥂</span>
+          </div>
+          <h2 className="card-value">
+            {cocktailPartyStats.checkedIn} <span>/ {cocktailPartyStats.total}</span>
+          </h2>
+          <p className="card-desc">Entraram no evento</p>
+        </motion.div>
+
+        {/* Só Festa - Rose */}
+        <motion.div 
+          onClick={() => setActiveStatsModal('Só Festa')}
+          whileHover={{ y: -5, scale: 1.02, borderColor: 'rgba(251, 113, 133, 0.4)' }}
+          whileTap={{ scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          className="glass-card entradas-stat-card" 
+          style={{
+            background: 'linear-gradient(135deg, rgba(251, 113, 133, 0.08) 0%, rgba(251, 113, 133, 0.02) 100%)',
+            border: '1px solid rgba(251, 113, 133, 0.15)'
+          }}
+        >
+          <div className="card-header">
+            <span className="card-title" style={{ color: '#fb7185' }}>Só Festa</span>
+            <span style={{ fontSize: '20px' }}>🎸</span>
+          </div>
+          <h2 className="card-value">
+            {partyStats.checkedIn} <span>/ {partyStats.total}</span>
           </h2>
           <p className="card-desc">Entraram no evento</p>
         </motion.div>
@@ -1194,7 +1249,12 @@ const EntradasManager = () => {
                     <td style={{ fontWeight: '700' }}>{a.firstName} {a.lastName}</td>
                     <td>
                       <span style={{ 
-                        color: ticket === 'Só Cocktail' ? '#38bdf8' : ticket === 'Cocktail + Jantar' ? '#fb923c' : '#a78bfa',
+                        color: 
+                          ticket === 'Só Cocktail' ? '#38bdf8' : 
+                          ticket === 'Cocktail + Jantar' ? '#fb923c' : 
+                          ticket === 'Cocktail + Festa' ? '#34d399' : 
+                          ticket === 'Só Festa' ? '#fb7185' : 
+                          '#a78bfa',
                         fontWeight: '700',
                         fontSize: '0.85rem'
                       }}>
@@ -1277,7 +1337,12 @@ const EntradasManager = () => {
                 
                 <div className="card-middle">
                   <span style={{ 
-                    color: ticket === 'Só Cocktail' ? '#38bdf8' : ticket === 'Cocktail + Jantar' ? '#fb923c' : '#a78bfa',
+                    color: 
+                      ticket === 'Só Cocktail' ? '#38bdf8' : 
+                      ticket === 'Cocktail + Jantar' ? '#fb923c' : 
+                      ticket === 'Cocktail + Festa' ? '#34d399' : 
+                      ticket === 'Só Festa' ? '#fb7185' : 
+                      '#a78bfa',
                     fontWeight: '700',
                     fontSize: '0.85rem'
                   }}>
@@ -1385,6 +1450,8 @@ const EntradasManager = () => {
                 border: `1px solid ${
                   activeStatsModal === 'Só Cocktail' ? 'rgba(56, 189, 248, 0.3)' : 
                   activeStatsModal === 'Cocktail + Jantar' ? 'rgba(251, 146, 60, 0.3)' : 
+                  activeStatsModal === 'Cocktail + Festa' ? 'rgba(52, 211, 153, 0.3)' :
+                  activeStatsModal === 'Só Festa' ? 'rgba(251, 113, 133, 0.3)' :
                   'rgba(167, 139, 250, 0.3)'
                 }`,
                 borderRadius: '20px',
@@ -1408,6 +1475,8 @@ const EntradasManager = () => {
                 background: `linear-gradient(90deg, ${
                   activeStatsModal === 'Só Cocktail' ? 'rgba(56, 189, 248, 0.05)' : 
                   activeStatsModal === 'Cocktail + Jantar' ? 'rgba(251, 146, 60, 0.05)' : 
+                  activeStatsModal === 'Cocktail + Festa' ? 'rgba(52, 211, 153, 0.05)' :
+                  activeStatsModal === 'Só Festa' ? 'rgba(251, 113, 133, 0.05)' :
                   'rgba(167, 139, 250, 0.05)'
                 } 0%, transparent 100%)`
               }}>
@@ -1419,12 +1488,14 @@ const EntradasManager = () => {
                     color: 
                       activeStatsModal === 'Só Cocktail' ? '#38bdf8' : 
                       activeStatsModal === 'Cocktail + Jantar' ? '#fb923c' : 
+                      activeStatsModal === 'Cocktail + Festa' ? '#34d399' :
+                      activeStatsModal === 'Só Festa' ? '#fb7185' :
                       '#a78bfa',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px'
                   }}>
-                    {activeStatsModal === 'Só Cocktail' ? '🍸' : activeStatsModal === 'Cocktail + Jantar' ? '🍽️' : '👑'} 
+                    {activeStatsModal === 'Só Cocktail' ? '🍸' : activeStatsModal === 'Cocktail + Jantar' ? '🍽️' : activeStatsModal === 'Cocktail + Festa' ? '🥂' : activeStatsModal === 'Só Festa' ? '🎸' : '👑'} 
                     {activeStatsModal} — Presentes
                   </h3>
                   <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)' }}>
@@ -1655,6 +1726,8 @@ const AttendeeManager = () => {
               <select value={newAttendee.ticketType} onChange={e => setNewAttendee({...newAttendee, ticketType: e.target.value})} required>
                 <option value="Só Cocktail">Só Cocktail</option>
                 <option value="Cocktail + Jantar">Cocktail + Jantar</option>
+                <option value="Cocktail + Festa">Cocktail + Festa</option>
+                <option value="Só Festa">Só Festa</option>
                 <option value="All-Access">All-Access</option>
               </select>
             </div>
@@ -1795,7 +1868,7 @@ const PremiosManager = () => {
   const [categorias, setCategorias] = useState([]);
   const [loadingCats, setLoadingCats] = useState(false);
   const [showForm, setShowForm] = useState(false);
-  const [newCat, setNewCat] = useState({ titulo: '', descricao: '', emoji: '🏆', ordem: 1 });
+  const [newCat, setNewCat] = useState({ titulo: '', descricao: '', emoji: '🏆', ordem: 1, tipo: 'livre', opcoes: [] });
   const [rankings, setRankings] = useState({}); // { [catId]: [{nifVotado, nomeVotado, votos}] }
   const [globalRankings, setGlobalRankings] = useState([]);
   const [expandedCat, setExpandedCat] = useState(null);
@@ -1805,7 +1878,7 @@ const PremiosManager = () => {
 
   // Edit category state
   const [editingCatId, setEditingCatId] = useState(null);
-  const [editCatData, setEditCatData] = useState({ titulo: '', descricao: '', emoji: '', ordem: 1 });
+  const [editCatData, setEditCatData] = useState({ titulo: '', descricao: '', emoji: '', ordem: 1, tipo: 'livre', opcoes: [] });
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showEditEmojiPicker, setShowEditEmojiPicker] = useState(false);
 
@@ -1816,12 +1889,18 @@ const PremiosManager = () => {
 
   const handleSaveEdit = async (catId) => {
     if (!editCatData.titulo.trim()) { showToast('⚠️ O título não pode estar vazio.'); return; }
+    if (editCatData.tipo === 'opcoes' && (!editCatData.opcoes || editCatData.opcoes.length === 0)) {
+      showToast('⚠️ Deves adicionar pelo menos uma opção.');
+      return;
+    }
     try {
       await updateDoc(doc(db, 'votacao', selectedSchool, 'categorias', catId), {
         titulo: editCatData.titulo.trim(),
         descricao: editCatData.descricao.trim(),
         emoji: editCatData.emoji,
-        ordem: Number(editCatData.ordem) || 1
+        ordem: Number(editCatData.ordem) || 1,
+        tipo: editCatData.tipo || 'livre',
+        opcoes: editCatData.tipo === 'opcoes' ? (editCatData.opcoes || []) : []
       });
       setEditingCatId(null);
       setShowEditEmojiPicker(false);
@@ -1923,14 +2002,20 @@ const PremiosManager = () => {
   const handleCreateCat = async (e) => {
     e.preventDefault();
     if (!selectedSchool) { showToast('Seleciona uma escola primeiro.'); return; }
+    if (newCat.tipo === 'opcoes' && (!newCat.opcoes || newCat.opcoes.length === 0)) {
+      showToast('⚠️ Deves adicionar pelo menos uma opção.');
+      return;
+    }
     try {
       await addDoc(collection(db, 'votacao', selectedSchool, 'categorias'), {
         ...newCat,
+        tipo: newCat.tipo || 'livre',
+        opcoes: newCat.tipo === 'opcoes' ? (newCat.opcoes || []) : [],
         ordem: Number(newCat.ordem),
         ativa: true,
         mostrarResultados: false,
       });
-      setNewCat({ titulo: '', descricao: '', emoji: '🏆', ordem: 1 });
+      setNewCat({ titulo: '', descricao: '', emoji: '🏆', ordem: 1, tipo: 'livre', opcoes: [] });
       setShowForm(false);
       showToast('✅ Categoria criada!');
     } catch (err) {
@@ -2008,122 +2093,210 @@ const PremiosManager = () => {
             className="glass-card admin-form-card"
             style={{ marginBottom: 28, padding: 28, position: 'relative', zIndex: 10 }}
           >
-            <form onSubmit={handleCreateCat} style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div style={{ flex: '0 0 80px', position: 'relative' }}>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Emoji</label>
-                <button
-                  type="button"
-                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  style={{
-                    width: '100%',
-                    height: '48px',
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 10,
-                    color: 'white',
-                    fontSize: '1.6rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    outline: 'none'
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                >
-                  {newCat.emoji}
-                </button>
-                
-                {showEmojiPicker && (
-                  <>
-                    <div 
-                      onClick={() => setShowEmojiPicker(false)} 
-                      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}
+            <form onSubmit={handleCreateCat} style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                <div style={{ flex: '0 0 80px', position: 'relative' }}>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Emoji</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    style={{
+                      width: '100%',
+                      height: '48px',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: 10,
+                      color: 'white',
+                      fontSize: '1.6rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      outline: 'none'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                  >
+                    {newCat.emoji}
+                  </button>
+                  
+                  {showEmojiPicker && (
+                    <>
+                      <div 
+                        onClick={() => setShowEmojiPicker(false)} 
+                        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }}
+                      />
+                      <div 
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          marginTop: 8,
+                          background: '#18181b',
+                          border: '1px solid rgba(255,255,255,0.15)',
+                          borderRadius: 12,
+                          padding: 12,
+                          zIndex: 1000,
+                          boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.5)',
+                          width: '280px',
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(6, 1fr)',
+                          gap: 8
+                        }}
+                      >
+                        {PRESET_EMOJIS.map(emoji => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => {
+                              setNewCat(prev => ({ ...prev, emoji }));
+                              setShowEmojiPicker(false);
+                            }}
+                            style={{
+                              fontSize: '1.4rem',
+                              background: newCat.emoji === emoji ? 'rgba(255,255,255,0.1)' : 'transparent',
+                              border: 'none',
+                              borderRadius: 8,
+                              padding: '6px',
+                              cursor: 'pointer',
+                              transition: 'background 0.2s',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+                            onMouseLeave={e => e.currentTarget.style.background = newCat.emoji === emoji ? 'rgba(255,255,255,0.1)' : 'transparent'}
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                        
+                        <div style={{ gridColumn: 'span 6', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 8, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', flexShrink: 0 }}>Outro:</span>
+                          <input
+                            type="text"
+                            value={newCat.emoji}
+                            onChange={e => setNewCat({ ...newCat, emoji: e.target.value })}
+                            maxLength={2}
+                            placeholder="Ex: 👑"
+                            style={{
+                              flex: 1,
+                              background: 'rgba(0,0,0,0.2)',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: 6,
+                              padding: '4px 8px',
+                              color: 'white',
+                              fontSize: '0.9rem',
+                              textAlign: 'center',
+                              outline: 'none'
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <div style={{ flex: 2, minWidth: 160 }}>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Título</label>
+                  <input type="text" placeholder="Ex: Mais Popular" value={newCat.titulo} onChange={e => setNewCat({...newCat, titulo: e.target.value})} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: 'white', height: '48px' }} required />
+                </div>
+                <div style={{ flex: 3, minWidth: 200 }}>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Descrição</label>
+                  <input type="text" placeholder="Vota no aluno mais popular..." value={newCat.descricao} onChange={e => setNewCat({...newCat, descricao: e.target.value})} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: 'white', height: '48px' }} />
+                </div>
+                <div style={{ flex: '0 0 80px' }}>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Ordem</label>
+                  <input type="number" min={1} value={newCat.ordem} onChange={e => setNewCat({...newCat, ordem: e.target.value})} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px', color: 'white', height: '48px' }} />
+                </div>
+                <div style={{ flex: '0 0 160px', minWidth: 140 }}>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tipo de Votação</label>
+                  <select
+                    value={newCat.tipo || 'livre'}
+                    onChange={e => setNewCat({ ...newCat, tipo: e.target.value, opcoes: e.target.value === 'opcoes' ? [] : (newCat.opcoes || []) })}
+                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: 'white', height: '48px', outline: 'none' }}
+                  >
+                    <option value="livre" style={{ background: '#18181b', color: '#fff' }}>Livre (Escrever)</option>
+                    <option value="opcoes" style={{ background: '#18181b', color: '#fff' }}>Opções (Lista)</option>
+                  </select>
+                </div>
+              </div>
+
+              {newCat.tipo === 'opcoes' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'rgba(255,255,255,0.02)', padding: 18, borderRadius: 12, border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <label style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Opções para Escolha Múltipla</label>
+                  
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <input 
+                      type="text" 
+                      id="new-option-input"
+                      placeholder="Ex: João Silva ou Opção A..." 
+                      style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: 'white', fontSize: '0.9rem' }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const val = e.target.value.trim();
+                          if (val) {
+                            if (newCat.opcoes?.includes(val)) {
+                              showToast('⚠️ Essa opção já existe.');
+                              return;
+                            }
+                            setNewCat({ ...newCat, opcoes: [...(newCat.opcoes || []), val] });
+                            e.target.value = '';
+                          }
+                        }
+                      }}
                     />
-                    <div 
-                      style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        marginTop: 8,
-                        background: '#18181b',
-                        border: '1px solid rgba(255,255,255,0.15)',
-                        borderRadius: 12,
-                        padding: 12,
-                        zIndex: 1000,
-                        boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5), 0 8px 10px -6px rgba(0,0,0,0.5)',
-                        width: '280px',
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(6, 1fr)',
-                        gap: 8
+                    <button
+                      type="button"
+                      className="btn-premium"
+                      style={{ height: 48, whiteSpace: 'nowrap', padding: '0 20px' }}
+                      onClick={() => {
+                        const input = document.getElementById('new-option-input');
+                        const val = input?.value?.trim();
+                        if (val) {
+                          if (newCat.opcoes?.includes(val)) {
+                            showToast('⚠️ Essa opção já existe.');
+                            return;
+                          }
+                          setNewCat({ ...newCat, opcoes: [...(newCat.opcoes || []), val] });
+                          input.value = '';
+                        }
                       }}
                     >
-                      {PRESET_EMOJIS.map(emoji => (
-                        <button
-                          key={emoji}
-                          type="button"
-                          onClick={() => {
-                            setNewCat(prev => ({ ...prev, emoji }));
-                            setShowEmojiPicker(false);
-                          }}
-                          style={{
-                            fontSize: '1.4rem',
-                            background: newCat.emoji === emoji ? 'rgba(255,255,255,0.1)' : 'transparent',
-                            border: 'none',
-                            borderRadius: 8,
-                            padding: '6px',
-                            cursor: 'pointer',
-                            transition: 'background 0.2s',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
-                          onMouseLeave={e => e.currentTarget.style.background = newCat.emoji === emoji ? 'rgba(255,255,255,0.1)' : 'transparent'}
+                      Adicionar
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                    {(!newCat.opcoes || newCat.opcoes.length === 0) ? (
+                      <span style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>Nenhuma opção adicionada ainda. Adicione pelo menos uma opção.</span>
+                    ) : (
+                      newCat.opcoes.map((opt, idx) => (
+                        <span 
+                          key={idx} 
+                          style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(212, 175, 55, 0.08)', border: '1px solid rgba(212, 175, 55, 0.2)', borderRadius: 8, padding: '6px 12px', fontSize: '0.85rem', color: '#fff', fontWeight: '500' }}
                         >
-                          {emoji}
-                        </button>
-                      ))}
-                      
-                      <div style={{ gridColumn: 'span 6', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 8, marginTop: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', flexShrink: 0 }}>Outro:</span>
-                        <input
-                          type="text"
-                          value={newCat.emoji}
-                          onChange={e => setNewCat({ ...newCat, emoji: e.target.value })}
-                          maxLength={2}
-                          placeholder="Ex: 👑"
-                          style={{
-                            flex: 1,
-                            background: 'rgba(0,0,0,0.2)',
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            borderRadius: 6,
-                            padding: '4px 8px',
-                            color: 'white',
-                            fontSize: '0.9rem',
-                            textAlign: 'center',
-                            outline: 'none'
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </>
-                )}
+                          {opt}
+                          <button
+                            type="button"
+                            style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', fontSize: '1rem', marginLeft: 4 }}
+                            onClick={() => {
+                              setNewCat({ ...newCat, opcoes: newCat.opcoes.filter((_, i) => i !== idx) });
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10 }}>
+                <button type="submit" className="btn-premium" style={{ height: 48, whiteSpace: 'nowrap', padding: '0 28px' }}>Criar Categoria</button>
               </div>
-              <div style={{ flex: 1, minWidth: 160 }}>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Título</label>
-                <input type="text" placeholder="Ex: Mais Popular" value={newCat.titulo} onChange={e => setNewCat({...newCat, titulo: e.target.value})} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: 'white' }} required />
-              </div>
-              <div style={{ flex: 2, minWidth: 200 }}>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Descrição</label>
-                <input type="text" placeholder="Vota no aluno mais popular..." value={newCat.descricao} onChange={e => setNewCat({...newCat, descricao: e.target.value})} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px 14px', color: 'white' }} />
-              </div>
-              <div style={{ flex: '0 0 80px' }}>
-                <label style={{ display: 'block', marginBottom: 6, fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Ordem</label>
-                <input type="number" min={1} value={newCat.ordem} onChange={e => setNewCat({...newCat, ordem: e.target.value})} style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '12px', color: 'white' }} />
-              </div>
-              <button type="submit" className="btn-premium" style={{ height: 48, whiteSpace: 'nowrap' }}>Criar Categoria</button>
             </form>
           </motion.div>
         )}
@@ -2350,14 +2523,118 @@ const PremiosManager = () => {
                                 style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 10px', color: 'rgba(255,255,255,0.6)', fontSize: '0.8rem' }}
                                 placeholder="Descrição"
                               />
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+                                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', minWidth: '40px' }}>Tipo:</span>
+                                <select 
+                                  value={editCatData.tipo || 'livre'} 
+                                  onChange={e => setEditCatData({ ...editCatData, tipo: e.target.value, opcoes: e.target.value === 'opcoes' ? (editCatData.opcoes || []) : [] })}
+                                  style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, padding: '6px 10px', color: 'white', fontSize: '0.8rem', outline: 'none' }}
+                                >
+                                  <option value="livre" style={{ background: '#18181b', color: '#fff' }}>Livre (Texto)</option>
+                                  <option value="opcoes" style={{ background: '#18181b', color: '#fff' }}>Opções (Lista)</option>
+                                </select>
+                              </div>
+                              {editCatData.tipo === 'opcoes' && (
+                                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6, background: 'rgba(255,255,255,0.01)', padding: 10, borderRadius: 8, border: '1px solid rgba(255,255,255,0.03)' }}>
+                                  <div style={{ display: 'flex', gap: 6 }}>
+                                    <input 
+                                      type="text" 
+                                      id={`edit-option-input-${cat.id}`}
+                                      placeholder="Nova opção..." 
+                                      style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: '6px 10px', color: 'white', fontSize: '0.8rem' }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.preventDefault();
+                                          const val = e.target.value.trim();
+                                          if (val) {
+                                            if (editCatData.opcoes?.includes(val)) {
+                                              showToast('⚠️ Essa opção já existe.');
+                                              return;
+                                            }
+                                            setEditCatData({ ...editCatData, opcoes: [...(editCatData.opcoes || []), val] });
+                                            e.target.value = '';
+                                          }
+                                        }
+                                      }}
+                                    />
+                                    <button
+                                      type="button"
+                                      className="btn-premium"
+                                      style={{ height: 'auto', padding: '6px 12px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                                      onClick={() => {
+                                        const input = document.getElementById(`edit-option-input-${cat.id}`);
+                                        const val = input?.value?.trim();
+                                        if (val) {
+                                          if (editCatData.opcoes?.includes(val)) {
+                                            showToast('⚠️ Essa opção já existe.');
+                                            return;
+                                          }
+                                          setEditCatData({ ...editCatData, opcoes: [...(editCatData.opcoes || []), val] });
+                                          input.value = '';
+                                        }
+                                      }}
+                                    >
+                                      Add
+                                    </button>
+                                  </div>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                                    {(!editCatData.opcoes || editCatData.opcoes.length === 0) ? (
+                                      <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>Sem opções ainda.</span>
+                                    ) : (
+                                      editCatData.opcoes.map((opt, idx) => (
+                                        <span 
+                                          key={idx} 
+                                          style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '4px 8px', fontSize: '0.75rem', color: '#fff' }}
+                                        >
+                                          {opt}
+                                          <button
+                                            type="button"
+                                            style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', fontSize: '0.8rem' }}
+                                            onClick={() => {
+                                              setEditCatData({ ...editCatData, opcoes: editCatData.opcoes.filter((_, i) => i !== idx) });
+                                            }}
+                                          >
+                                            ✕
+                                          </button>
+                                        </span>
+                                      ))
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <span style={{ fontSize: '1.4rem' }}>{cat.emoji}</span>
                             <div>
-                              <div style={{ fontWeight: 700 }}>{cat.titulo} <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', fontWeight: 400, marginLeft: 6 }}>#{cat.ordem}</span></div>
-                              <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{cat.descricao}</div>
+                              <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                {cat.titulo} 
+                                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', fontWeight: 400 }}>#{cat.ordem}</span>
+                                <span style={{ 
+                                  fontSize: '0.65rem', 
+                                  background: cat.tipo === 'opcoes' ? 'rgba(212, 175, 55, 0.12)' : 'rgba(255,255,255,0.06)', 
+                                  color: cat.tipo === 'opcoes' ? 'var(--color-gold)' : 'rgba(255,255,255,0.5)', 
+                                  padding: '2px 6px', 
+                                  borderRadius: '4px',
+                                  fontWeight: '600',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: '0.05em'
+                                }}>
+                                  {cat.tipo === 'opcoes' ? 'Opções' : 'Livre'}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>
+                                {cat.descricao}
+                                {cat.tipo === 'opcoes' && cat.opcoes && cat.opcoes.length > 0 && (
+                                  <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                                    <span style={{ color: 'var(--color-gold)', fontSize: '0.7rem', fontWeight: '700', textTransform: 'uppercase', marginRight: 4 }}>Lista:</span>
+                                    {cat.opcoes.map((opt, idx) => (
+                                      <span key={idx} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, padding: '1px 6px', fontSize: '0.7rem', color: '#fff' }}>{opt}</span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         )}
@@ -2412,7 +2689,9 @@ const PremiosManager = () => {
                                   titulo: cat.titulo,
                                   descricao: cat.descricao || '',
                                   emoji: cat.emoji || '🏆',
-                                  ordem: cat.ordem || 1
+                                  ordem: cat.ordem || 1,
+                                  tipo: cat.tipo || 'livre',
+                                  opcoes: cat.opcoes || []
                                 });
                               }}
                               title="Editar"
