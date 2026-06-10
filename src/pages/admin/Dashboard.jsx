@@ -836,8 +836,17 @@ const EntradasManager = () => {
   };
 
   useEffect(() => {
-    // Fetch static schools codes
-    fetchData();
+    // Set up live listener for schools (codes)
+    const qCodes = query(collection(db, "codes"));
+    const unsubscribeCodes = onSnapshot(qCodes, (snapshot) => {
+      const schoolData = [];
+      snapshot.forEach((doc) => {
+        schoolData.push({ id: doc.id, ...doc.data() });
+      });
+      setSchools(schoolData.filter(s => !s.hidden));
+    }, (error) => {
+      console.error("Error loading schools in real-time:", error);
+    });
 
     // Set up live listener for registrations
     setLoading(true);
@@ -855,7 +864,10 @@ const EntradasManager = () => {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      unsubscribeCodes();
+    };
   }, []);
 
   const handleToggleCheckIn = async (attendee) => {
@@ -1545,6 +1557,8 @@ const EntradasManager = () => {
                 flex: 1
               }}>
                 {attendees.filter(a => {
+                  const isSchoolVisible = schools.some(s => s.code === a.schoolCode);
+                  if (!isSchoolVisible) return false;
                   const matchesSchool = !selectedSchool || a.schoolCode === selectedSchool;
                   return matchesSchool && a.checkedIn && getTicketType(a) === activeStatsModal;
                 }).length === 0 ? (
@@ -1560,6 +1574,8 @@ const EntradasManager = () => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {attendees
                       .filter(a => {
+                        const isSchoolVisible = schools.some(s => s.code === a.schoolCode);
+                        if (!isSchoolVisible) return false;
                         const matchesSchool = !selectedSchool || a.schoolCode === selectedSchool;
                         return matchesSchool && a.checkedIn && getTicketType(a) === activeStatsModal;
                       })
