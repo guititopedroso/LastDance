@@ -332,7 +332,7 @@ const parseGuestsFromText = (text) => {
     
     const rest = numMatch[2].trim();
     
-    const match = rest.match(/^(.*?)\s*-\s*(ALL-ACCESS|Apenas Cocktail|Só Cocktail|Cocktail\s*\+\s*Jantar|Cocktail\s*\+\s*Festa|Só Festa)$/i);
+    const match = rest.match(/^(.*?)\s*-\s*(ALL-ACCESS|Apenas Cocktail|Só Cocktail|Cocktail\s*\+\s*Jantar|Cocktail\s*\+\s*Festa|Só Festa|Apenas Festa)$/i);
     if (match) {
       const name = match[1].trim();
       const rawStatus = match[2].trim().toLowerCase();
@@ -343,7 +343,7 @@ const parseGuestsFromText = (text) => {
       } else if (rawStatus.includes('festa') && rawStatus.includes('cocktail')) {
         ticketType = 'Cocktail + Festa';
       } else if (rawStatus.includes('festa')) {
-        ticketType = 'Só Festa';
+        ticketType = 'Apenas Festa';
       } else if (rawStatus.includes('cocktail')) {
         ticketType = 'Só Cocktail';
       } else {
@@ -944,7 +944,7 @@ const EntradasManager = () => {
     if (mod === 0) return 'Só Cocktail';
     if (mod === 1) return 'Cocktail + Jantar';
     if (mod === 2) return 'Cocktail + Festa';
-    if (mod === 3) return 'Só Festa';
+    if (mod === 3) return 'Apenas Festa';
     return 'All-Access';
   };
 
@@ -995,7 +995,7 @@ const EntradasManager = () => {
   const cocktailStats = getStatsForType('Só Cocktail');
   const dinnerStats = getStatsForType('Cocktail + Jantar');
   const cocktailPartyStats = getStatsForType('Cocktail + Festa');
-  const partyStats = getStatsForType('Só Festa');
+  const partyStats = getStatsForType('Apenas Festa');
   const allAccessStats = getStatsForType('All-Access');
 
   return (
@@ -1091,7 +1091,7 @@ const EntradasManager = () => {
                 <option value="Só Cocktail">Só Cocktail</option>
                 <option value="Cocktail + Jantar">Cocktail + Jantar</option>
                 <option value="Cocktail + Festa">Cocktail + Festa</option>
-                <option value="Só Festa">Só Festa</option>
+                <option value="Apenas Festa">Apenas Festa</option>
               </select>
             </div>
             
@@ -1188,9 +1188,9 @@ const EntradasManager = () => {
           <p className="card-desc">Entraram no evento</p>
         </motion.div>
 
-        {/* Só Festa - Rose */}
+        {/* Apenas Festa - Rose */}
         <motion.div 
-          onClick={() => setActiveStatsModal('Só Festa')}
+          onClick={() => setActiveStatsModal('Apenas Festa')}
           whileHover={{ y: -5, scale: 1.02, borderColor: 'rgba(251, 113, 133, 0.4)' }}
           whileTap={{ scale: 0.98 }}
           transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -1201,7 +1201,7 @@ const EntradasManager = () => {
           }}
         >
           <div className="card-header">
-            <span className="card-title" style={{ color: '#fb7185' }}>Só Festa</span>
+            <span className="card-title" style={{ color: '#fb7185' }}>Apenas Festa</span>
             <span style={{ fontSize: '20px' }}>🎸</span>
           </div>
           <h2 className="card-value">
@@ -1294,7 +1294,7 @@ const EntradasManager = () => {
                           ticket === 'Só Cocktail' ? '#38bdf8' : 
                           ticket === 'Cocktail + Jantar' ? '#fb923c' : 
                           ticket === 'Cocktail + Festa' ? '#34d399' : 
-                          ticket === 'Só Festa' ? '#fb7185' : 
+                          ticket === 'Apenas Festa' ? '#fb7185' : 
                           '#a78bfa',
                         fontWeight: '700',
                         fontSize: '0.85rem'
@@ -1382,7 +1382,7 @@ const EntradasManager = () => {
                       ticket === 'Só Cocktail' ? '#38bdf8' : 
                       ticket === 'Cocktail + Jantar' ? '#fb923c' : 
                       ticket === 'Cocktail + Festa' ? '#34d399' : 
-                      ticket === 'Só Festa' ? '#fb7185' : 
+                      ticket === 'Apenas Festa' ? '#fb7185' : 
                       '#a78bfa',
                     fontWeight: '700',
                     fontSize: '0.85rem'
@@ -1492,7 +1492,7 @@ const EntradasManager = () => {
                   activeStatsModal === 'Só Cocktail' ? 'rgba(56, 189, 248, 0.3)' : 
                   activeStatsModal === 'Cocktail + Jantar' ? 'rgba(251, 146, 60, 0.3)' : 
                   activeStatsModal === 'Cocktail + Festa' ? 'rgba(52, 211, 153, 0.3)' :
-                  activeStatsModal === 'Só Festa' ? 'rgba(251, 113, 133, 0.3)' :
+                  activeStatsModal === 'Apenas Festa' ? 'rgba(251, 113, 133, 0.3)' :
                   'rgba(167, 139, 250, 0.3)'
                 }`,
                 borderRadius: '20px',
@@ -1517,7 +1517,7 @@ const EntradasManager = () => {
                   activeStatsModal === 'Só Cocktail' ? 'rgba(56, 189, 248, 0.05)' : 
                   activeStatsModal === 'Cocktail + Jantar' ? 'rgba(251, 146, 60, 0.05)' : 
                   activeStatsModal === 'Cocktail + Festa' ? 'rgba(52, 211, 153, 0.05)' :
-                  activeStatsModal === 'Só Festa' ? 'rgba(251, 113, 133, 0.05)' :
+                  activeStatsModal === 'Apenas Festa' ? 'rgba(251, 113, 133, 0.05)' :
                   'rgba(167, 139, 250, 0.05)'
                 } 0%, transparent 100%)`
               }}>
@@ -1530,13 +1530,13 @@ const EntradasManager = () => {
                       activeStatsModal === 'Só Cocktail' ? '#38bdf8' : 
                       activeStatsModal === 'Cocktail + Jantar' ? '#fb923c' : 
                       activeStatsModal === 'Cocktail + Festa' ? '#34d399' :
-                      activeStatsModal === 'Só Festa' ? '#fb7185' :
+                      activeStatsModal === 'Apenas Festa' ? '#fb7185' :
                       '#a78bfa',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px'
                   }}>
-                    {activeStatsModal === 'Só Cocktail' ? '🍸' : activeStatsModal === 'Cocktail + Jantar' ? '🍽️' : activeStatsModal === 'Cocktail + Festa' ? '🥂' : activeStatsModal === 'Só Festa' ? '🎸' : '👑'} 
+                    {activeStatsModal === 'Só Cocktail' ? '🍸' : activeStatsModal === 'Cocktail + Jantar' ? '🍽️' : activeStatsModal === 'Cocktail + Festa' ? '🥂' : activeStatsModal === 'Apenas Festa' ? '🎸' : '👑'} 
                     {activeStatsModal} — Presentes
                   </h3>
                   <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'rgba(255,255,255,0.4)' }}>
@@ -1776,7 +1776,7 @@ const AttendeeManager = () => {
                 <option value="Só Cocktail">Só Cocktail</option>
                 <option value="Cocktail + Jantar">Cocktail + Jantar</option>
                 <option value="Cocktail + Festa">Cocktail + Festa</option>
-                <option value="Só Festa">Só Festa</option>
+                <option value="Apenas Festa">Apenas Festa</option>
                 <option value="All-Access">All-Access</option>
               </select>
             </div>
