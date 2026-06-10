@@ -53,8 +53,16 @@ const VotarModal = ({ categoria, currentNif, currentName, codigoEscola, onVotar,
     await onVotar(normalizedNif, cleanVotedName);
   };
 
+  const normalizeString = (str) => {
+    if (!str) return '';
+    return str
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  };
+
   const filteredOptions = (categoria.opcoes || []).filter(opt =>
-    opt.toLowerCase().includes(searchQuery.toLowerCase())
+    normalizeString(opt).includes(normalizeString(searchQuery))
   );
 
   return (

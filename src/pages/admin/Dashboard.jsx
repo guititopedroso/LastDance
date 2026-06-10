@@ -827,7 +827,7 @@ const EntradasManager = () => {
   const fetchData = async () => {
     try {
       const schoolData = await getAllCodes(true);
-      setSchools(schoolData);
+      setSchools(schoolData.filter(s => !s.hidden));
       showToast("🔄 Escolas atualizadas.");
     } catch (error) {
       console.error("Error loading schools:", error);
@@ -921,12 +921,24 @@ const EntradasManager = () => {
     return 'All-Access';
   };
 
+  const normalizeString = (str) => {
+    if (!str) return '';
+    return str
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  };
+
   const filteredAttendees = attendees.filter(a => {
+    const isSchoolVisible = schools.some(s => s.code === a.schoolCode);
+    if (!isSchoolVisible) return false;
+
     const matchesSchool = !selectedSchool || a.schoolCode === selectedSchool;
-    const matchesSearch = !searchQuery || 
-      `${a.firstName} ${a.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.phone?.includes(searchQuery);
+    const searchNormalized = normalizeString(searchQuery);
+    const matchesSearch = !searchNormalized || 
+      normalizeString(`${a.firstName} ${a.lastName}`).includes(searchNormalized) ||
+      normalizeString(a.email).includes(searchNormalized) ||
+      (a.phone && a.phone.includes(searchQuery));
     return matchesSchool && matchesSearch && !a.checkedIn;
   });
 
@@ -943,6 +955,8 @@ const EntradasManager = () => {
 
   const getStatsForType = (type) => {
     const typeAttendees = attendees.filter(a => {
+      const isSchoolVisible = schools.some(s => s.code === a.schoolCode);
+      if (!isSchoolVisible) return false;
       const matchesSchool = !selectedSchool || a.schoolCode === selectedSchool;
       return matchesSchool && getTicketType(a) === type;
     });
