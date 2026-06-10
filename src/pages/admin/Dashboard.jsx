@@ -227,11 +227,17 @@ const Overview = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
-      const data = await getAllRegistrations();
+      const [regData, schoolData] = await Promise.all([
+        getAllRegistrations(),
+        getAllCodes(true)
+      ]);
+      const visibleCodes = new Set(schoolData.filter(s => !s.hidden).map(s => s.code));
+      const filteredRegs = regData.filter(a => visibleCodes.has(a.schoolCode));
+      
       setStats({
-        total: data.length,
-        pending: data.filter(a => a.status === 'pending').length,
-        paid: data.filter(a => a.status === 'paid').length
+        total: filteredRegs.length,
+        pending: filteredRegs.filter(a => a.status === 'pending').length,
+        paid: filteredRegs.filter(a => a.status === 'paid').length
       });
     };
     fetchStats();
@@ -818,6 +824,15 @@ const EntradasManager = () => {
       setNewGuest(prev => ({ ...prev, schoolCode: selectedSchool }));
     }
   }, [showAddForm, selectedSchool]);
+
+  useEffect(() => {
+    if (selectedSchool && schools.length > 0) {
+      const exists = schools.some(s => s.code === selectedSchool);
+      if (!exists) {
+        setSelectedSchool('');
+      }
+    }
+  }, [schools, selectedSchool]);
 
   const showToast = (message) => {
     setToast(message);
@@ -1673,8 +1688,12 @@ const AttendeeManager = () => {
       getAllRegistrations(),
       getAllCodes(true)
     ]);
-    setAttendees(regData);
-    setSchools(schoolData);
+    const visibleSchools = schoolData.filter(s => !s.hidden);
+    const visibleCodes = new Set(visibleSchools.map(s => s.code));
+    const filteredAttendees = regData.filter(a => visibleCodes.has(a.schoolCode));
+
+    setAttendees(filteredAttendees);
+    setSchools(visibleSchools);
     setLoading(false);
   };
 
@@ -1941,10 +1960,30 @@ const PremiosManager = () => {
     }
   };
 
-  // Load school codes
+  // Load school codes in real-time
   useEffect(() => {
-    getAllCodes(true).then(data => setSchools(data));
+    const qCodes = query(collection(db, "codes"));
+    const unsubscribeCodes = onSnapshot(qCodes, (snapshot) => {
+      const schoolData = [];
+      snapshot.forEach((doc) => {
+        schoolData.push({ id: doc.id, ...doc.data() });
+      });
+      setSchools(schoolData.filter(s => !s.hidden));
+    }, (error) => {
+      console.error("Error with snapshot listener for schools in PremiosManager:", error);
+    });
+
+    return () => unsubscribeCodes();
   }, []);
+
+  useEffect(() => {
+    if (selectedSchool && schools.length > 0) {
+      const exists = schools.some(s => s.code === selectedSchool);
+      if (!exists) {
+        setSelectedSchool('');
+      }
+    }
+  }, [schools, selectedSchool]);
 
   // Real-time categories listener
   useEffect(() => {

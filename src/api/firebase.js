@@ -37,7 +37,9 @@ export const validateSchoolCode = async (code) => {
     const q = query(collection(db, "codes"), where("code", "==", code.toUpperCase()));
     const querySnapshot = await getDocs(q);
     if (querySnapshot.empty) return null;
-    return { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() };
+    const schoolData = querySnapshot.docs[0].data();
+    if (schoolData.hidden) return null;
+    return { id: querySnapshot.docs[0].id, ...schoolData };
   } catch (error) {
     console.error("Error validating code:", error);
     return null;
@@ -77,6 +79,13 @@ export const getStudentByNIF = async (nif) => {
 
 export const getStudentByNameAndSchool = async (fullName, schoolCode) => {
   try {
+    // Check if the school is hidden
+    const codesSnapshot = await getDocs(collection(db, "codes"));
+    const school = codesSnapshot.docs.map(doc => doc.data()).find(s => s.code === schoolCode.toUpperCase());
+    if (!school || school.hidden) {
+      return null;
+    }
+
     const q = query(collection(db, "registrations"), where("schoolCode", "==", schoolCode.toUpperCase()));
     const querySnapshot = await getDocs(q);
     const cleanSearchName = fullName.trim().toLowerCase();
