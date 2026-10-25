@@ -126,6 +126,12 @@ export function Footer() {
           <span>
             {BRAND.phone} · {BRAND.email}
           </span>
+          <span className="powered">
+            Powered by{' '}
+            <a href="https://azmar.pt" target="_blank" rel="noopener">
+              AZMAR
+            </a>
+          </span>
         </div>
       </div>
     </footer>
