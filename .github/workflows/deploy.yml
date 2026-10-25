@@ -1,0 +1,55 @@
+# Publicação automática na Hostinger.
+#
+# Cada push para o ramo main:
+#   1. o GitHub compila o site (npm run build → pasta dist, já com a API PHP em dist/api);
+#   2. põe o resultado no ramo "deploy" (só a versão pronta, sem código-fonte);
+#   3. a Hostinger (hPanel → Avançado → Git, ramo "deploy", deploy automático) puxa esse ramo para o public_html.
+#
+# Pushes para outros ramos (ex.: plataforma-nova) só compilam, para confirmar que não há erros; não publicam nada.
+name: Publicar
+
+on:
+  push:
+    branches: [main, plataforma-nova]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publicar
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Compilar (site + API)
+        run: npm run build
+
+      - name: Confirmar que nenhum segredo vai no pacote
+        run: |
+          if find dist -name 'config.php' -o -name 'lastdance-config.php' | grep -q .; then
+            echo "Encontrado um ficheiro de configuração em dist/. Publicação cancelada."; exit 1
+          fi
+
+      - name: Publicar no ramo deploy
+        if: github.ref == 'refs/heads/main'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: deploy
+          publish_dir: ./dist
+          force_orphan: true
+          enable_jekyll: true
+          commit_message: 'Publicar'

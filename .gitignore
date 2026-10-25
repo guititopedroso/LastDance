@@ -1,0 +1,15 @@
+node_modules
+dist
+
+# Segredos: nunca no Git
+api/config.php
+lastdance-config.php
+.env.local
+.env.*.local
+
+# Ficheiros locais
+*.sqlite
+*.log
+tsconfig.tsbuildinfo
+.claude/
+.DS_Store

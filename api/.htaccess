@@ -1,0 +1,9 @@
+Options -Indexes
+
+# Ficheiros internos: nunca acessíveis pela internet
+<FilesMatch "^(lib\.php|config\.php|config\.example\.php|schema\.sql)$">
+  Require all denied
+</FilesMatch>
+
+# Passa o cabeçalho de sessão ao PHP
+SetEnvIf X-Auth-Token "(.*)" HTTP_X_AUTH_TOKEN=$1
