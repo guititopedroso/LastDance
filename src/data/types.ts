@@ -24,6 +24,8 @@ export interface User {
   eventId?: string
   /** Staff: eventos a que tem acesso. Vazio = todos. */
   staffEventIds?: string[]
+  /** Telemóvel (o aluno vê o do promotor chefe do seu evento) */
+  phone?: string
 }
 
 export type Category = '12' | '9' | 'uni' | 'outro'
@@ -52,6 +54,8 @@ export interface Award {
   name: string
   /** null = qualquer participante com tudo pago */
   eligible: string[] | null
+  /** Com eligible = null: todos menos estes */
+  excluded?: string[]
   winnerId?: string
 }
 
@@ -62,6 +66,19 @@ export interface Table {
 }
 
 export type VotingMode = 'auto' | 'open' | 'closed' | 'none'
+
+/** Modalidade (ex.: Completo, Só welcome drink, Só jantar): substitui o preço base. */
+export interface Modality {
+  id: string
+  name: string
+  price: number
+}
+/** Extra opcional (ex.: after-party, pack de fotografias): soma ao preço. */
+export interface Extra {
+  id: string
+  name: string
+  price: number
+}
 
 export interface LDEvent {
   id: string
@@ -88,18 +105,29 @@ export interface LDEvent {
   awards: Award[]
   announced: boolean
   tables: Table[]
+  /** Vazio = preço único (soma das prestações) */
+  modalities?: Modality[]
+  extras?: Extra[]
+  /** Tipos que se podem inscrever sozinhos com o código (os outros só a organização adiciona) */
+  signupTypes?: ParticipantType[]
 }
 
-export type ParticipantType = 'finalista' | 'nao_finalista' | 'externo'
+export type ParticipantType = 'finalista' | 'nao_finalista' | 'externo' | 'professor' | 'convidado'
+export const PTYPES: ParticipantType[] = ['finalista', 'nao_finalista', 'externo', 'professor', 'convidado']
+export const DEFAULT_SIGNUP_TYPES: ParticipantType[] = ['finalista', 'nao_finalista', 'externo']
 export const PTYPE_LABEL: Record<ParticipantType, string> = {
   finalista: 'Finalista',
   nao_finalista: 'Não finalista',
   externo: 'Externo',
+  professor: 'Professor',
+  convidado: 'Convidado',
 }
 export const PTYPE_LONG: Record<ParticipantType, string> = {
   finalista: 'Finalista',
   nao_finalista: 'Não finalista',
   externo: 'Aluno externo/acompanhante',
+  professor: 'Professor',
+  convidado: 'Convidado / família',
 }
 
 export const DIETS = ['Nenhuma', 'Vegetariano', 'Vegan', 'Alérgico à lactose', 'Celíaco', 'Outra'] as const
@@ -111,8 +139,8 @@ export interface Payment {
   /** id do utilizador que recebeu; null = pago antes do registo */
   receivedBy: string | null
   at: string
-  /** adjust = diferença perdoada */
-  kind: 'payment' | 'adjust'
+  /** adjust = diferença perdoada · refund = devolução (installment -1) */
+  kind: 'payment' | 'adjust' | 'refund'
 }
 
 export interface Participant {
@@ -135,6 +163,19 @@ export interface Participant {
   enteredAt?: string
   enteredBy?: string
   qr: string
+  /** 9.º ano: encarregado de educação */
+  guardianName?: string
+  guardianPhone?: string
+  modalityId?: string
+  extras?: string[]
+  /** Valor de cada prestação desta pessoa, quando difere do evento (modalidade/extras) */
+  customAmounts?: number[]
+  cancelledAt?: string
+  cancelReason?: string
+  /** Valor a devolver na desistência */
+  refundDue?: number
+  /** Quem adicionou à mão (vazio = inscreveu-se sozinho) */
+  addedBy?: string
 }
 
 export interface Vote {

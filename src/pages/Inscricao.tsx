@@ -3,9 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import { BackLink, PasswordInput } from '../components/forms'
 import { Icon } from '../components/icons'
 import { Logo, Modal } from '../components/ui'
-import { eur, eventPrice, eventWhen } from '../data/logic'
+import { eur, eventPrice, eventWhen, personPrice } from '../data/logic'
 import { API_MODE, findEventByCode, registerParticipant } from '../data/store'
-import { DIETS, PTYPE_LONG, type LDEvent, type ParticipantType } from '../data/types'
+import { DEFAULT_SIGNUP_TYPES, DIETS, PTYPE_LONG, type LDEvent, type ParticipantType } from '../data/types'
 
 export default function Inscricao() {
   const nav = useNavigate()
@@ -14,7 +14,9 @@ export default function Inscricao() {
   const [ev, setEv] = useState<LDEvent | null>(null)
   const [err, setErr] = useState('')
   const [privacy, setPrivacy] = useState(false)
-  const [f, setF] = useState({ name: '', birth: '', phone: '', email: '', type: '' as ParticipantType | '', turma: '', password: '', password2: '', diet: '', health: '', consent: false })
+  const [f, setF] = useState({ name: '', birth: '', phone: '', email: '', type: '' as ParticipantType | '', turma: '', password: '', password2: '', diet: '', health: '', consent: false, guardianName: '', guardianPhone: '' })
+  const [mod, setMod] = useState('')
+  const [ext, setExt] = useState<string[]>([])
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setF({ ...f, [k]: e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value })
 
@@ -53,6 +55,10 @@ export default function Inscricao() {
         password: f.password,
         diet: f.diet,
         health: f.health || undefined,
+        guardianName: f.guardianName.trim() || undefined,
+        guardianPhone: f.guardianPhone.trim() || undefined,
+        modalityId: mod || undefined,
+        extras: ext,
       })
       nav('/gestao?novo=1')
     } catch (x) {
@@ -110,7 +116,9 @@ export default function Inscricao() {
                   {eventWhen(ev)} · {ev.location}
                 </div>
                 <div className="small gold" style={{ fontWeight: 600 }}>
-                  {eur(eventPrice(ev))} em {ev.installments.length} prestações de {ev.installments.map((i) => eur(i.amount)).join(' + ')}
+                  {ev.modalities?.length || ev.extras?.length
+                    ? `A partir de ${eur(Math.min(eventPrice(ev), ...(ev.modalities ?? []).map((m) => m.price)))} em ${ev.installments.length} prestações`
+                    : `${eur(eventPrice(ev))} em ${ev.installments.length} prestações de ${ev.installments.map((i) => eur(i.amount)).join(' + ')}`}
                 </div>
               </div>
             </div>
@@ -141,7 +149,7 @@ export default function Inscricao() {
                   <label>Tipo de participante *</label>
                   <select className="input" required value={f.type} onChange={set('type')}>
                     <option value="">Escolher</option>
-                    {(Object.keys(PTYPE_LONG) as ParticipantType[]).map((t) => (
+                    {(ev.signupTypes?.length ? ev.signupTypes : DEFAULT_SIGNUP_TYPES).map((t) => (
                       <option key={t} value={t}>
                         {PTYPE_LONG[t]}
                       </option>
@@ -179,6 +187,47 @@ export default function Inscricao() {
 
             <div className="form-section stack">
               <h3>Informações complementares</h3>
+              {ev.category === '9' && (
+                <div className="grid-2">
+                  <div className="field">
+                    <label>Nome do encarregado de educação *</label>
+                    <input className="input" required autoComplete="off" value={f.guardianName} onChange={set('guardianName')} />
+                  </div>
+                  <div className="field">
+                    <label>Telefone do encarregado de educação *</label>
+                    <input className="input" type="tel" inputMode="tel" required pattern="[0-9 +]{9,}" value={f.guardianPhone} onChange={set('guardianPhone')} />
+                  </div>
+                </div>
+              )}
+              {!!ev.modalities?.length && (
+                <div className="field">
+                  <label>Modalidade *</label>
+                  <select className="input" value={mod} onChange={(e) => setMod(e.target.value)}>
+                    <option value="">Completo · {eur(eventPrice(ev))}</option>
+                    {ev.modalities.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} · {eur(m.price)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {!!ev.extras?.length && (
+                <div className="field">
+                  <label>Extras (opcional)</label>
+                  {ev.extras.map((x) => (
+                    <label key={x.id} className="check">
+                      <input type="checkbox" checked={ext.includes(x.id)} onChange={(e) => setExt(e.target.checked ? [...ext, x.id] : ext.filter((y) => y !== x.id))} />
+                      {x.name} (+{eur(x.price)})
+                    </label>
+                  ))}
+                </div>
+              )}
+              {(!!ev.modalities?.length || !!ev.extras?.length) && (
+                <div className="alert alert-info small">
+                  Total: <b>{eur(personPrice(ev, mod || undefined, ext))}</b> em {ev.installments.length} prestações. Podes mudar a modalidade e os extras mais tarde, na tua área.
+                </div>
+              )}
               <div className="field">
                 <label>Restrições alimentares *</label>
                 <select className="input" required value={f.diet} onChange={set('diet')}>

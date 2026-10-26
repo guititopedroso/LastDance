@@ -1,25 +1,61 @@
 import { useMemo, useState } from 'react'
-import { dateLong, dateShort, dateTime, eur, eventPrice, exportCSV, fullyPaid, instStatus, missing, normalize, ordinal, paidFor, totalPaid } from '../data/logic'
+import {
+  cashIn,
+  dateLong,
+  dateShort,
+  dateTime,
+  eur,
+  exportCSV,
+  fullyPaid,
+  instAmount,
+  instStatus,
+  isCancelled,
+  missing,
+  normalize,
+  ordinal,
+  paidFor,
+  personPrice,
+  recalcAmounts,
+  refundPending,
+  refunded,
+  totalDue,
+  totalPaid,
+} from '../data/logic'
 import { uid } from '../data/seed'
 import { update, useDB } from '../data/store'
-import { DIETS, PTYPE_LABEL, PTYPE_LONG, type LDEvent, type Participant, type ParticipantType, type User } from '../data/types'
+import { DIETS, PTYPES, PTYPE_LABEL, PTYPE_LONG, type LDEvent, type Participant, type ParticipantType, type User } from '../data/types'
 import { Modal, StatusPill, newPassword, toast } from './ui'
 
 export interface Perms {
   receive: boolean
   edit: boolean
   admin: boolean
+  add: boolean
 }
 
 export const permsFor = (u: User): Perms => ({
   receive: ['admin', 'promotor_chefe', 'promotor'].includes(u.role),
   edit: ['admin', 'promotor_chefe'].includes(u.role),
   admin: u.role === 'admin',
+  add: ['admin', 'promotor_chefe', 'promotor'].includes(u.role),
 })
 
-type PayFilter = 'all' | 'missing' | 'paid' | 'offer'
+type PayFilter = 'all' | 'missing' | 'paid' | 'offer' | 'cancelled'
 
-export function Registrations({ participants, user, showEvent, exportName }: { participants: Participant[]; user: User; showEvent?: boolean; exportName: string }) {
+export function Registrations({
+  participants,
+  user,
+  showEvent,
+  exportName,
+  eventId,
+}: {
+  participants: Participant[]
+  user: User
+  showEvent?: boolean
+  exportName: string
+  /** Quando é a lista de um evento: permite adicionar pessoas à mão */
+  eventId?: string
+}) {
   const db = useDB()
   const perms = permsFor(user)
   const evById = useMemo(() => new Map(db.events.map((e) => [e.id, e])), [db.events])
@@ -33,14 +69,16 @@ export function Registrations({ participants, user, showEvent, exportName }: { p
   const [page, setPage] = useState(0)
   const [payFor, setPayFor] = useState<string | null>(null)
   const [ficha, setFicha] = useState<string | null>(null)
+  const [adding, setAdding] = useState(false)
 
+  const active = useMemo(() => participants.filter((p) => !isCancelled(p)), [participants])
   const classes = useMemo(() => [...new Set(participants.map((p) => p.turma).filter(Boolean) as string[])].sort(), [participants])
   const dietCounts = useMemo(() => {
     const m = new Map<string, number>()
-    participants.forEach((p) => p.diet !== 'Nenhuma' && m.set(p.diet, (m.get(p.diet) ?? 0) + 1))
+    active.forEach((p) => p.diet !== 'Nenhuma' && m.set(p.diet, (m.get(p.diet) ?? 0) + 1))
     return [...m.entries()].sort((a, b) => b[1] - a[1])
-  }, [participants])
-  const typeCounts = (t: ParticipantType) => participants.filter((p) => p.type === t).length
+  }, [active])
+  const typeCounts = (t: ParticipantType) => active.filter((p) => p.type === t).length
 
   const base = useMemo(() => {
     const nq = normalize(q)
@@ -54,9 +92,11 @@ export function Registrations({ participants, user, showEvent, exportName }: { p
   }, [participants, q, type, turma, diet])
 
   const payCounts = useMemo(() => {
-    const c = { all: base.length, missing: 0, paid: 0, offer: 0 }
+    const c = { all: 0, missing: 0, paid: 0, offer: 0, cancelled: 0 }
     base.forEach((p) => {
       const ev = evById.get(p.eventId)!
+      if (isCancelled(p)) return void c.cancelled++
+      c.all++
       if (p.offer) c.offer++
       else if (fullyPaid(p, ev)) c.paid++
       else c.missing++
@@ -67,6 +107,8 @@ export function Registrations({ participants, user, showEvent, exportName }: { p
   const rows = useMemo(() => {
     const r = base.filter((p) => {
       const ev = evById.get(p.eventId)!
+      if (pay === 'cancelled') return isCancelled(p)
+      if (isCancelled(p)) return false
       if (pay === 'offer') return p.offer
       if (pay === 'paid') return !p.offer && fullyPaid(p, ev)
       if (pay === 'missing') return !p.offer && !fullyPaid(p, ev)
@@ -85,27 +127,26 @@ export function Registrations({ participants, user, showEvent, exportName }: { p
   const cur = Math.min(page, pages - 1)
   const shown = rows.slice(cur * pageSize, cur * pageSize + pageSize)
 
+  const money = (v: number) => v.toFixed(2).replace('.', ',')
   const doExport = () => {
     const maxInst = Math.max(...rows.map((p) => evById.get(p.eventId)!.installments.length), 0)
     exportCSV(exportName, [
-      ['Nome', 'Evento', 'Tipo', 'Turma', 'Email', 'Telemóvel', 'Nascimento', 'Alimentação', 'Saúde', 'Mesa', 'Oferta', ...Array.from({ length: maxInst }, (_, i) => `${ordinal(i)} prestação`), 'Pago', 'Em falta', 'Entrou'],
+      [
+        'Nome', 'Evento', 'Tipo', 'Turma', 'Email', 'Telemóvel', 'Nascimento', 'Encarregado de educação', 'Telefone do encarregado', 'Alimentação', 'Saúde', 'Modalidade', 'Extras', 'Mesa', 'Oferta', 'Estado',
+        ...Array.from({ length: maxInst }, (_, i) => `${ordinal(i)} prestação`),
+        'Total', 'Pago', 'Em falta', 'Devolvido', 'Entrou',
+      ],
       ...rows.map((p) => {
         const ev = evById.get(p.eventId)!
         return [
-          p.name,
-          ev.name,
-          PTYPE_LONG[p.type],
-          p.turma ?? '',
-          p.email,
-          p.phone,
-          p.birth,
-          p.diet,
-          p.health ?? '',
+          p.name, ev.name, PTYPE_LONG[p.type], p.turma ?? '', p.email, p.phone, p.birth, p.guardianName ?? '', p.guardianPhone ?? '', p.diet, p.health ?? '',
+          ev.modalities?.find((m) => m.id === p.modalityId)?.name ?? '',
+          (p.extras ?? []).map((x) => ev.extras?.find((e) => e.id === x)?.name ?? x).join(', '),
           ev.tables.find((t) => t.id === p.tableId)?.name ?? '',
           p.offer ? 'Sim' : '',
-          ...Array.from({ length: maxInst }, (_, i) => (i < ev.installments.length ? paidFor(p, i).toFixed(2).replace('.', ',') : '')),
-          totalPaid(p).toFixed(2).replace('.', ','),
-          missing(p, ev).toFixed(2).replace('.', ','),
+          isCancelled(p) ? `Cancelado ${dateShort(p.cancelledAt!)}` : 'Ativo',
+          ...Array.from({ length: maxInst }, (_, i) => (i < ev.installments.length ? money(paidFor(p, i)) : '')),
+          money(totalDue(p, ev)), money(totalPaid(p)), money(missing(p, ev)), money(refunded(p)),
           p.enteredAt ? dateTime(p.enteredAt) : '',
         ]
       }),
@@ -129,9 +170,11 @@ export function Registrations({ participants, user, showEvent, exportName }: { p
         />
         <select className="input" value={type} onChange={(e) => (setType(e.target.value as ParticipantType | ''), reset())}>
           <option value="">Todos os tipos</option>
-          <option value="finalista">Finalistas ({typeCounts('finalista')})</option>
-          <option value="nao_finalista">Não finalistas ({typeCounts('nao_finalista')})</option>
-          <option value="externo">Externos / acompanhantes ({typeCounts('externo')})</option>
+          {PTYPES.filter((t) => typeCounts(t) > 0 || t === 'finalista').map((t) => (
+            <option key={t} value={t}>
+              {PTYPE_LONG[t]} ({typeCounts(t)})
+            </option>
+          ))}
         </select>
         {classes.length > 0 ? (
           <select className="input" value={turma} onChange={(e) => (setTurma(e.target.value), reset())}>
@@ -168,16 +211,26 @@ export function Registrations({ participants, user, showEvent, exportName }: { p
               ['missing', 'Em falta'],
               ['paid', 'Tudo pago'],
               ['offer', 'Ofertas'],
+              ['cancelled', 'Cancelados'],
             ] as const
-          ).map(([id, l]) => (
-            <button key={id} className={`chip ${pay === id ? 'on' : ''}`} onClick={() => (setPay(id), reset())}>
-              {l} <span className="count">{payCounts[id]}</span>
-            </button>
-          ))}
+          ).map(([id, l]) =>
+            id === 'cancelled' && !payCounts.cancelled ? null : (
+              <button key={id} className={`chip ${pay === id ? 'on' : ''}`} onClick={() => (setPay(id), reset())}>
+                {l} <span className="count">{payCounts[id]}</span>
+              </button>
+            ),
+          )}
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={doExport}>
-          ⬇ Exportar para Excel
-        </button>
+        <div className="row" style={{ gap: 8 }}>
+          {eventId && perms.add && (
+            <button className="btn btn-gold btn-sm" onClick={() => setAdding(true)}>
+              + Adicionar pessoa
+            </button>
+          )}
+          <button className="btn btn-ghost btn-sm" onClick={doExport}>
+            ⬇ Exportar para Excel
+          </button>
+        </div>
       </div>
 
       {dietCounts.length > 0 && (
@@ -188,7 +241,7 @@ export function Registrations({ participants, user, showEvent, exportName }: { p
               {d} · {n}
             </button>
           ))}
-          <span className="muted">{participants.filter((p) => p.diet === 'Nenhuma').length} sem restrições</span>
+          <span className="muted">{active.filter((p) => p.diet === 'Nenhuma').length} sem restrições</span>
         </div>
       )}
 
@@ -206,8 +259,9 @@ export function Registrations({ participants, user, showEvent, exportName }: { p
           <tbody>
             {shown.map((p) => {
               const ev = evById.get(p.eventId)!
+              const cancelled = isCancelled(p)
               return (
-                <tr key={p.id}>
+                <tr key={p.id} style={cancelled ? { opacity: 0.7 } : undefined}>
                   <td>
                     <b>{p.name}</b>
                     <div className="small muted">
@@ -215,18 +269,25 @@ export function Registrations({ participants, user, showEvent, exportName }: { p
                       {p.turma ? ` · ${p.turma}` : ''}
                       {showEvent ? ` · ${ev.name}` : ''}
                       {p.enteredAt ? ' · ✓ entrou' : ''}
+                      {(p.extras?.length ?? 0) > 0 ? ` · +${p.extras!.length} extra(s)` : ''}
                     </div>
                   </td>
                   <td className="hide-mobile small">{p.diet === 'Nenhuma' ? '—' : p.diet}</td>
                   <td className="hide-mobile small">{ev.tables.find((t) => t.id === p.tableId)?.name ?? <span className="muted">Sem mesa</span>}</td>
                   <td>
                     <div className="pills">
-                      {p.offer ? <StatusPill s="offer" /> : ev.installments.map((_, i) => <StatusPill key={i} s={instStatus(p, ev, i)} label={ordinal(i)} />)}
+                      {cancelled ? (
+                        <StatusPill s="overdue" label={refundPending(p) > 0 ? `Cancelado · devolver ${eur(refundPending(p))}` : 'Cancelado'} />
+                      ) : p.offer ? (
+                        <StatusPill s="offer" />
+                      ) : (
+                        ev.installments.map((_, i) => <StatusPill key={i} s={instStatus(p, ev, i)} label={ordinal(i)} />)
+                      )}
                     </div>
                   </td>
                   <td className="num">
                     <div className="row" style={{ gap: 6, justifyContent: 'flex-end', flexWrap: 'nowrap' }}>
-                      {perms.receive && !p.offer && (
+                      {perms.receive && !p.offer && !cancelled && (
                         <button className="btn btn-gold btn-sm" title="Receber pagamento" onClick={() => setPayFor(p.id)}>
                           €
                         </button>
@@ -275,9 +336,12 @@ export function Registrations({ participants, user, showEvent, exportName }: { p
 
       {payFor && <PaymentModal pid={payFor} user={user} onClose={() => setPayFor(null)} />}
       {ficha && <FichaModal pid={ficha} user={user} onClose={() => setFicha(null)} onPay={() => (setFicha(null), setPayFor(ficha))} />}
+      {adding && eventId && <AddPersonModal eventId={eventId} user={user} onClose={() => setAdding(false)} />}
     </div>
   )
 }
+
+// ---------- Receber pagamento ----------
 
 export function PaymentModal({ pid, user, onClose }: { pid: string; user: User; onClose: () => void }) {
   const db = useDB()
@@ -286,25 +350,29 @@ export function PaymentModal({ pid, user, onClose }: { pid: string; user: User; 
   const firstOpen = ev.installments.findIndex((_, i) => instStatus(p, ev, i) !== 'paid')
   const [idx, setIdx] = useState(firstOpen < 0 ? 0 : firstOpen)
   const inst = ev.installments[idx]
+  const amount = instAmount(p, ev, idx)
   const paid = paidFor(p, idx)
-  const left = Math.max(0, inst.amount - paid)
+  const left = Math.max(0, amount - paid)
   const [value, setValue] = useState(left.toFixed(2).replace('.', ','))
   const perms = permsFor(user)
   const name = (id: string | null) => (id ? db.users.find((u) => u.id === id)?.name ?? '—' : null)
 
   const choose = (i: number) => {
     setIdx(i)
-    const l = Math.max(0, ev.installments[i].amount - paidFor(p, i))
+    const l = Math.max(0, instAmount(p, ev, i) - paidFor(p, i))
     setValue(l.toFixed(2).replace('.', ','))
   }
 
-  const register = (kind: 'payment' | 'adjust', amount: number) => {
+  const register = (kind: 'payment' | 'adjust', amt: number) => {
     update((d) => {
       d.participants
         .find((x) => x.id === pid)!
-        .payments.push({ id: 'pg' + uid(), installment: idx, amount: Math.round(amount * 100) / 100, receivedBy: user.id, at: new Date().toISOString(), kind })
+        .payments.push({ id: 'pg' + uid(), installment: idx, amount: Math.round(amt * 100) / 100, receivedBy: user.id, at: new Date().toISOString(), kind })
     })
-    toast(kind === 'adjust' ? 'Diferença acertada.' : `Registado ${eur(amount)} na ${ordinal(idx)} prestação.`)
+    toast(kind === 'adjust' ? 'Diferença acertada.' : `Registado ${eur(amt)} na ${ordinal(idx)} prestação.`)
+    // Passa sozinho para a prestação seguinte que falte
+    const next = ev.installments.findIndex((_, i) => i > idx && paidFor(p, i) < instAmount(p, ev, i) - 0.001)
+    if (kind === 'payment' && amt >= left - 0.001 && next >= 0) choose(next)
   }
 
   const num = parseFloat(value.replace(',', '.')) || 0
@@ -314,13 +382,13 @@ export function PaymentModal({ pid, user, onClose }: { pid: string; user: User; 
     <Modal onClose={onClose}>
       <h3>Receber pagamento</h3>
       <p className="small muted">
-        {p.name} · {eur(totalPaid(p))} de {eur(eventPrice(ev))}
+        {p.name} · {eur(totalPaid(p))} de {eur(totalDue(p, ev))}
         {missing(p, ev) > 0 && ` · faltam ${eur(missing(p, ev))}`}
       </p>
       <div className="chips" style={{ margin: '16px 0' }}>
-        {ev.installments.map((it, i) => (
+        {ev.installments.map((_, i) => (
           <button key={i} className={`chip ${i === idx ? 'on' : ''}`} onClick={() => choose(i)}>
-            {ordinal(i)} · {eur(it.amount)} {instStatus(p, ev, i) === 'paid' && '✓'}
+            {ordinal(i)} · {eur(instAmount(p, ev, i))} {instStatus(p, ev, i) === 'paid' && '✓'}
           </button>
         ))}
       </div>
@@ -329,7 +397,7 @@ export function PaymentModal({ pid, user, onClose }: { pid: string; user: User; 
       ) : (
         <div className="stack">
           <p className="small muted">
-            Valor da prestação {eur(inst.amount)} · já recebido {eur(paid)} · em falta {eur(left)}
+            Valor da prestação {eur(amount)} · já recebido {eur(paid)} · em falta {eur(left)}
             {inst.due && ` · até ${dateShort(inst.due)}`}
           </p>
           <div className="field">
@@ -346,7 +414,7 @@ export function PaymentModal({ pid, user, onClose }: { pid: string; user: User; 
               </button>
             )}
             <button className="btn btn-ghost" onClick={onClose}>
-              Cancelar
+              Fechar
             </button>
           </div>
         </div>
@@ -389,23 +457,95 @@ export function PaymentModal({ pid, user, onClose }: { pid: string; user: User; 
   )
 }
 
+// ---------- Modalidade e extras (ficha e área do aluno) ----------
+
+export function ChoicesEditor({ p, ev, onSave, onCancel }: { p: Participant; ev: LDEvent; onSave: (m?: string, x?: string[]) => void; onCancel: () => void }) {
+  const [mod, setMod] = useState(p.modalityId ?? '')
+  const [ext, setExt] = useState<string[]>(p.extras ?? [])
+  const preview = recalcAmounts(p, ev, mod || undefined, ext) ?? ev.installments.map((i) => i.amount)
+  return (
+    <div className="stack">
+      {!!ev.modalities?.length && (
+        <div className="field">
+          <label>Modalidade</label>
+          <select className="input" value={mod} onChange={(e) => setMod(e.target.value)}>
+            <option value="">Completo · {eur(ev.installments.reduce((s, i) => s + i.amount, 0))}</option>
+            {ev.modalities.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name} · {eur(m.price)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {!!ev.extras?.length && (
+        <div className="field">
+          <label>Extras</label>
+          {ev.extras.map((x) => (
+            <label key={x.id} className="check">
+              <input type="checkbox" checked={ext.includes(x.id)} onChange={(e) => setExt(e.target.checked ? [...ext, x.id] : ext.filter((y) => y !== x.id))} />
+              {x.name} (+{eur(x.price)})
+            </label>
+          ))}
+        </div>
+      )}
+      <div className="alert alert-info small">
+        Total {eur(personPrice(ev, mod || undefined, ext))} · prestações: {preview.map((v, i) => `${ordinal(i)} ${eur(v)}`).join(' · ')}
+      </div>
+      <div className="row">
+        <button className="btn btn-gold btn-sm" onClick={() => onSave(mod || undefined, ext)}>
+          Guardar escolha
+        </button>
+        <button className="btn btn-ghost btn-sm" onClick={onCancel}>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  )
+}
+
+export function applyChoices(pid: string, modalityId: string | undefined, extras: string[]) {
+  update((d) => {
+    const x = d.participants.find((y) => y.id === pid)!
+    const ev = d.events.find((e) => e.id === x.eventId)!
+    x.customAmounts = recalcAmounts(x, ev, modalityId, extras)
+    x.modalityId = modalityId
+    x.extras = extras.length ? extras : undefined
+  })
+}
+
+// ---------- Ficha ----------
+
 export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: User; onClose: () => void; onPay: () => void }) {
   const db = useDB()
   const p = db.participants.find((x) => x.id === pid)
   const perms = permsFor(user)
-  const [editing, setEditing] = useState(false)
+  const [mode, setMode] = useState<'view' | 'edit' | 'choices' | 'cancel'>('view')
   const [newPass, setNewPass] = useState<string | null>(null)
-  const [f, setF] = useState(() => (p ? { name: p.name, email: p.email, phone: p.phone, birth: p.birth, type: p.type, turma: p.turma ?? '', diet: p.diet, health: p.health ?? '' } : null))
+  const [f, setF] = useState(() =>
+    p
+      ? { name: p.name, email: p.email, phone: p.phone, birth: p.birth, type: p.type, turma: p.turma ?? '', diet: p.diet, health: p.health ?? '', guardianName: p.guardianName ?? '', guardianPhone: p.guardianPhone ?? '' }
+      : null,
+  )
+  const [cancel, setCancel] = useState({ reason: '', refund: '' })
   if (!p || !f) return null
   const ev = db.events.find((e) => e.id === p.eventId) as LDEvent
-  const name = (id: string | null) => (id ? db.users.find((u) => u.id === id)?.name ?? '—' : null)
+  const name = (id?: string | null) => (id ? db.users.find((u) => u.id === id)?.name ?? '—' : null)
+  const cancelled = isCancelled(p)
+  const hasChoices = !!(ev.modalities?.length || ev.extras?.length)
 
   const save = () => {
     update((d) => {
       const x = d.participants.find((y) => y.id === pid)!
-      Object.assign(x, { ...f, turma: f.turma || undefined, health: f.health || undefined })
+      Object.assign(x, {
+        ...f,
+        turma: f.turma || undefined,
+        health: f.health || undefined,
+        guardianName: f.guardianName || undefined,
+        guardianPhone: f.guardianPhone || undefined,
+      })
     })
-    setEditing(false)
+    setMode('view')
     toast('Ficha atualizada.')
   }
 
@@ -416,8 +556,15 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
         {PTYPE_LONG[p.type]}
         {p.turma ? ` · ${p.turma}` : ''} · {ev.name}
       </p>
+      {cancelled && (
+        <div className="alert alert-err small" style={{ marginTop: 12 }}>
+          Inscrição cancelada a {dateShort(p.cancelledAt!)}
+          {p.cancelReason ? ` · ${p.cancelReason}` : ''}. A devolver: {eur(p.refundDue ?? 0)} · devolvido {eur(refunded(p))}
+          {refundPending(p) > 0 ? ` · falta devolver ${eur(refundPending(p))}` : ''}.
+        </div>
+      )}
 
-      {editing ? (
+      {mode === 'edit' && (
         <div className="stack" style={{ marginTop: 16 }}>
           <div className="field">
             <label>Nome</label>
@@ -439,7 +586,7 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
             <div className="field">
               <label>Tipo</label>
               <select className="input" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as ParticipantType })}>
-                {(Object.keys(PTYPE_LONG) as ParticipantType[]).map((t) => (
+                {PTYPES.map((t) => (
                   <option key={t} value={t}>
                     {PTYPE_LONG[t]}
                   </option>
@@ -465,6 +612,18 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
                 ))}
               </select>
             </div>
+            {ev.category === '9' && (
+              <>
+                <div className="field">
+                  <label>Encarregado de educação</label>
+                  <input className="input" value={f.guardianName} onChange={(e) => setF({ ...f, guardianName: e.target.value })} />
+                </div>
+                <div className="field">
+                  <label>Telefone do encarregado</label>
+                  <input className="input" value={f.guardianPhone} onChange={(e) => setF({ ...f, guardianPhone: e.target.value })} />
+                </div>
+              </>
+            )}
           </div>
           <div className="field">
             <label>Saúde</label>
@@ -474,26 +633,98 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
             <button className="btn btn-gold" onClick={save}>
               Guardar
             </button>
-            <button className="btn btn-ghost" onClick={() => setEditing(false)}>
+            <button className="btn btn-ghost" onClick={() => setMode('view')}>
               Cancelar
             </button>
           </div>
         </div>
-      ) : (
+      )}
+
+      {mode === 'choices' && (
+        <div style={{ marginTop: 16 }}>
+          <ChoicesEditor
+            p={p}
+            ev={ev}
+            onCancel={() => setMode('view')}
+            onSave={(m, x) => {
+              applyChoices(pid, m, x ?? [])
+              setMode('view')
+              toast('Modalidade e extras atualizados. As prestações em falta foram recalculadas.')
+            }}
+          />
+        </div>
+      )}
+
+      {mode === 'cancel' && (
+        <div className="stack" style={{ marginTop: 16 }}>
+          <p className="small muted">
+            Já pagou {eur(cashIn(p) + refunded(p))}. Indica quanto lhe vais devolver (0 se não houver devolução). A pessoa deixa de contar para mesas, entrada, votação e comissões.
+          </p>
+          <div className="grid-2">
+            <div className="field">
+              <label>Valor a devolver (€)</label>
+              <input className="input" inputMode="decimal" value={cancel.refund} onChange={(e) => setCancel({ ...cancel, refund: e.target.value })} placeholder="0,00" />
+            </div>
+            <div className="field">
+              <label>Motivo (opcional)</label>
+              <input className="input" value={cancel.reason} onChange={(e) => setCancel({ ...cancel, reason: e.target.value })} placeholder="Desistência, doença…" />
+            </div>
+          </div>
+          <div className="row">
+            <button
+              className="btn btn-danger"
+              onClick={() => {
+                const refund = Math.min(cashIn(p) + refunded(p), Math.max(0, parseFloat(cancel.refund.replace(',', '.')) || 0))
+                update((d) => {
+                  const x = d.participants.find((y) => y.id === pid)!
+                  x.cancelledAt = new Date().toISOString()
+                  x.cancelReason = cancel.reason.trim() || undefined
+                  x.refundDue = refund
+                  x.tableId = undefined
+                })
+                setMode('view')
+                toast('Inscrição cancelada.')
+              }}
+            >
+              Confirmar cancelamento
+            </button>
+            <button className="btn btn-ghost" onClick={() => setMode('view')}>
+              Voltar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'view' && (
         <>
           <dl className="kv" style={{ marginTop: 18 }}>
             <dt>Telemóvel</dt>
-            <dd>{p.phone}</dd>
+            <dd>{p.phone || '—'}</dd>
             <dt>Email</dt>
-            <dd>{p.email}</dd>
+            <dd>{p.email || '—'}</dd>
             <dt>Nascimento</dt>
             <dd>{p.birth ? dateLong(p.birth) : '—'}</dd>
+            {(p.guardianName || ev.category === '9') && (
+              <>
+                <dt>Encarregado</dt>
+                <dd>{p.guardianName ? `${p.guardianName} · ${p.guardianPhone ?? ''}` : 'Não indicado'}</dd>
+              </>
+            )}
             <dt>Alimentação</dt>
             <dd>{p.diet}</dd>
             <dt>Saúde</dt>
             <dd>{p.health || 'Nada indicado'}</dd>
+            {hasChoices && (
+              <>
+                <dt>Modalidade</dt>
+                <dd>
+                  {ev.modalities?.find((m) => m.id === p.modalityId)?.name ?? 'Completo'}
+                  {(p.extras ?? []).length > 0 && ` · extras: ${p.extras!.map((x) => ev.extras?.find((e) => e.id === x)?.name ?? x).join(', ')}`}
+                </dd>
+              </>
+            )}
             <dt>Consentimento</dt>
-            <dd>{p.consent ? `Aceite a ${dateShort(p.createdAt)}` : 'Sem registo (inscrição anterior)'}</dd>
+            <dd>{p.consent ? `Aceite a ${dateShort(p.createdAt)}` : p.addedBy ? `Adicionado por ${name(p.addedBy)}` : 'Sem registo (inscrição anterior)'}</dd>
             <dt>Mesa</dt>
             <dd>{ev.tables.find((t) => t.id === p.tableId)?.name ?? 'Sem mesa'}</dd>
             <dt>Entrada</dt>
@@ -504,21 +735,21 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
                 <StatusPill s="offer" label="Oferta — não paga" />
               ) : (
                 <>
-                  <div className="pills">
-                    {ev.installments.map((_, i) => (
-                      <StatusPill key={i} s={instStatus(p, ev, i)} label={`${ordinal(i)} ${instStatus(p, ev, i) === 'paid' ? 'paga' : instStatus(p, ev, i) === 'overdue' ? 'em atraso' : 'em falta'}`} />
-                    ))}
-                  </div>
-                  <div className="small muted" style={{ marginTop: 6 }}>
-                    {ev.installments.filter((_, i) => instStatus(p, ev, i) === 'paid').length} de {ev.installments.length} prestações · {eur(totalPaid(p))} de {eur(eventPrice(ev))}
-                  </div>
-                  {ev.installments.some((i) => i.due) && (
-                    <div className="small muted">Datas-limite: {ev.installments.map((i, k) => `${ordinal(k)} ${i.due ? dateShort(i.due) : '—'}`).join(' · ')}</div>
+                  {!cancelled && (
+                    <div className="pills">
+                      {ev.installments.map((_, i) => (
+                        <StatusPill key={i} s={instStatus(p, ev, i)} label={`${ordinal(i)} ${eur(instAmount(p, ev, i))} ${instStatus(p, ev, i) === 'paid' ? 'paga' : instStatus(p, ev, i) === 'overdue' ? 'em atraso' : 'em falta'}`} />
+                      ))}
+                    </div>
                   )}
+                  <div className="small muted" style={{ marginTop: 6 }}>
+                    {eur(totalPaid(p))} de {eur(cancelled ? cashIn(p) + refunded(p) : totalDue(p, ev))}
+                    {ev.installments.some((i) => i.due) && ` · datas-limite: ${ev.installments.map((i, k) => `${ordinal(k)} ${i.due ? dateShort(i.due) : '—'}`).join(' · ')}`}
+                  </div>
                   {p.payments.map((x) => (
                     <div key={x.id} className="small muted">
-                      {ordinal(x.installment)} prestação: {eur(x.amount)} {x.kind === 'adjust' ? '(diferença acertada)' : ''} —{' '}
-                      {x.receivedBy ? `${name(x.receivedBy)}, ${dateTime(x.at)}` : 'paga antes de se registar quem recebe (sem registo)'}
+                      {x.kind === 'refund' ? 'Devolução' : `${ordinal(x.installment)} prestação`}: {eur(x.amount)} {x.kind === 'adjust' ? '(diferença acertada)' : ''} —{' '}
+                      {x.receivedBy ? `${name(x.receivedBy)}, ${dateTime(x.at)}` : 'sem registo de quem recebeu'}
                     </div>
                   ))}
                 </>
@@ -531,17 +762,22 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
             </div>
           )}
           <div className="row" style={{ marginTop: 20 }}>
-            {perms.receive && !p.offer && (
+            {perms.receive && !p.offer && !cancelled && (
               <button className="btn btn-gold btn-sm" onClick={onPay}>
                 € Receber pagamento
               </button>
             )}
             {perms.edit && (
-              <button className="btn btn-ghost btn-sm" onClick={() => setEditing(true)}>
+              <button className="btn btn-ghost btn-sm" onClick={() => setMode('edit')}>
                 Editar
               </button>
             )}
-            {perms.admin && (
+            {perms.edit && hasChoices && !cancelled && (
+              <button className="btn btn-ghost btn-sm" onClick={() => setMode('choices')}>
+                Modalidade e extras
+              </button>
+            )}
+            {perms.admin && !cancelled && (
               <button
                 className="btn btn-ghost btn-sm"
                 onClick={() => {
@@ -569,6 +805,28 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
                 Nova palavra-passe
               </button>
             )}
+            {perms.edit && !cancelled && (
+              <button className="btn btn-danger btn-sm" onClick={() => setMode('cancel')}>
+                Cancelar inscrição
+              </button>
+            )}
+            {perms.edit && cancelled && (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  if (!confirm('Reativar esta inscrição?')) return
+                  update((d) => {
+                    const x = d.participants.find((y) => y.id === pid)!
+                    x.cancelledAt = undefined
+                    x.cancelReason = undefined
+                    x.refundDue = undefined
+                  })
+                  toast('Inscrição reativada.')
+                }}
+              >
+                Reativar inscrição
+              </button>
+            )}
             {perms.admin && (
               <button
                 className="btn btn-danger btn-sm"
@@ -587,6 +845,137 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
           </div>
         </>
       )}
+    </Modal>
+  )
+}
+
+// ---------- Adicionar pessoa à mão (professores, convidados, família) ----------
+
+function AddPersonModal({ eventId, user, onClose }: { eventId: string; user: User; onClose: () => void }) {
+  const db = useDB()
+  const ev = db.events.find((e) => e.id === eventId)!
+  const perms = permsFor(user)
+  const [f, setF] = useState({ name: '', type: 'professor' as ParticipantType, turma: '', phone: '', email: '', birth: '', diet: 'Nenhuma', offer: false, guardianName: '', guardianPhone: '' })
+  const [mod, setMod] = useState('')
+  const [ext, setExt] = useState<string[]>([])
+
+  const save = (e: React.FormEvent) => {
+    e.preventDefault()
+    const id = 'p' + uid()
+    update((d) => {
+      const p: Participant = {
+        id,
+        eventId,
+        name: f.name.trim(),
+        birth: f.birth,
+        phone: f.phone.trim(),
+        email: f.email.trim(),
+        password: '',
+        type: f.type,
+        turma: f.turma || undefined,
+        diet: f.diet,
+        consent: null,
+        createdAt: new Date().toISOString(),
+        offer: perms.edit && f.offer,
+        payments: [],
+        qr: `LD-${ev.code}-${id.toUpperCase()}`,
+        guardianName: f.guardianName || undefined,
+        guardianPhone: f.guardianPhone || undefined,
+        addedBy: user.id,
+      }
+      p.customAmounts = recalcAmounts(p, ev, mod || undefined, ext)
+      p.modalityId = mod || undefined
+      p.extras = ext.length ? ext : undefined
+      d.participants.push(p)
+    })
+    toast(`${f.name.trim()} adicionado.`)
+    onClose()
+  }
+
+  return (
+    <Modal onClose={onClose}>
+      <h3>Adicionar pessoa</h3>
+      <p className="small muted">Para quem não se inscreve sozinho: professores, convidados, família. Fica na lista, nas mesas e na entrada como os outros.</p>
+      <form className="stack" style={{ marginTop: 14 }} onSubmit={save}>
+        <div className="field">
+          <label>Nome completo *</label>
+          <input className="input" required value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+        </div>
+        <div className="grid-2">
+          <div className="field">
+            <label>Tipo</label>
+            <select className="input" value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as ParticipantType })}>
+              {PTYPES.map((t) => (
+                <option key={t} value={t}>
+                  {PTYPE_LONG[t]}
+                </option>
+              ))}
+            </select>
+          </div>
+          {ev.hasClasses && (
+            <div className="field">
+              <label>Turma (opcional)</label>
+              <select className="input" value={f.turma} onChange={(e) => setF({ ...f, turma: e.target.value })}>
+                <option value="">—</option>
+                {ev.classes.map((c) => (
+                  <option key={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="field">
+            <label>Telemóvel</label>
+            <input className="input" type="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
+          </div>
+          <div className="field">
+            <label>Email (opcional)</label>
+            <input className="input" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+          </div>
+          <div className="field">
+            <label>Nascimento (opcional)</label>
+            <input className="input" type="date" value={f.birth} onChange={(e) => setF({ ...f, birth: e.target.value })} />
+          </div>
+          <div className="field">
+            <label>Alimentação</label>
+            <select className="input" value={f.diet} onChange={(e) => setF({ ...f, diet: e.target.value })}>
+              {DIETS.map((d) => (
+                <option key={d}>{d}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        {!!ev.modalities?.length && (
+          <div className="field">
+            <label>Modalidade</label>
+            <select className="input" value={mod} onChange={(e) => setMod(e.target.value)}>
+              <option value="">Completo</option>
+              {ev.modalities.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name} · {eur(m.price)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        {!!ev.extras?.length && (
+          <div className="field">
+            <label>Extras</label>
+            {ev.extras.map((x) => (
+              <label key={x.id} className="check">
+                <input type="checkbox" checked={ext.includes(x.id)} onChange={(e) => setExt(e.target.checked ? [...ext, x.id] : ext.filter((y) => y !== x.id))} />
+                {x.name} (+{eur(x.price)})
+              </label>
+            ))}
+          </div>
+        )}
+        {perms.edit && (
+          <label className="check">
+            <input type="checkbox" checked={f.offer} onChange={(e) => setF({ ...f, offer: e.target.checked })} /> Oferta (não paga)
+          </label>
+        )}
+        <div className="alert alert-info small">{f.offer && perms.edit ? 'Oferta: não paga nada.' : `Vai pagar ${eur(personPrice(ev, mod || undefined, ext))} em ${ev.installments.length} prestações.`}</div>
+        <button className="btn btn-gold">Adicionar</button>
+      </form>
     </Modal>
   )
 }

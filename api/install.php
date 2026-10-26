@@ -22,6 +22,7 @@ try {
     if ((cfg()['driver'] ?? 'mysql') === 'sqlite') $sql = preg_replace('/\) ENGINE=[^;]+;/', ');', $sql);
     foreach (array_filter(array_map('trim', explode(';', $sql))) as $stmt) $pdo->exec($stmt);
     $msg = 'Tabelas criadas.';
+    migrate();
   }
   $hasAdmin = (bool)one("SELECT 1 FROM `users` WHERE `role` = 'admin'");
 

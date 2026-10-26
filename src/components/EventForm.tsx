@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { eur, normalize } from '../data/logic'
 import { uid } from '../data/seed'
 import { getDB, update, useDB } from '../data/store'
-import { CATEGORIES, CATEGORY_LABEL, PARTNER_TYPES, type Category, type LDEvent } from '../data/types'
+import { CATEGORIES, CATEGORY_LABEL, DEFAULT_SIGNUP_TYPES, PARTNER_TYPES, PTYPES, PTYPE_LONG, type Category, type Extra, type LDEvent, type Modality } from '../data/types'
 import { newPassword, toast } from './ui'
 
 const emptyEvent = (): LDEvent => ({
@@ -26,7 +26,39 @@ const emptyEvent = (): LDEvent => ({
   awards: ['Rei do Baile', 'Rainha do Baile', 'Melhor Outfit'].map((name) => ({ id: 'aw' + uid(), name, eligible: null })),
   announced: false,
   tables: [],
+  modalities: [],
+  extras: [],
+  signupTypes: [...DEFAULT_SIGNUP_TYPES],
 })
+
+/** Lista editável de opções com nome e preço (modalidades ou extras). */
+function PriceList<T extends Modality | Extra>({ items, onChange, placeholder, prefix }: { items: T[]; onChange: (v: T[]) => void; placeholder: string; prefix: string }) {
+  return (
+    <div className="stack" style={{ gap: 6 }}>
+      {items.map((it, i) => (
+        <div key={it.id} className="row" style={{ flexWrap: 'nowrap' }}>
+          <input className="input" placeholder={placeholder} value={it.name} onChange={(e) => onChange(items.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
+          <input
+            className="input"
+            style={{ width: 120 }}
+            type="number"
+            step="0.5"
+            min="0"
+            placeholder="€"
+            value={it.price || ''}
+            onChange={(e) => onChange(items.map((x, k) => (k === i ? { ...x, price: +e.target.value } : x)))}
+          />
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => onChange(items.filter((_, k) => k !== i))} aria-label="Remover">
+            ×
+          </button>
+        </div>
+      ))}
+      <button type="button" className="chip" style={{ alignSelf: 'flex-start' }} onClick={() => onChange([...items, { id: prefix + uid(), name: '', price: 0 } as T])}>
+        + Adicionar
+      </button>
+    </div>
+  )
+}
 
 export function EventForm({ existing, onDone }: { existing?: LDEvent; onDone?: (id: string) => void }) {
   const db = useDB()
@@ -76,7 +108,16 @@ export function EventForm({ existing, onDone }: { existing?: LDEvent; onDone?: (
           .map((s) => s.trim())
           .filter(Boolean)
       : []
-    const final: LDEvent = { ...ev, code, classes, id: ev.id || 'e' + uid(), share1: ev.comercial2 ? ev.share1 : 100 }
+    const clean = <T extends { name: string; price: number }>(a?: T[]) => (a ?? []).filter((x) => x.name.trim() && x.price >= 0).map((x) => ({ ...x, name: x.name.trim() }))
+    const final: LDEvent = {
+      ...ev,
+      code,
+      classes,
+      id: ev.id || 'e' + uid(),
+      share1: ev.comercial2 ? ev.share1 : 100,
+      modalities: clean(ev.modalities),
+      extras: clean(ev.extras),
+    }
     const promoterPass = newPassword()
     update((d) => {
       if (existing) d.events = d.events.map((x) => (x.id === final.id ? final : x))
@@ -236,6 +277,42 @@ export function EventForm({ existing, onDone }: { existing?: LDEvent; onDone?: (
         <label>Limite de lotação (opcional)</label>
         <input className="input" type="number" min="0" value={ev.capacity ?? ''} onChange={(e) => set('capacity', e.target.value ? +e.target.value : undefined)} />
         <span className="small muted">Quando o limite é atingido, a inscrição com o código fecha sozinha.</span>
+      </div>
+
+      <div className="field">
+        <label>Modalidades (opcional)</label>
+        <span className="small muted">
+          Ex.: «Só welcome drink» ou «Só jantar», com o preço total de cada uma. Sem modalidades, todos pagam o preço das prestações acima («Completo»).
+        </span>
+        <PriceList items={ev.modalities ?? []} onChange={(v) => set('modalities', v)} placeholder="Nome da modalidade" prefix="m" />
+      </div>
+      <div className="field">
+        <label>Extras (opcional)</label>
+        <span className="small muted">Ex.: after-party ou pack de fotografias. Somam ao preço; as prestações em falta atualizam-se sozinhas.</span>
+        <PriceList items={ev.extras ?? []} onChange={(v) => set('extras', v)} placeholder="Nome do extra" prefix="x" />
+      </div>
+      <div className="field">
+        <label>Quem se pode inscrever com o código</label>
+        <div className="chips">
+          {PTYPES.map((t) => {
+            const on = (ev.signupTypes ?? DEFAULT_SIGNUP_TYPES).includes(t)
+            return (
+              <button
+                type="button"
+                key={t}
+                className={`chip ${on ? 'on' : ''}`}
+                onClick={() => {
+                  const cur = ev.signupTypes ?? DEFAULT_SIGNUP_TYPES
+                  const next = on ? cur.filter((x) => x !== t) : [...cur, t]
+                  if (next.length) set('signupTypes', next)
+                }}
+              >
+                {PTYPE_LONG[t]}
+              </button>
+            )
+          })}
+        </div>
+        <span className="small muted">Os outros tipos (ex.: professores) só a organização adiciona, em «Adicionar pessoa».</span>
       </div>
 
       <div className="field">

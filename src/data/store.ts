@@ -8,11 +8,12 @@
 import { useSyncExternalStore } from 'react'
 import type { DB, LDEvent, Participant, ParticipantType, User } from './types'
 import { buildSeed, uid } from './seed'
+import { recalcAmounts } from './logic'
 
 const API = ((import.meta.env.VITE_API_URL as string | undefined) || '').replace(/\/$/, '')
 export const API_MODE = API !== ''
 
-const DEMO_KEY = 'lastdance-db-v1'
+const DEMO_KEY = 'lastdance-db-v3'
 const SESSION_KEY = 'lastdance-session'
 const TOKEN_KEY = 'lastdance-token'
 const CACHE_KEY = 'lastdance-cache'
@@ -290,6 +291,10 @@ let session: Session = parse(ls.get(SESSION_KEY), null as Session)
 export function setSession(s: Session) {
   session = s
   ls.set(SESSION_KEY, JSON.stringify(s))
+  if (!s) {
+    accounts = []
+    ls.del(ACCOUNTS_KEY)
+  }
   if (!s && API_MODE) {
     const t = token()
     if (t) void fetch(`${API}/index.php?r=logout`, { method: 'POST', headers: { 'X-Auth-Token': t } }).catch(() => {})
@@ -312,27 +317,73 @@ export function useSession(): { user?: User; participant?: Participant } {
 
 export const hasSession = () => !!session && (!API_MODE || !!token())
 
-export async function login(email: string, password: string): Promise<Session> {
+/** Uma conta a que este email/palavra-passe dá acesso (área de gestão ou inscrição num evento). */
+export interface Account {
+  token?: string
+  session: Exclude<Session, null>
+  label: string
+  detail: string
+}
+
+const ACCOUNTS_KEY = 'lastdance-accounts'
+let accounts: Account[] = parse(ls.get(ACCOUNTS_KEY), [] as Account[])
+
+export function useAccounts() {
+  useSyncExternalStore(subscribe, () => tick)
+  return accounts
+}
+
+const ROLE_NAME: Record<string, string> = { admin: 'Administração', comercial: 'Comercial', promotor_chefe: 'Promotor chefe', promotor: 'Promotor', staff: 'Staff' }
+
+/** Devolve todas as contas que batem certo (vazio = email ou palavra-passe errados). */
+export async function login(email: string, password: string): Promise<Account[]> {
   if (!API_MODE) {
     const e = email.trim().toLowerCase()
-    const u = db.users.find((x) => x.email.toLowerCase() === e && x.password === password)
-    if (u) return { kind: 'user', id: u.id }
-    const p = db.participants.find((x) => x.email.toLowerCase() === e && x.password === password)
-    if (p) return { kind: 'participant', id: p.id }
-    return null
+    const found: Account[] = []
+    db.users
+      .filter((x) => x.email.toLowerCase() === e && x.password === password)
+      .forEach((u) => found.push({ session: { kind: 'user', id: u.id }, label: `Área de gestão · ${ROLE_NAME[u.role]}`, detail: u.name }))
+    db.participants
+      .filter((x) => x.email.toLowerCase() === e && x.password === password)
+      .forEach((p) => found.push({ session: { kind: 'participant', id: p.id }, label: db.events.find((ev) => ev.id === p.eventId)?.name ?? 'Evento', detail: p.name }))
+    return found
   }
   try {
-    const res = await api<{ token: string; session: Session }>('login', { email, password })
-    ls.set(TOKEN_KEY, res.token)
-    session = res.session
-    ls.set(SESSION_KEY, JSON.stringify(res.session))
-    loaded = false
-    await refresh()
-    return res.session
+    const res = await api<{ accounts: Account[] }>('login', { email, password })
+    return res.accounts
   } catch (e) {
-    if (e instanceof ApiError && e.status === 401) return null
+    if (e instanceof ApiError && e.status === 401) return []
     throw e
   }
+}
+
+/** Entra numa das contas devolvidas pelo login e guarda as outras para poder trocar depois. */
+export async function chooseAccount(a: Account, all: Account[]) {
+  accounts = all.length > 1 ? all : []
+  ls.set(ACCOUNTS_KEY, JSON.stringify(accounts))
+  if (API_MODE && a.token) {
+    ls.set(TOKEN_KEY, a.token)
+    ls.del(CACHE_KEY)
+    queue = []
+    saveQueue()
+    db = emptyDB()
+    loaded = false
+  }
+  session = a.session
+  ls.set(SESSION_KEY, JSON.stringify(a.session))
+  emit()
+  if (API_MODE) await refresh()
+}
+
+/** Participantes: nova palavra-passe com email + data de nascimento. */
+export async function recoverPassword(email: string, birth: string, password: string): Promise<number> {
+  if (!API_MODE) {
+    const ps = db.participants.filter((p) => p.email.toLowerCase() === email.trim().toLowerCase() && p.birth === birth)
+    if (ps.length) update((d) => d.participants.forEach((p) => ps.some((x) => x.id === p.id) && (p.password = password)))
+    return ps.length
+  }
+  const r = await api<{ updated: number }>('recover', { email, birth, password })
+  return r.updated
 }
 
 // ---------- Inscrição pública ----------
@@ -347,6 +398,10 @@ export interface RegisterData {
   password: string
   diet: string
   health?: string
+  guardianName?: string
+  guardianPhone?: string
+  modalityId?: string
+  extras?: string[]
 }
 
 export async function findEventByCode(code: string): Promise<{ event: LDEvent; full: boolean } | null> {
@@ -372,7 +427,7 @@ export async function registerParticipant(ev: LDEvent, f: RegisterData): Promise
       throw new Error('Já existe uma inscrição com este email neste evento. Faz log-in para entrares na tua área.')
     const id = 'p' + uid()
     update((d) => {
-      d.participants.push({
+      const base: Participant = {
         ...f,
         id,
         eventId: ev.id,
@@ -385,7 +440,10 @@ export async function registerParticipant(ev: LDEvent, f: RegisterData): Promise
         offer: false,
         payments: [],
         qr: `LD-${ev.code}-${id.toUpperCase()}`,
-      })
+        extras: f.extras?.length ? f.extras : undefined,
+      }
+      base.customAmounts = recalcAmounts(base, ev, f.modalityId, f.extras)
+      d.participants.push(base)
     })
     setSession({ kind: 'participant', id })
     return

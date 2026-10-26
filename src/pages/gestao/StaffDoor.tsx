@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/icons'
 import { Kpi, Modal, toast } from '../../components/ui'
-import { dateLong, dateTime, eur, eventWhen, fullyPaid, missing, normalize } from '../../data/logic'
+import { ageAt, dateLong, dateTime, eur, eventWhen, fullyPaid, isCancelled, missing, normalize } from '../../data/logic'
 import { update, useDB } from '../../data/store'
 import { PTYPE_LONG, type Participant, type User } from '../../data/types'
 
-type Result = { kind: 'ok' | 'used' | 'unpaid' | 'notfound' | 'other'; p?: Participant; msg?: string }
+type Result = { kind: 'ok' | 'used' | 'unpaid' | 'cancelled' | 'notfound' | 'other'; p?: Participant; msg?: string }
 
 export default function StaffDoor({ user }: { user: User }) {
   const db = useDB()
@@ -22,13 +22,15 @@ export default function StaffDoor({ user }: { user: User }) {
   const [camera, setCamera] = useState(false)
 
   if (!ev) return <div className="empty">Não tens eventos atribuídos.</div>
-  const ps = db.participants.filter((p) => p.eventId === ev.id)
+  const ps = db.participants.filter((p) => p.eventId === ev.id && !isCancelled(p))
   const entered = ps.filter((p) => p.enteredAt).length
+  const lastIn = ps.filter((p) => p.enteredAt).sort((a, b) => b.enteredAt!.localeCompare(a.enteredAt!)).slice(0, 6)
   const withMissing = ps.filter((p) => !fullyPaid(p, ev)).length
 
   const check = (p: Participant | undefined, raw?: string): Result => {
     if (!p) return { kind: 'notfound', msg: raw ? `QR «${raw}» não encontrado.` : 'Não encontrado.' }
     if (p.eventId !== ev.id) return { kind: 'other', p, msg: `Este QR é de outro evento: ${db.events.find((e) => e.id === p.eventId)?.name}.` }
+    if (isCancelled(p)) return { kind: 'cancelled', p }
     if (p.enteredAt) return { kind: 'used', p }
     if (!fullyPaid(p, ev)) return { kind: 'unpaid', p }
     return { kind: 'ok', p }
@@ -140,12 +142,14 @@ export default function StaffDoor({ user }: { user: User }) {
                 {PTYPE_LONG[res.p.type]}
                 {res.p.turma ? ` · ${res.p.turma}` : ''} · nasceu a {res.p.birth ? dateLong(res.p.birth) : '—'}
               </div>
+              <AgeBadge birth={res.p.birth} date={ev.date} />
             </>
           )}
           <div style={{ marginTop: 10, fontWeight: 600 }}>
             {res.kind === 'ok' && '✓ Tudo pago. Confere o nome no Cartão de Cidadão.'}
             {res.kind === 'used' && `✕ Este QR já foi usado às ${dateTime(res.p!.enteredAt!)}.`}
             {res.kind === 'unpaid' && `⚠ Prestações em falta: ${eur(missing(res.p!, ev))}. Não pode entrar até regularizar.`}
+            {res.kind === 'cancelled' && '✕ Esta inscrição foi cancelada. Não pode entrar.'}
             {(res.kind === 'notfound' || res.kind === 'other') && res.msg}
           </div>
           <div className="row" style={{ marginTop: 14 }}>
@@ -157,6 +161,27 @@ export default function StaffDoor({ user }: { user: User }) {
             <button className="btn btn-ghost" onClick={() => setRes(null)}>
               Fechar
             </button>
+          </div>
+        </div>
+      )}
+
+      {lastIn.length > 0 && (
+        <div className="card stack">
+          <h3>Últimas entradas</h3>
+          <div className="list">
+            {lastIn.map((p) => (
+              <div key={p.id} className="list-item small">
+                <span className="grow">
+                  <b>{p.name}</b>
+                  <span className="muted">
+                    {' '}
+                    · {PTYPE_LONG[p.type]}
+                    {p.turma ? ` · ${p.turma}` : ''}
+                  </span>
+                </span>
+                <span className="muted">{dateTime(p.enteredAt!).slice(-5)}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -207,7 +232,7 @@ function GuestList({ evId, onClose }: { evId: string; onClose: () => void }) {
   const [f, setF] = useState<'all' | 'in' | 'out' | 'missing'>('all')
   const [q, setQ] = useState('')
   const ps = db.participants
-    .filter((p) => p.eventId === evId)
+    .filter((p) => p.eventId === evId && !p.cancelledAt)
     .filter((p) => (f === 'in' ? p.enteredAt : f === 'out' ? !p.enteredAt : f === 'missing' ? !fullyPaid(p, ev) : true))
     .filter((p) => !q || normalize(p.name).includes(normalize(q)))
     .sort((a, b) => a.name.localeCompare(b.name, 'pt'))
@@ -298,5 +323,28 @@ function CameraScanner({ onClose, onCode }: { onClose: () => void; onCode: (c: s
       <h3>Ler QR</h3>
       {err ? <div className="alert alert-warn" style={{ marginTop: 14 }}>{err}</div> : <video ref={video} style={{ width: '100%', borderRadius: 14, marginTop: 14 }} muted playsInline />}
     </Modal>
+  )
+}
+
+/** Sinal grande de maior / menor de idade no dia do evento. */
+function AgeBadge({ birth, date }: { birth: string; date: string }) {
+  const age = ageAt(birth, date)
+  if (age === null) return null
+  const adult = age >= 18
+  return (
+    <div
+      style={{
+        display: 'inline-block',
+        marginTop: 10,
+        padding: '6px 14px',
+        borderRadius: 999,
+        fontWeight: 800,
+        letterSpacing: '0.04em',
+        background: adult ? 'var(--green-bg)' : 'var(--red)',
+        color: adult ? 'var(--green)' : '#fff',
+      }}
+    >
+      {adult ? `Maior de idade · ${age} anos` : `MENOR · ${age} anos`}
+    </div>
   )
 }

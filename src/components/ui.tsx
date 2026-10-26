@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
 import type { InstStatus } from '../data/logic'
-import { setSession, useSession, useSyncStatus } from '../data/store'
+import { chooseAccount, setSession, useAccounts, useSession, useSyncStatus } from '../data/store'
 import { ROLE_LABEL } from '../data/types'
 import { Icon } from './icons'
 
@@ -110,8 +110,11 @@ export function Logo({ h = 48, shine = true }: { h?: number; shine?: boolean }) 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, participant } = useSession()
   const sync = useSyncStatus()
+  const accounts = useAccounts()
+  const [switching, setSwitching] = useState(false)
   const nav = useNavigate()
   const name = user?.name ?? participant?.name
+  const current = user?.id ?? participant?.id
   const role = user ? ROLE_LABEL[user.role] : 'Aluno'
   return (
     <div className="app-bg">
@@ -129,6 +132,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <span>{name.split(' ').slice(0, 2).join(' ')}</span>
                 <small>{role}</small>
               </span>
+            )}
+            {accounts.length > 1 && (
+              <button className="btn btn-ghost btn-sm" onClick={() => setSwitching(true)} title="Trocar de área">
+                Trocar
+              </button>
             )}
             <button
               className="btn btn-ghost btn-sm"
@@ -152,6 +160,31 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
       <main className="container app-main">{children}</main>
+      {switching && (
+        <Modal onClose={() => setSwitching(false)}>
+          <h3>Trocar de área</h3>
+          <div className="list" style={{ marginTop: 14 }}>
+            {accounts.map((a) => (
+              <button
+                key={a.session.kind + a.session.id}
+                className="list-item click"
+                style={{ width: '100%', border: 0, textAlign: 'left', cursor: 'pointer' }}
+                disabled={a.session.id === current}
+                onClick={async () => {
+                  setSwitching(false)
+                  await chooseAccount(a, accounts)
+                  nav('/gestao')
+                }}
+              >
+                <div className="grow">
+                  <div className="t">{a.label}</div>
+                  <div className="s">{a.session.id === current ? 'Estás aqui' : a.detail}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

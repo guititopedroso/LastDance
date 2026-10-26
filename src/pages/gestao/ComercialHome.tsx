@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { Kpi } from '../../components/ui'
-import { commissionShares, dateLong, eur, userCommission } from '../../data/logic'
+import { commissionShares, dateLong, eur, isCancelled, userCommission } from '../../data/logic'
 import { useDB } from '../../data/store'
 import { CATEGORY_LABEL, type User } from '../../data/types'
 
@@ -32,6 +32,10 @@ export default function ComercialHome({ user }: { user: User }) {
                 <div className="t">{e.name}</div>
                 <div className="s">
                   {CATEGORY_LABEL[e.category]} · {dateLong(e.date)} · {count} inscritos
+                  {(() => {
+                    const c = db.participants.filter((p) => p.eventId === e.id && isCancelled(p)).length
+                    return c ? ` · ${c} cancelado(s), sem comissão` : ''
+                  })()}
                   {other && ` · divides com ${db.users.find((u) => u.id === other.userId)?.name} (${other.pct}%)`}
                 </div>
                 <div className="s">

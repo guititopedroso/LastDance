@@ -1,5 +1,6 @@
 // Dados fictícios de demonstração. Substituídos pela base de dados real mais tarde.
 import type { Award, DB, LDEvent, Participant, ParticipantType, Payment, Table, Category } from './types'
+import { eventPrice, recalcAmounts } from './logic'
 
 let seed = 20260
 function rnd() {
@@ -206,6 +207,183 @@ export function buildSeed(): DB {
     kind: 'payment',
   }))
   if (demoEv.tables.length) demo.tableId = demoEv.tables[0].id
+
+  // ---------- Casos de demonstração (como na demo do Epic Living) ----------
+  const iso = (daysAgo: number) => new Date(Date.now() - daysAgo * 864e5).toISOString()
+  const payAll = (p: Participant, ev: LDEvent, by: string | null, upTo = ev.installments.length) => {
+    p.payments = ev.installments.slice(0, upTo).map((_, i) => ({
+      id: sid('pg'),
+      installment: i,
+      amount: p.customAmounts?.[i] ?? ev.installments[i].amount,
+      receivedBy: by,
+      at: iso(60 - i * 12),
+      kind: 'payment' as const,
+    }))
+  }
+  const takeFrom = (ev: LDEvent, skip: (p: Participant) => boolean = () => false) => {
+    const p = participants.find((x) => x.eventId === ev.id && !x.offer && !x.cancelledAt && !x.customAmounts && !x.email.endsWith('@lastdance.pt') && !skip(x))!
+    p.payments = []
+    p.offer = false
+    return p
+  }
+  const named = (p: Participant, name: string, email: string) => {
+    p.name = name
+    p.email = email
+    p.password = 'demo1234'
+    p.type = 'finalista'
+    return p
+  }
+
+  // Telemóvel dos promotores chefe (o aluno vê o contacto do seu promotor)
+  users.filter((u) => u.role === 'promotor_chefe').forEach((u) => (u.phone = `91${int(1000000, 9999999)}`))
+
+  // 9.º ano: encarregado de educação
+  events
+    .filter((e) => e.category === '9')
+    .forEach((e) =>
+      participants
+        .filter((p) => p.eventId === e.id)
+        .forEach((p) => {
+          p.guardianName = `${pick(FIRST)} ${p.name.split(' ').slice(-1)[0]}`
+          p.guardianPhone = `9${pick(['1', '2', '3', '6'])}${int(1000000, 9999999)}`
+        }),
+    )
+
+  // Modalidades e extras no evento principal de demonstração
+  demoEv.modalities = [
+    { id: 'm-welcome', name: 'Só welcome drink', price: 25 },
+    { id: 'm-jantar', name: 'Só jantar', price: 45 },
+  ]
+  demoEv.extras = [
+    { id: 'x-after', name: 'After-party', price: 10 },
+    { id: 'x-fotos', name: 'Pack de fotografias', price: 15 },
+  ]
+  // Alguns inscritos já com escolhas
+  participants
+    .filter((p) => p.eventId === demoEv.id && !p.email.endsWith('@lastdance.pt'))
+    .slice(5, 25)
+    .forEach((p, k) => {
+      const mod = k % 5 === 0 ? 'm-jantar' : undefined
+      const ext = k % 2 ? ['x-after'] : ['x-fotos']
+      p.customAmounts = recalcAmounts(p, demoEv, mod, ext)
+      p.modalityId = mod
+      p.extras = ext
+    })
+
+  // Professores adicionados pelo promotor
+  const chiefDemo = users.find((u) => u.eventId === demoEv.id && u.role === 'promotor_chefe')!
+  ;['Prof.ª Helena Matos', 'Prof. Carlos Teixeira'].forEach((name, k) => {
+    const id = sid('p')
+    participants.push({
+      id, eventId: demoEv.id, name, birth: k ? '1975-03-02' : '1981-11-20', phone: `96${int(1000000, 9999999)}`, email: '', password: '',
+      type: 'professor', diet: 'Nenhuma', consent: null, createdAt: iso(20), offer: k === 0, payments: [], qr: `LD-${demoEv.code}-${id.toUpperCase()}`, addedBy: chiefDemo.id,
+    })
+  })
+
+  // Cancelamentos e devoluções em vários eventos
+  events.slice(0, 6).forEach((ev, k) => {
+    participants
+      .filter((p) => p.eventId === ev.id && p.payments.length && !p.email.endsWith('@lastdance.pt'))
+      .slice(0, k % 3 === 0 ? 3 : 2)
+      .forEach((p, j) => {
+        const paid = p.payments.reduce((a, x) => a + x.amount, 0)
+        p.cancelledAt = iso(10 + j * 7)
+        p.cancelReason = pick(['Desistência', 'Mudou de escola', 'Motivos de saúde', 'Viagem marcada'])
+        p.refundDue = Math.round(paid * (j % 2 ? 0.5 : 1) * 100) / 100
+        p.tableId = undefined
+        if (j === 0) p.payments.push({ id: sid('pg'), installment: -1, amount: p.refundDue, receivedBy: null, at: iso(5), kind: 'refund' })
+      })
+  })
+
+  // --- Contas de demonstração ---
+  const pago = named(takeFrom(demoEv), 'Bruno Ferreira Lopes', 'pago@lastdance.pt')
+  payAll(pago, demoEv, chiefDemo.id)
+  if (demoEv.tables.length) pago.tableId = demoEv.tables[0].id
+
+  named(takeFrom(demoEv), 'Diana Rocha Gomes', 'atraso@lastdance.pt') // nada pago; a 1.ª prestação já passou da data
+
+  const extras = named(takeFrom(demoEv), 'Gonçalo Pires Antunes', 'extras@lastdance.pt')
+  extras.customAmounts = recalcAmounts(extras, demoEv, undefined, ['x-after', 'x-fotos'])
+  extras.extras = ['x-after', 'x-fotos']
+  payAll(extras, demoEv, 'u-prom-team', 1)
+  extras.customAmounts = recalcAmounts(extras, demoEv, undefined, ['x-after', 'x-fotos'])
+
+  const canc = named(takeFrom(demoEv), 'Sara Nunes Correia', 'cancelado@lastdance.pt')
+  payAll(canc, demoEv, chiefDemo.id, 1)
+  canc.cancelledAt = iso(8)
+  canc.cancelReason = 'Desistência'
+  canc.refundDue = 20
+  canc.payments.push({ id: sid('pg'), installment: -1, amount: 10, receivedBy: chiefDemo.id, at: iso(3), kind: 'refund' })
+
+  const oferta = named(takeFrom(demoEv), 'Leonor Dias Moura', 'oferta@lastdance.pt')
+  oferta.offer = true
+
+  const ev9 = events.find((e) => e.category === '9')!
+  const menor = named(takeFrom(ev9), 'Tomás Ramos Silva', 'menor@lastdance.pt')
+  menor.birth = '2012-09-14'
+  menor.guardianName = 'Paula Ramos'
+  menor.guardianPhone = '912345678'
+  payAll(menor, ev9, null)
+
+  // Dois eventos com o mesmo email, e um email que é promotor e aluno
+  const ev2 = events[0]
+  named(takeFrom(demoEv), 'Rita Almeida Santos', 'varios@lastdance.pt')
+  payAll(named(takeFrom(ev2), 'Rita Almeida Santos', 'varios@lastdance.pt'), ev2, null, 1)
+  named(takeFrom(demoEv), 'Duarte Costa Faria', 'duplo@lastdance.pt')
+  users.push({ id: 'u-duplo', name: 'Duarte Costa Faria', email: 'duplo@lastdance.pt', password: 'demo1234', role: 'promotor', eventId: ev2.id })
+
+  users.push({ id: 'u-staff2', name: 'Pedro Silva', email: 'staff2@lastdance.pt', password: 'demo1234', role: 'staff', staffEventIds: [demoEv.id] })
+
+  // Evento já realizado (com vencedores anunciados)
+  const pastVenue = venues[6]
+  const past: LDEvent = {
+    id: sid('e'), name: 'Baile de finalistas 2026 · Escola Secundária da Baixa da Banheira', code: 'BANHEIRA26', venueId: pastVenue.id, location: pastVenue.name,
+    category: '12', date: '2026-06-20', start: '20:00', end: '04:00', hasClasses: false, classes: [],
+    installments: [{ amount: 35, due: '2026-03-15' }, { amount: 35, due: '2026-05-15' }], commission: 7, partners: [], comercial1: 'u-admin1', share1: 100,
+    archived: false, votingMode: 'closed', awards: ['Rei do Baile', 'Rainha do Baile', 'Melhor Outfit'].map((name) => ({ id: sid('aw'), name, eligible: null })), announced: true,
+    tables: Array.from({ length: 4 }, (_, k) => ({ id: sid('t'), name: `Mesa ${k + 1}`, seats: 10 })),
+  }
+  events.push(past)
+  users.push({ id: sid('u'), name: 'Hugo Martins', email: 'promotor.banheira26@exemplo.pt', password: 'demo1234', role: 'promotor_chefe', eventId: past.id, phone: '913456789' })
+  for (let k = 0; k < 38; k++) {
+    const id = sid('p')
+    const f = pick(FIRST)
+    const pp: Participant = {
+      id, eventId: past.id, name: `${f} ${pick(LAST)} ${pick(LAST)}`, birth: '2008-05-10', phone: `93${int(1000000, 9999999)}`, email: `${strip(f)}.${int(100, 999)}@exemplo.pt`,
+      password: 'demo1234', type: 'finalista', diet: pick(DIET_POOL), consent: true, createdAt: iso(300), offer: false, payments: [], qr: `LD-BANHEIRA26-${id.toUpperCase()}`,
+      tableId: past.tables[k % 4].id, enteredAt: '2026-06-20T19:' + String(10 + (k % 50)).padStart(2, '0') + ':00.000Z',
+    }
+    payAll(pp, past, null)
+    participants.push(pp)
+  }
+  const pastPs = participants.filter((x) => x.eventId === past.id)
+  named(pastPs[0], 'Inês Barbosa Reis', 'realizado@lastdance.pt')
+  past.awards.forEach((a, k) => (a.winnerId = pastPs[k + 1].id))
+
+  // Evento esgotado, com votação aberta agora
+  const soldVenue = venues[5]
+  const sold: LDEvent = {
+    id: sid('e'), name: 'Jantar de gala · Curso de Turismo da ETP Sesimbra', code: 'ESGOTADO26', venueId: soldVenue.id, location: soldVenue.name,
+    category: 'outro', date: new Date().toISOString().slice(0, 10), start: '19:30', end: '23:59', hasClasses: false, classes: [],
+    installments: [{ amount: 30, due: '2026-09-30' }, { amount: 30, due: '2026-10-20' }], commission: 6, partners: [], comercial1: 'u-com1', share1: 100,
+    archived: false, votingMode: 'open', awards: ['Melhor Outfit', 'Mais Divertido'].map((name) => ({ id: sid('aw'), name, eligible: null })), announced: false,
+    tables: Array.from({ length: 3 }, (_, k) => ({ id: sid('t'), name: `Mesa ${k + 1}`, seats: 10 })), capacity: 30,
+  }
+  events.push(sold)
+  users.push({ id: sid('u'), name: 'Joana Lima', email: 'promotor.esgotado26@exemplo.pt', password: 'demo1234', role: 'promotor_chefe', eventId: sold.id, phone: '914567890' })
+  for (let k = 0; k < 30; k++) {
+    const id = sid('p')
+    const f = pick(FIRST)
+    const pp: Participant = {
+      id, eventId: sold.id, name: `${f} ${pick(LAST)} ${pick(LAST)}`, birth: '2007-02-02', phone: `93${int(1000000, 9999999)}`, email: `${strip(f)}.${int(100, 999)}@exemplo.pt`,
+      password: 'demo1234', type: 'finalista', diet: pick(DIET_POOL), consent: true, createdAt: iso(90), offer: false, payments: [], qr: `LD-ESGOTADO26-${id.toUpperCase()}`,
+      tableId: sold.tables[k % 3].id,
+    }
+    payAll(pp, sold, null, k % 4 === 0 ? 1 : 2)
+    participants.push(pp)
+  }
+  named(participants.filter((x) => x.eventId === sold.id && x.payments.length === 2)[0], 'Mafalda Sousa Pinto', 'votacao@lastdance.pt')
+  void eventPrice
 
   const expenses: DB['expenses'] = [
     ['Portagens — visitas a escolas', 'Deslocações', 22.4, '2026-10-03', 'u-admin1', false],

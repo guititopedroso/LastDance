@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Kpi, Modal, toast } from '../../components/ui'
-import { dateShort, dateTime, daysFromNow, eur, eventStats, exportCSV, fullyPaid, normalize, ordinal, overdueList, votingOpen } from '../../data/logic'
+import { cashIn, dateShort, dateTime, daysFromNow, eligibleFor, eur, eventStats, exportCSV, fullyPaid, isCancelled, normalize, ordinal, overdueList, refundPending, refunded, votingOpen } from '../../data/logic'
 import { uid } from '../../data/seed'
 import { update, useDB } from '../../data/store'
 import { PARTNER_TYPES, PTYPE_LABEL, PTYPE_LONG, type Award, type LDEvent, type User, type VotingMode } from '../../data/types'
@@ -127,6 +127,28 @@ export function AwardsTab({ ev }: { ev: LDEvent }) {
   const ps = db.participants.filter((p) => p.eventId === ev.id)
   const paid = ps.filter((p) => fullyPaid(p, ev))
   const votes = db.votes.filter((v) => v.eventId === ev.id)
+  const rule = (a: Award) =>
+    a.eligible
+      ? `Podem ser votadas ${a.eligible.length} pessoas escolhidas.`
+      : a.excluded?.length
+        ? `Todos os participantes com tudo pago menos ${a.excluded.length} (${paid.filter((p) => eligibleFor(a, p, ev)).length} pessoas).`
+        : `Pode ser votado qualquer participante com tudo pago (${paid.length} pessoas).`
+  /** Apuramento automático: o mais votado de cada prémio (em empate, fica o primeiro a chegar a esse número). */
+  const autoWinners = () => {
+    let n = 0
+    mutEv(ev.id, (x) => {
+      x.awards.forEach((a) => {
+        const tally = new Map<string, number>()
+        votes.filter((v) => v.awardId === a.id).forEach((v) => tally.set(v.candidateId, (tally.get(v.candidateId) ?? 0) + 1))
+        const top = [...tally.entries()].sort((p, q) => q[1] - p[1])[0]
+        if (top) {
+          a.winnerId = top[0]
+          n++
+        }
+      })
+    })
+    toast(n ? `Vencedores apurados em ${n} prémio(s). Confirma e anuncia.` : 'Ainda não há votos para apurar.')
+  }
   const voters = new Set(votes.map((v) => v.voterId)).size
   const [edit, setEdit] = useState<Award | null>(null)
   const open = votingOpen(ev)
@@ -184,7 +206,7 @@ export function AwardsTab({ ev }: { ev: LDEvent }) {
                   </button>
                 </span>
               </div>
-              <p className="small muted">{a.eligible ? `Podem ser votadas ${a.eligible.length} pessoas escolhidas.` : `Pode ser votado qualquer participante com tudo pago (${paid.length} pessoas).`}</p>
+              <p className="small muted">{rule(a)}</p>
               {a.winnerId && (
                 <div className="alert alert-ok">
                   Vencedor escolhido: <b>{name(a.winnerId)}</b>
@@ -231,8 +253,14 @@ export function AwardsTab({ ev }: { ev: LDEvent }) {
 
       <div className="card stack">
         <h3>Anunciar vencedores</h3>
-        <p className="small muted">Ao anunciar, a votação fecha e os vencedores aparecem na área de cada participante. Só aparecem os prémios para os quais já escolheste um vencedor.</p>
+        <p className="small muted">
+          Os votos são secretos: ninguém vê em quem cada pessoa votou. Apura automaticamente os mais votados (ou escolhe à mão em cada prémio) e anuncia. Ao anunciar, a votação fecha e os
+          vencedores aparecem na área de cada participante.
+        </p>
         <div className="row">
+          <button className="btn btn-ghost" disabled={ev.announced} onClick={autoWinners}>
+            Apurar automaticamente
+          </button>
           <button
             className="btn btn-gold"
             disabled={ev.announced || !ev.awards.some((a) => a.winnerId)}
@@ -265,6 +293,9 @@ function AwardModal({ ev, award, onClose }: { ev: LDEvent; award: Award; onClose
   const [q, setQ] = useState('')
   const ps = db.participants.filter((p) => p.eventId === ev.id && fullyPaid(p, ev))
   const found = q ? ps.filter((p) => normalize(p.name).includes(normalize(q))).slice(0, 8) : []
+  const mode: 'all' | 'except' | 'only' = a.eligible ? 'only' : a.excluded ? 'except' : 'all'
+  const list = mode === 'only' ? a.eligible! : a.excluded ?? []
+  const setList = (ids: string[]) => setA(mode === 'only' ? { ...a, eligible: ids } : { ...a, excluded: ids })
   return (
     <Modal onClose={onClose}>
       <h3>{a.id ? 'Editar prémio' : 'Novo prémio'}</h3>
@@ -276,23 +307,27 @@ function AwardModal({ ev, award, onClose }: { ev: LDEvent; award: Award; onClose
         <div className="field">
           <label>Quem pode ser votado</label>
           <div className="seg" style={{ alignSelf: 'flex-start' }}>
-            <button className={!a.eligible ? 'on' : ''} onClick={() => setA({ ...a, eligible: null })}>
-              Qualquer participante com tudo pago
+            <button className={mode === 'all' ? 'on' : ''} onClick={() => setA({ ...a, eligible: null, excluded: undefined })}>
+              Todos
             </button>
-            <button className={a.eligible ? 'on' : ''} onClick={() => setA({ ...a, eligible: a.eligible ?? [] })}>
-              Só pessoas escolhidas
+            <button className={mode === 'except' ? 'on' : ''} onClick={() => setA({ ...a, eligible: null, excluded: a.excluded ?? [] })}>
+              Todos menos alguns
+            </button>
+            <button className={mode === 'only' ? 'on' : ''} onClick={() => setA({ ...a, eligible: a.eligible ?? [], excluded: undefined })}>
+              Só os escolhidos
             </button>
           </div>
         </div>
-        {a.eligible && (
+        <p className="small muted">Só podem ser votados participantes com tudo pago.</p>
+        {mode !== 'all' && (
           <>
-            <input className="input" placeholder="Procurar participante…" value={q} onChange={(e) => setQ(e.target.value)} />
+            <input className="input" placeholder={mode === 'only' ? 'Procurar quem pode ser votado…' : 'Procurar quem fica de fora…'} value={q} onChange={(e) => setQ(e.target.value)} />
             {found.map((p) => (
               <button
                 key={p.id}
                 className="chip"
                 onClick={() => {
-                  if (!a.eligible!.includes(p.id)) setA({ ...a, eligible: [...a.eligible!, p.id] })
+                  if (!list.includes(p.id)) setList([...list, p.id])
                   setQ('')
                 }}
               >
@@ -300,10 +335,11 @@ function AwardModal({ ev, award, onClose }: { ev: LDEvent; award: Award; onClose
               </button>
             ))}
             <div className="chips">
-              {a.eligible.map((id) => (
-                <span key={id} className="chip on">
-                  {ps.find((p) => p.id === id)?.name ?? db.participants.find((p) => p.id === id)?.name}
-                  <button className="link" onClick={() => setA({ ...a, eligible: a.eligible!.filter((x) => x !== id) })}>
+              {list.map((id) => (
+                <span key={id} className={`chip ${mode === 'only' ? 'on' : ''}`}>
+                  {mode === 'except' && 'sem '}
+                  {db.participants.find((p) => p.id === id)?.name}
+                  <button className="link" onClick={() => setList(list.filter((x) => x !== id))}>
                     ×
                   </button>
                 </span>
@@ -357,8 +393,9 @@ export function ReceiptsTab({ ev, user }: { ev: LDEvent; user: User }) {
   const mineOnly = user.role === 'promotor'
   const list = mineOnly ? all.filter((x) => x.receivedBy === user.id) : all
   const registered = list.filter((x) => x.receivedBy && x.kind === 'payment').reduce((s, x) => s + x.amount, 0)
-  const unregistered = list.filter((x) => !x.receivedBy).reduce((s, x) => s + x.amount, 0)
+  const unregistered = list.filter((x) => !x.receivedBy && x.kind === 'payment').reduce((s, x) => s + x.amount, 0)
   const adjusted = list.filter((x) => x.kind === 'adjust').reduce((s, x) => s + x.amount, 0)
+  const refundsOut = list.filter((x) => x.kind === 'refund').reduce((s, x) => s + x.amount, 0)
   const groups = new Map<string, typeof list>()
   list.forEach((x) => {
     const k = x.receivedBy ?? '__none'
@@ -372,6 +409,7 @@ export function ReceiptsTab({ ev, user }: { ev: LDEvent; user: User }) {
         <Kpi hl k={mineOnly ? 'Recebido por ti' : 'Recebido e registado'} v={eur(registered)} />
         {!mineOnly && <Kpi k="Sem registo de quem recebeu" v={eur(unregistered)} />}
         <Kpi k="Diferenças acertadas" v={eur(adjusted)} />
+        {refundsOut > 0 && <Kpi bad k="Devoluções feitas" v={eur(refundsOut)} />}
         {!mineOnly && <Kpi k="Pessoas a receber" v={receivers.length} />}
       </div>
       <p className="small muted">
@@ -406,7 +444,7 @@ export function ReceiptsTab({ ev, user }: { ev: LDEvent; user: User }) {
                       .map((x) => (
                         <div key={x.id} className="list-item small" style={{ paddingLeft: 34 }}>
                           <span className="grow">
-                            {x.who} · {ordinal(x.installment)} prestação {x.kind === 'adjust' && '(diferença acertada)'}
+                            {x.who} · {x.kind === 'refund' ? 'devolução' : `${ordinal(x.installment)} prestação`} {x.kind === 'adjust' && '(diferença acertada)'}
                           </span>
                           <span className="muted">{dateTime(x.at)}</span>
                           <b>{eur(x.amount)}</b>
@@ -494,7 +532,7 @@ export function OverdueTab({ ev }: { ev: LDEvent }) {
 
 export function TablesTab({ ev, readOnly }: { ev: LDEvent; readOnly?: boolean }) {
   const db = useDB()
-  const ps = useMemo(() => db.participants.filter((p) => p.eventId === ev.id), [db.participants, ev.id])
+  const ps = useMemo(() => db.participants.filter((p) => p.eventId === ev.id && !isCancelled(p)), [db.participants, ev.id])
   const [n, setN] = useState(5)
   const [seats, setSeats] = useState(10)
   const [drag, setDrag] = useState<string | null>(null)
@@ -528,6 +566,26 @@ export function TablesTab({ ev, readOnly }: { ev: LDEvent; readOnly?: boolean })
       }
     })
     toast('Convidados sentados.')
+  }
+
+  /** Abre uma página simples para imprimir ou guardar em PDF (Ctrl+P → Guardar como PDF). */
+  const printTables = () => {
+    const esc = (t: string) => t.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!)
+    const block = (title: string, people: typeof ps) =>
+      `<section><h2>${esc(title)} <small>${people.length}</small></h2><ol>${people
+        .map((p) => `<li>${esc(p.name)}${p.turma ? ` <i>${esc(p.turma)}</i>` : ''}${p.diet !== 'Nenhuma' ? ` <b>${esc(p.diet)}</b>` : ''}</li>`)
+        .join('')}</ol></section>`
+    const html = `<!doctype html><html lang="pt"><head><meta charset="utf-8"><title>Mesas · ${esc(ev.name)}</title><style>
+      body{font-family:system-ui,sans-serif;margin:24px;color:#222}h1{font-size:20px;margin:0 0 4px}p{margin:0 0 18px;color:#666}
+      main{columns:3 220px;column-gap:24px}section{break-inside:avoid;border:1px solid #ccc;border-radius:8px;padding:10px 12px;margin:0 0 14px}
+      h2{font-size:15px;margin:0 0 6px;color:#591017}small{color:#888;font-weight:400}ol{margin:0;padding-left:20px;font-size:13px;line-height:1.5}i{color:#777}b{color:#b05a00;font-weight:600;font-size:11px}
+      </style></head><body><h1>Mesas · ${esc(ev.name)}</h1><p>${esc(dateShort(ev.date))} · ${esc(ev.location)} · ${ps.length - unseated.length} sentados</p><main>${ev.tables
+      .map((t) => block(t.name, ps.filter((p) => p.tableId === t.id)))
+      .join('')}${unseated.length ? block('Sem mesa', unseated) : ''}</main><script>window.onload=()=>window.print()</script></body></html>`
+    const w = window.open('', '_blank')
+    if (!w) return toast('O browser bloqueou a janela. Permite pop-ups para imprimir.')
+    w.document.write(html)
+    w.document.close()
   }
 
   const exportTables = () =>
@@ -575,6 +633,9 @@ export function TablesTab({ ev, readOnly }: { ev: LDEvent; readOnly?: boolean })
           </button>
           <button className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-end' }} onClick={exportTables}>
             Exportar mesas
+          </button>
+          <button className="btn btn-ghost btn-sm" style={{ alignSelf: 'flex-end' }} onClick={printTables} disabled={!ev.tables.length}>
+            Imprimir / PDF
           </button>
         </div>
       )}
@@ -716,6 +777,95 @@ export function TablesTab({ ev, readOnly }: { ev: LDEvent; readOnly?: boolean })
             </div>
             <button className="btn btn-gold">Guardar</button>
           </form>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+// ---------- Cancelamentos e devoluções ----------
+
+export function CancellationsTab({ ev, user }: { ev: LDEvent; user: User }) {
+  const db = useDB()
+  const canRefund = user.role === 'admin' || user.role === 'promotor_chefe'
+  const list = db.participants.filter((p) => p.eventId === ev.id && isCancelled(p)).sort((a, b) => (b.cancelledAt ?? '').localeCompare(a.cancelledAt ?? ''))
+  const [refundFor, setRefundFor] = useState<string | null>(null)
+  const [value, setValue] = useState('')
+  const name = (id?: string | null) => (id ? db.users.find((u) => u.id === id)?.name ?? '—' : 'sem registo')
+  const pendingTotal = list.reduce((s, p) => s + refundPending(p), 0)
+  const target = list.find((p) => p.id === refundFor)
+
+  return (
+    <div className="stack">
+      <div className="kpis">
+        <Kpi k="Cancelamentos" v={list.length} />
+        <Kpi bad={pendingTotal > 0} k="Por devolver" v={eur(pendingTotal)} />
+        <Kpi k="Já devolvido" v={eur(list.reduce((s, p) => s + refunded(p), 0))} />
+        <Kpi hl k="Fica na empresa" v={eur(list.reduce((s, p) => s + Math.max(0, cashIn(p) + refunded(p) - (p.refundDue ?? 0)), 0))} />
+      </div>
+      <p className="small muted">
+        Quem cancela deixa de contar para mesas, entrada, votação e comissões. Só o promotor chefe e a administração registam cancelamentos (na ficha da pessoa) e devoluções.
+      </p>
+      <div className="list">
+        {list.map((p) => (
+          <div key={p.id} className="list-item">
+            <div className="grow">
+              <div className="t">{p.name}</div>
+              <div className="s">
+                Cancelado a {dateShort(p.cancelledAt!)}
+                {p.cancelReason ? ` · ${p.cancelReason}` : ''} · pagou {eur(cashIn(p) + refunded(p))} · a devolver {eur(p.refundDue ?? 0)}
+              </div>
+              {p.payments
+                .filter((x) => x.kind === 'refund')
+                .map((x) => (
+                  <div key={x.id} className="s">
+                    Devolvido {eur(x.amount)} por {name(x.receivedBy)} · {dateTime(x.at)}
+                  </div>
+                ))}
+            </div>
+            {refundPending(p) > 0 ? <span className="pill overdue">falta {eur(refundPending(p))}</span> : <span className="pill paid">resolvido</span>}
+            {canRefund && refundPending(p) > 0 && (
+              <button
+                className="btn btn-ghost btn-sm"
+                onClick={() => {
+                  setRefundFor(p.id)
+                  setValue(refundPending(p).toFixed(2).replace('.', ','))
+                }}
+              >
+                Registar devolução
+              </button>
+            )}
+          </div>
+        ))}
+        {list.length === 0 && <div className="empty">Sem cancelamentos.</div>}
+      </div>
+      {target && (
+        <Modal onClose={() => setRefundFor(null)}>
+          <h3>Registar devolução</h3>
+          <p className="small muted">
+            {target.name} · falta devolver {eur(refundPending(target))}
+          </p>
+          <div className="field" style={{ marginTop: 14 }}>
+            <label>Valor devolvido (€)</label>
+            <input className="input" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
+          </div>
+          <button
+            className="btn btn-gold"
+            style={{ marginTop: 14 }}
+            onClick={() => {
+              const v = Math.min(refundPending(target), parseFloat(value.replace(',', '.')) || 0)
+              if (v <= 0) return
+              update((d) => {
+                d.participants
+                  .find((x) => x.id === target.id)!
+                  .payments.push({ id: 'pg' + uid(), installment: -1, amount: Math.round(v * 100) / 100, receivedBy: user.id, at: new Date().toISOString(), kind: 'refund' })
+              })
+              toast(`Devolução de ${eur(v)} registada.`)
+              setRefundFor(null)
+            }}
+          >
+            Registar
+          </button>
         </Modal>
       )}
     </div>

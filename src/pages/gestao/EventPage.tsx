@@ -7,9 +7,9 @@ import { eur, eventPrice, eventStats, eventWhen, userCommission, commissionShare
 import { uid } from '../../data/seed'
 import { update, useDB } from '../../data/store'
 import { CATEGORY_LABEL, type User } from '../../data/types'
-import { AwardsTab, FinanceTab, OverdueTab, ReceiptsTab, TablesTab } from './EventTabs'
+import { AwardsTab, CancellationsTab, FinanceTab, OverdueTab, ReceiptsTab, TablesTab } from './EventTabs'
 
-type Tab = 'inscritos' | 'financas' | 'premios' | 'recebimentos' | 'atraso' | 'mesas'
+type Tab = 'inscritos' | 'financas' | 'premios' | 'recebimentos' | 'atraso' | 'cancelamentos' | 'mesas'
 
 export default function EventPage({ eventId, user }: { eventId?: string; user: User }) {
   const params = useParams()
@@ -44,6 +44,7 @@ export default function EventPage({ eventId, user }: { eventId?: string; user: U
     ...(isAdmin ? [{ id: 'financas' as const, label: 'Finanças' }, { id: 'premios' as const, label: 'Prémios' }] : []),
     ...(!isCom ? [{ id: 'recebimentos' as const, label: user.role === 'promotor' ? 'Os meus recebimentos' : 'Recebimentos' }] : []),
     ...(!isCom ? [{ id: 'atraso' as const, label: 'Em atraso', count: s.overdueCount, red: true }] : []),
+    ...((isAdmin || isChief || isCom) && s.cancelled.length ? [{ id: 'cancelamentos' as const, label: 'Cancelamentos', count: s.cancelled.length }] : []),
     { id: 'mesas' as const, label: 'Mesas', count: ev.tables.length },
   ]
 
@@ -80,6 +81,20 @@ export default function EventPage({ eventId, user }: { eventId?: string; user: U
       <p className="muted">
         {eur(eventPrice(ev))} em {ev.installments.length} prestações: {ev.installments.map((i) => eur(i.amount)).join(' + ')} · código <b className="gold">{ev.code}</b>
       </p>
+      {(!!ev.modalities?.length || !!ev.extras?.length) && (
+        <p className="muted small">
+          {!!ev.modalities?.length && `Modalidades: ${ev.modalities.map((m) => `${m.name} ${eur(m.price)}`).join(' · ')}`}
+          {!!ev.modalities?.length && !!ev.extras?.length && ' — '}
+          {!!ev.extras?.length && `Extras: ${ev.extras.map((x) => `${x.name} +${eur(x.price)}`).join(' · ')}`}
+        </p>
+      )}
+      {isChief && (
+        <div className="row small" style={{ marginTop: 10 }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => setModal('team')}>
+            A minha equipa ({promoters.length - 1})
+          </button>
+        </div>
+      )}
       <p className="muted">{ev.hasClasses ? `Turmas: ${ev.classes.join(', ')}` : 'Escola sem turmas'}</p>
       {isAdmin && (
         <>
@@ -135,6 +150,7 @@ export default function EventPage({ eventId, user }: { eventId?: string; user: U
         <Kpi hl k="Recebido em mão" v={eur(s.received)} />
         <Kpi k="Falta receber" v={eur(s.toReceive)} />
         <Kpi k="Já entraram" v={`${s.entered} de ${s.ps.length}`} />
+        {s.cancelled.length > 0 && <Kpi k={`Cancelados · ${eur(s.refundsPending)} por devolver`} v={s.cancelled.length} />}
         {isAdmin && <Kpi k="Comissões a pagar" v={eur(s.commissionToPay)} />}
         {isAdmin && <Kpi k="Comissão que fica na empresa" v={eur(s.commissionKept)} />}
         {isCom && <Kpi hl k="A tua comissão prevista" v={eur(userCommission(ev, db, user.id))} />}
@@ -142,11 +158,12 @@ export default function EventPage({ eventId, user }: { eventId?: string; user: U
 
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
 
-      {tab === 'inscritos' && <Registrations participants={s.ps} user={user} exportName={`inscritos-${ev.code}`} />}
+      {tab === 'inscritos' && <Registrations participants={s.all} user={user} exportName={`inscritos-${ev.code}`} eventId={isCom ? undefined : ev.id} />}
       {tab === 'financas' && isAdmin && <FinanceTab ev={ev} />}
       {tab === 'premios' && isAdmin && <AwardsTab ev={ev} />}
       {tab === 'recebimentos' && <ReceiptsTab ev={ev} user={user} />}
       {tab === 'atraso' && <OverdueTab ev={ev} />}
+      {tab === 'cancelamentos' && <CancellationsTab ev={ev} user={user} />}
       {tab === 'mesas' && <TablesTab ev={ev} readOnly={isCom} />}
 
       {modal === 'edit' && (
@@ -173,7 +190,7 @@ export default function EventPage({ eventId, user }: { eventId?: string; user: U
         </Modal>
       )}
       {modal === 'classes' && <ClassesModal evId={ev.id} onClose={() => setModal(null)} />}
-      {modal === 'team' && <PromoterTeamModal evId={ev.id} onClose={() => setModal(null)} />}
+      {modal === 'team' && <PromoterTeamModal evId={ev.id} chief={isChief} onClose={() => setModal(null)} />}
     </div>
   )
 }
@@ -219,14 +236,15 @@ function ClassesModal({ evId, onClose }: { evId: string; onClose: () => void }) 
   )
 }
 
-export function PromoterTeamModal({ evId, onClose }: { evId: string; onClose: () => void }) {
+/** Equipa do promotor. A administração gere todos; o promotor chefe gere os promotores da sua equipa. */
+export function PromoterTeamModal({ evId, chief, onClose }: { evId: string; chief?: boolean; onClose: () => void }) {
   const db = useDB()
   const team = db.users.filter((u) => u.eventId === evId)
-  const [n, setN] = useState({ name: '', email: '', chief: false })
+  const [n, setN] = useState({ name: '', email: '', phone: '', chief: false })
   const [pass, setPass] = useState<string | null>(null)
   return (
     <Modal onClose={onClose}>
-      <h3>Equipa do promotor</h3>
+      <h3>{chief ? 'A minha equipa' : 'Equipa do promotor'}</h3>
       <p className="small muted">O promotor chefe vê todos os recebimentos do evento. Os promotores da equipa recebem pagamentos e veem só os seus.</p>
       {pass && (
         <div className="alert alert-info" style={{ marginTop: 10 }}>
@@ -241,7 +259,23 @@ export function PromoterTeamModal({ evId, onClose }: { evId: string; onClose: ()
                 {u.name} {u.role === 'promotor_chefe' && <span className="pill offer">chefe</span>}
               </div>
               <div className="s">{u.email}</div>
+              <input
+                className="input"
+                style={{ marginTop: 6, padding: '6px 10px', fontSize: '0.85rem', maxWidth: 220 }}
+                placeholder="Telemóvel"
+                type="tel"
+                defaultValue={u.phone ?? ''}
+                onBlur={(e) => {
+                  const v = e.target.value.trim()
+                  if (v !== (u.phone ?? ''))
+                    update((d) => {
+                      d.users.find((x) => x.id === u.id)!.phone = v || undefined
+                    })
+                }}
+              />
             </div>
+            {(!chief || u.role === 'promotor') && (
+            <>
             <button
               className="btn btn-ghost btn-sm"
               onClick={() => {
@@ -265,6 +299,8 @@ export function PromoterTeamModal({ evId, onClose }: { evId: string; onClose: ()
             >
               ×
             </button>
+            </>
+            )}
           </div>
         ))}
         {team.length === 0 && <div className="empty">Sem promotores.</div>}
@@ -277,20 +313,23 @@ export function PromoterTeamModal({ evId, onClose }: { evId: string; onClose: ()
           if (db.users.some((u) => u.email.toLowerCase() === n.email.toLowerCase())) return toast('Já existe uma conta com esse email.')
           const pass = newPassword()
           update((d) => {
-            d.users.push({ id: 'u' + uid(), name: n.name, email: n.email, password: pass, role: n.chief ? 'promotor_chefe' : 'promotor', eventId: evId })
+            d.users.push({ id: 'u' + uid(), name: n.name, email: n.email, phone: n.phone || undefined, password: pass, role: n.chief && !chief ? 'promotor_chefe' : 'promotor', eventId: evId })
           })
           setPass(pass)
-          setN({ name: '', email: '', chief: false })
+          setN({ name: '', email: '', phone: '', chief: false })
           toast('Promotor adicionado.')
         }}
       >
         <div className="grid-2">
           <input className="input" placeholder="Nome" required value={n.name} onChange={(e) => setN({ ...n, name: e.target.value })} />
           <input className="input" placeholder="Email" type="email" required value={n.email} onChange={(e) => setN({ ...n, email: e.target.value })} />
+          <input className="input" placeholder="Telemóvel (os alunos veem o do chefe)" type="tel" value={n.phone} onChange={(e) => setN({ ...n, phone: e.target.value })} />
         </div>
-        <label className="check">
-          <input type="checkbox" checked={n.chief} onChange={(e) => setN({ ...n, chief: e.target.checked })} /> Promotor chefe
-        </label>
+        {!chief && (
+          <label className="check">
+            <input type="checkbox" checked={n.chief} onChange={(e) => setN({ ...n, chief: e.target.checked })} /> Promotor chefe
+          </label>
+        )}
         <button className="btn btn-gold" style={{ alignSelf: 'flex-start' }}>
           Adicionar promotor
         </button>

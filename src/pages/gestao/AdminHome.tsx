@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { EventForm } from '../../components/EventForm'
 import { Registrations } from '../../components/Registrations'
 import { Kpi, Modal, Tabs, newPassword, toast } from '../../components/ui'
-import { dateLong, eur, eventPrice, eventStats, eventWhen, sellersLabel } from '../../data/logic'
+import { cashIn, dateLong, dateShort, eur, eventPrice, eventStats, eventWhen, isCancelled, refundPending, refunded, sellersLabel } from '../../data/logic'
 import { uid } from '../../data/seed'
 import { API_MODE, hasDemoData, importDemoData, removeDemoData, update, useDB, useSession } from '../../data/store'
 import { CATEGORIES, CATEGORY_LABEL, EXPENSE_CATEGORIES, PARTNER_TYPES, type Category, type DB, type Expense, type Partner, type PartnerType, type Venue } from '../../data/types'
 
-type Tab = 'painel' | 'eventos' | 'inscricoes' | 'contas' | 'quintas' | 'parceiros' | 'despesas' | 'equipa'
+type Tab = 'painel' | 'eventos' | 'inscricoes' | 'cancelamentos' | 'contas' | 'quintas' | 'parceiros' | 'despesas' | 'equipa'
 
 function CategoryChips({ value, onChange, db }: { value: '' | Category; onChange: (c: '' | Category) => void; db: DB }) {
   const active = db.events.filter((e) => !e.archived)
@@ -55,6 +55,7 @@ export default function AdminHome() {
           { id: 'painel', label: 'Painel' },
           { id: 'eventos', label: 'Eventos e códigos' },
           { id: 'inscricoes', label: 'Todas as inscrições' },
+          { id: 'cancelamentos', label: 'Cancelamentos', count: db.participants.filter(isCancelled).length },
           { id: 'contas', label: 'Contas' },
           { id: 'quintas', label: 'Quintas' },
           { id: 'parceiros', label: 'Parceiros' },
@@ -74,6 +75,7 @@ export default function AdminHome() {
             <Kpi k="Comissões a pagar" v={eur(sum('commissionToPay'))} />
             <Kpi k="Comissões que ficam na empresa" v={eur(sum('commissionKept'))} />
             <Kpi k={`Inscritos (${sum('offers')} ofertas)`} v={sum('paying') + sum('offers')} />
+            <Kpi bad={sum('refundsPending') > 0} k={`Cancelamentos · ${eur(sum('refundsPending'))} por devolver`} v={[...stats.values()].reduce((a, x) => a + x.cancelled.length, 0)} />
             <Kpi k="Eventos" v={events.length} />
           </div>
           <h3 style={{ margin: '28px 0 12px' }}>Eventos</h3>
@@ -123,9 +125,10 @@ export default function AdminHome() {
           <p className="small muted" style={{ margin: '14px 0' }}>
             Lucro = receita prevista − quintas − parceiros − comissões a pagar − despesas gerais. As comissões dos sócios não contam como custo.
           </p>
-          {[...stats.values()].some((s) => s.belowMin) && (
+          {[...stats.values()].some((s) => s.belowMin || s.noVenue) && (
             <div className="alert alert-warn" style={{ marginBottom: 14 }}>
-              {[...stats.values()].filter((s) => s.belowMin).length} evento(s) abaixo do mínimo da quinta.
+              {[...stats.values()].filter((s) => s.noVenue).length > 0 && `${[...stats.values()].filter((s) => s.noVenue).length} evento(s) com a quinta por definir. `}
+              {[...stats.values()].filter((s) => s.belowMin).length > 0 && `${[...stats.values()].filter((s) => s.belowMin).length} evento(s) abaixo do mínimo da quinta.`}
             </div>
           )}
           <div className="table-wrap">
@@ -148,7 +151,7 @@ export default function AdminHome() {
                       <td>
                         <b>{e.name}</b>
                         <div className="small muted">
-                          {dateLong(e.date)} · {e.location} {s.belowMin && <span className="pill overdue">abaixo do mínimo</span>}
+                          {dateLong(e.date)} · {e.location} {s.belowMin && <span className="pill overdue">abaixo do mínimo</span>} {s.noVenue && <span className="pill partial">quinta por definir</span>}
                         </div>
                       </td>
                       <td className="num">{eur(s.expected)}</td>
@@ -170,6 +173,7 @@ export default function AdminHome() {
       {tab === 'quintas' && <VenuesTab />}
       {tab === 'parceiros' && <PartnersTab />}
       {tab === 'despesas' && <ExpensesTab />}
+      {tab === 'cancelamentos' && <AllCancellations />}
       {tab === 'equipa' && <TeamTab />}
     </div>
   )
@@ -697,25 +701,32 @@ function TeamTab() {
               <div className="t">{u.name}</div>
               <div className="s">{u.email}</div>
             </div>
-            <select
-              className="input"
-              style={{ width: 'auto', maxWidth: 280 }}
-              value={u.staffEventIds?.[0] ?? ''}
-              onChange={(e) =>
-                update((d) => {
-                  d.users.find((x) => x.id === u.id)!.staffEventIds = e.target.value ? [e.target.value] : []
-                })
-              }
-            >
-              <option value="">Todos os eventos</option>
-              {db.events
-                .filter((e) => !e.archived)
-                .map((e) => (
-                  <option key={e.id} value={e.id}>
-                    Só: {e.name}
-                  </option>
-                ))}
-            </select>
+            <details style={{ minWidth: 220 }}>
+              <summary className="small" style={{ cursor: 'pointer' }}>
+                {u.staffEventIds?.length ? `${u.staffEventIds.length} evento(s)` : 'Todos os eventos'}
+              </summary>
+              <div className="stack" style={{ gap: 4, marginTop: 8 }}>
+                {db.events
+                  .filter((e) => !e.archived)
+                  .map((e) => (
+                    <label key={e.id} className="check small">
+                      <input
+                        type="checkbox"
+                        checked={!!u.staffEventIds?.includes(e.id)}
+                        onChange={(ev) =>
+                          update((d) => {
+                            const x = d.users.find((y) => y.id === u.id)!
+                            const cur = x.staffEventIds ?? []
+                            x.staffEventIds = ev.target.checked ? [...cur, e.id] : cur.filter((y) => y !== e.id)
+                          })
+                        }
+                      />
+                      {e.name}
+                    </label>
+                  ))}
+                <span className="small muted">Nenhum marcado = acesso a todos.</span>
+              </div>
+            </details>
             <button className="btn btn-ghost btn-sm" onClick={() => resetPass(u.id, u.name)}>
               Repor palavra-passe
             </button>
@@ -762,6 +773,43 @@ function TeamTab() {
           Criar acesso de staff
         </button>
       </form>
+    </div>
+  )
+}
+
+function AllCancellations() {
+  const db = useDB()
+  const nav = useNavigate()
+  const list = db.participants.filter(isCancelled).sort((a, b) => (b.cancelledAt ?? '').localeCompare(a.cancelledAt ?? ''))
+  const pending = list.reduce((s, p) => s + refundPending(p), 0)
+  return (
+    <div className="stack">
+      <div className="kpis">
+        <Kpi k="Cancelamentos" v={list.length} />
+        <Kpi bad={pending > 0} k="Por devolver" v={eur(pending)} />
+        <Kpi k="Já devolvido" v={eur(list.reduce((s, p) => s + refunded(p), 0))} />
+        <Kpi hl k="Fica na empresa" v={eur(list.reduce((s, p) => s + Math.max(0, cashIn(p) + refunded(p) - (p.refundDue ?? 0)), 0))} />
+      </div>
+      <p className="small muted">Para registar uma devolução, abre o evento → separador «Cancelamentos». Os cancelamentos fazem-se na ficha de cada pessoa.</p>
+      <div className="list">
+        {list.map((p) => {
+          const ev = db.events.find((e) => e.id === p.eventId)
+          return (
+            <div key={p.id} className="list-item click" onClick={() => ev && nav(`evento/${ev.id}?tab=cancelamentos`)}>
+              <div className="grow">
+                <div className="t">{p.name}</div>
+                <div className="s">
+                  {ev?.name} · cancelado a {dateShort(p.cancelledAt!)}
+                  {p.cancelReason ? ` · ${p.cancelReason}` : ''} · pagou {eur(cashIn(p) + refunded(p))} · a devolver {eur(p.refundDue ?? 0)}
+                </div>
+              </div>
+              {refundPending(p) > 0 ? <span className="pill overdue">falta {eur(refundPending(p))}</span> : <span className="pill paid">resolvido</span>}
+              <span className="chev">›</span>
+            </div>
+          )
+        })}
+        {list.length === 0 && <div className="empty">Sem cancelamentos.</div>}
+      </div>
     </div>
   )
 }

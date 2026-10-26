@@ -5,15 +5,18 @@ date_default_timezone_set('Europe/Lisbon');
 
 /** Tipos de cada coluna: s texto, n número, b sim/não, j lista/objeto (JSON), pw palavra-passe (nunca sai do servidor). */
 const SPEC = [
-  'users' => ['id' => 's', 'name' => 's', 'email' => 's', 'password' => 'pw', 'role' => 's', 'isPartner' => 'b', 'eventId' => 's', 'staffEventIds' => 'j'],
+  'users' => ['id' => 's', 'name' => 's', 'email' => 's', 'password' => 'pw', 'role' => 's', 'isPartner' => 'b', 'eventId' => 's', 'staffEventIds' => 'j', 'phone' => 's'],
   'events' => [
     'id' => 's', 'name' => 's', 'code' => 's', 'venueId' => 's', 'location' => 's', 'category' => 's', 'date' => 's', 'start' => 's', 'end' => 's',
     'hasClasses' => 'b', 'classes' => 'j', 'installments' => 'j', 'commission' => 'n', 'capacity' => 'n', 'partners' => 'j',
     'comercial1' => 's', 'comercial2' => 's', 'share1' => 'n', 'archived' => 'b', 'votingMode' => 's', 'awards' => 'j', 'announced' => 'b', 'tables' => 'j',
+    'modalities' => 'j', 'extras' => 'j', 'signupTypes' => 'j',
   ],
   'participants' => [
     'id' => 's', 'eventId' => 's', 'name' => 's', 'birth' => 's', 'phone' => 's', 'email' => 's', 'password' => 'pw', 'type' => 's', 'turma' => 's',
     'diet' => 's', 'health' => 's', 'consent' => 'b', 'createdAt' => 's', 'offer' => 'b', 'tableId' => 's', 'enteredAt' => 's', 'enteredBy' => 's', 'qr' => 's',
+    'guardianName' => 's', 'guardianPhone' => 's', 'modalityId' => 's', 'extras' => 'j', 'customAmounts' => 'j', 'cancelledAt' => 's', 'cancelReason' => 's',
+    'refundDue' => 'n', 'addedBy' => 's',
   ],
   'payments' => ['id' => 's', 'participantId' => 's', 'installment' => 'n', 'amount' => 'n', 'receivedBy' => 's', 'at' => 's', 'kind' => 's'],
   'votes' => ['id' => 's', 'eventId' => 's', 'awardId' => 's', 'voterId' => 's', 'candidateId' => 's'],
@@ -164,6 +167,29 @@ function fetch_row(string $t, string $id): ?array
   return one("SELECT * FROM `$t` WHERE `id` = ?", [$id]);
 }
 
+const SCHEMA_VERSION = 2;
+
+/** Acrescenta colunas que faltem (instalações feitas com uma versão anterior). Corre uma vez por versão. */
+function migrate(): void
+{
+  try {
+    $v = one("SELECT `v` FROM `meta` WHERE `k` = 'schema'");
+  } catch (PDOException $e) {
+    return; // ainda não instalado
+  }
+  if ($v && (int)$v['v'] >= SCHEMA_VERSION) return;
+  $sqlite = (cfg()['driver'] ?? 'mysql') === 'sqlite';
+  $types = ['s' => 'TEXT NULL', 'n' => 'DECIMAL(10,2) NULL', 'b' => 'TINYINT(1) NULL', 'j' => 'MEDIUMTEXT NULL', 'pw' => 'VARCHAR(255) NULL'];
+  foreach (SPEC as $t => $cols) {
+    $have = $sqlite ? array_column(all("PRAGMA table_info(`$t`)"), 'name') : array_column(all("SHOW COLUMNS FROM `$t`"), 'Field');
+    foreach ($cols as $c => $type) {
+      if (!in_array($c, $have, true)) db()->exec("ALTER TABLE `$t` ADD COLUMN `$c` " . ($sqlite && $type === 'j' ? 'TEXT NULL' : $types[$type]));
+    }
+  }
+  if ($v) q("UPDATE `meta` SET `v` = ? WHERE `k` = 'schema'", [(string)SCHEMA_VERSION]);
+  else q("INSERT INTO `meta` (`k`, `v`) VALUES ('schema', ?)", [(string)SCHEMA_VERSION]);
+}
+
 function bump_version(): void
 {
   q("UPDATE `meta` SET `v` = CAST(`v` AS UNSIGNED) + 1 WHERE `k` = 'version'");
@@ -248,15 +274,81 @@ function payments_of(array $participantIds): array
   return $by;
 }
 
+/** Valor da prestação i para esta pessoa (modalidade/extras podem mudar o plano do evento). */
+function inst_amount(array $p, array $ev, int $i): float
+{
+  $c = $p['customAmounts'] ?? null;
+  return (float)(is_array($c) && isset($c[$i]) ? $c[$i] : ($ev['installments'][$i]['amount'] ?? 0));
+}
+
+function paid_for(array $payments, int $i): float
+{
+  $s = 0.0;
+  foreach ($payments as $x) if ((int)$x['installment'] === $i && ($x['kind'] ?? 'payment') !== 'refund') $s += (float)$x['amount'];
+  return $s;
+}
+
 function fully_paid(array $p, array $ev, array $payments): bool
 {
+  if (!empty($p['cancelledAt'])) return false;
   if (!empty($p['offer'])) return true;
   foreach ($ev['installments'] ?? [] as $i => $inst) {
-    $paid = 0.0;
-    foreach ($payments as $x) if ((int)$x['installment'] === $i) $paid += (float)$x['amount'];
-    if ($paid < (float)$inst['amount'] - 0.001) return false;
+    if (paid_for($payments, $i) < inst_amount($p, $ev, $i) - 0.001) return false;
   }
   return true;
+}
+
+function person_price(array $ev, ?string $modalityId, array $extras): float
+{
+  $base = 0.0;
+  foreach ($ev['installments'] ?? [] as $inst) $base += (float)$inst['amount'];
+  foreach ($ev['modalities'] ?? [] as $m) if ($m['id'] === $modalityId) $base = (float)$m['price'];
+  foreach ($ev['extras'] ?? [] as $x) if (in_array($x['id'], $extras, true)) $base += (float)$x['price'];
+  return $base;
+}
+
+/** Igual a recalcAmounts em src/data/logic.ts: as prestações com pagamentos ficam; a diferença reparte-se pelas outras. */
+function recalc_amounts(array $p, array $ev, array $payments, ?string $modalityId, array $extras): ?array
+{
+  $inst = $ev['installments'] ?? [];
+  $n = count($inst);
+  if (!$n) return null;
+  $target = round(person_price($ev, $modalityId, $extras), 2);
+  $cur = [];
+  $open = [];
+  for ($i = 0; $i < $n; $i++) {
+    $cur[$i] = inst_amount($p, $ev, $i);
+    if (paid_for($payments, $i) <= 0.001) $open[] = $i;
+  }
+  $locked = 0.0;
+  for ($i = 0; $i < $n; $i++) if (!in_array($i, $open, true)) $locked += $cur[$i];
+  $out = $cur;
+  if (!$open) {
+    $out[$n - 1] = round($out[$n - 1] + $target - $locked, 2);
+  } else {
+    $rest = max(0, $target - $locked);
+    $w = array_map(fn($i) => (float)$inst[$i]['amount'] ?: 1.0, $open);
+    $wsum = array_sum($w);
+    $acc = 0.0;
+    foreach ($open as $k => $i) {
+      $v = $k === count($open) - 1 ? round($rest - $acc, 2) : floor(($rest * $w[$k] / $wsum) * 100) / 100;
+      $out[$i] = $v;
+      $acc += $v;
+    }
+  }
+  $same = true;
+  for ($i = 0; $i < $n; $i++) if (abs($out[$i] - (float)$inst[$i]['amount']) >= 0.001) $same = false;
+  return $same ? null : array_values($out);
+}
+
+/** Valida modalidade/extras contra o evento (ignora o que não existe). */
+function clean_choices(array $ev, $modalityId, $extras): array
+{
+  $mod = null;
+  foreach ($ev['modalities'] ?? [] as $m) if ($m['id'] === $modalityId) $mod = $m['id'];
+  $valid = array_column($ev['extras'] ?? [], 'id');
+  $ext = array_values(array_unique(array_filter(is_array($extras) ? $extras : [], fn($x) => in_array($x, $valid, true))));
+  return [$mod, $ext];
 }
 
 function voting_open(array $ev): bool
