@@ -84,3 +84,11 @@ body { background: var(--bg); color: var(--white); }
 .footer-bottom .powered { letter-spacing: 0.04em; }
 .footer .footer-bottom .powered a { display: inline; margin: 0; color: var(--accent-light); font-weight: 700; letter-spacing: 0.12em; }
 .footer .footer-bottom .powered a:hover { color: var(--white); text-decoration: underline; text-underline-offset: 3px; }
+
+/* ---------- Vídeo de fundo do topo ---------- */
+.hero-video { position: absolute; inset: -6% 0 0 0; overflow: hidden; background: var(--burgundy-deep); }
+.hero-video video, .hero-video-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.hero-video video { opacity: 0; transition: opacity 1.2s ease; }
+.hero-video video.on { opacity: 1; }
+/* Véu bordô por cima do vídeo: o texto lê-se sempre bem */
+.hero-video::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(89, 16, 23, 0.35), rgba(36, 6, 10, 0.88) 80%), linear-gradient(rgba(89, 16, 23, 0.38), rgba(36, 6, 10, 0.45)), linear-gradient(transparent 72%, var(--bg)); }

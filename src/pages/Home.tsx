@@ -4,6 +4,7 @@ import { BRAND, whatsapp } from '../config'
 import { Counter, Reveal, ScrollProgress, Sparkles, SplitWords, Tilt, useParallax } from '../components/motion'
 import { CookieBanner, Footer, Navbar } from '../components/site'
 import { Intro, shouldShowIntro } from '../components/Intro'
+import { HeroVideo } from '../components/HeroVideo'
 import { QR, StatusPill } from '../components/ui'
 import { Icon, type IconName } from '../components/icons'
 
@@ -104,9 +105,9 @@ export default function Home() {
       {/* HERO */}
       <section className="hero2">
         <div className="hero2-parallax" style={{ transform: `translateY(${py}px)` }}>
-          <div className="hero2-bg" />
+          <HeroVideo />
         </div>
-        <Sparkles count={46} />
+        <Sparkles count={30} />
         {ready && (
         <div className="container">
           <span className="badge fade-in" style={{ animationDelay: '0.1s' }}>

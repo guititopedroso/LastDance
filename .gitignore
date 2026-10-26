@@ -13,3 +13,6 @@ lastdance-config.php
 tsconfig.tsbuildinfo
 .claude/
 .DS_Store
+
+# Ficheiros de trabalho (vídeos originais)
+public/_preview/
