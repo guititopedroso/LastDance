@@ -10,11 +10,12 @@ import { Icon, type IconName } from '../components/icons'
 
 const MARQUEE = ['LASTDANCE 2026/27', 'BAILE DE FINALISTAS', 'UMA NOITE INESQUECÍVEL', 'ELEGÂNCIA & GLAMOUR', 'A TUA ÚLTIMA DANÇA']
 
-const EVENTS = [
-  ['Bailes de finalistas', '12.º ano · a grande noite de despedida do secundário.', '/hero-bg.webp'],
-  ['Bailes do 9.º ano', 'Uma primeira grande noite, segura e à medida da idade.', '/bg-dance.webp'],
-  ['Bailes universitários', 'Espaços exclusivos, DJs convidados e afterparty.', '/bg-venue.webp'],
-  ['Jantares de gala', 'Elegância à mesa, diplomas e brindes.', '/bg-outdoor-prom.webp'],
+/** Cada tipo de evento tem uma ou mais fotos; com várias, ao tocar no cartão passa para a seguinte. */
+const EVENTS: [string, string, string[]][] = [
+  ['Bailes de finalistas', '12.º ano · a grande noite de despedida do secundário.', ['/brand/baile-1.webp', '/brand/baile-2.webp', '/brand/baile-3.webp']],
+  ['Bailes do 9.º ano', 'Uma primeira grande noite, segura e à medida da idade.', ['/bg-dance.webp']],
+  ['Bailes universitários', 'Espaços exclusivos, DJs convidados e afterparty.', ['/brand/uni-1.webp', '/brand/uni-2.webp', '/brand/uni-3.webp']],
+  ['Jantares de gala', 'Elegância à mesa, diplomas e brindes.', ['/brand/gala-1.webp', '/brand/gala-2.webp', '/brand/gala-3.webp']],
 ]
 
 const WHY = [
@@ -48,6 +49,41 @@ const FAQ = [
   ['Como entro no baile?', 'Com tudo pago, recebes um QR pessoal. À porta lemos o QR e confirmamos o Cartão de Cidadão.'],
   ['Com quanta antecedência devemos falar convosco?', 'Idealmente 8 a 12 meses antes — as melhores datas de maio e junho esgotam cedo.'],
 ]
+
+/** Cartão de tipo de evento. Com várias fotos, cada toque mostra a seguinte (com transição suave). */
+function EventCard({ title, text, images }: { title: string; text: string; images: string[] }) {
+  const [n, setN] = useState(0)
+  const many = images.length > 1
+  const next = () => many && setN((n + 1) % images.length)
+  return (
+    <div
+      className={many ? 'ev-click' : undefined}
+      onClick={next}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), next())}
+      role={many ? 'button' : undefined}
+      tabIndex={many ? 0 : undefined}
+      aria-label={many ? `${title}: ver foto seguinte (${n + 1} de ${images.length})` : undefined}
+    >
+      <Tilt className="ev-card">
+        {images.map((src, k) => (
+          <div key={src} className={`img ${k === n ? 'on' : ''}`} style={{ backgroundImage: `url(${src})` }} />
+        ))}
+        <div className="body">
+          <h3>{title}</h3>
+          <p>{text}</p>
+          {many && (
+            <div className="ev-dots" aria-hidden>
+              {images.map((src, k) => (
+                <span key={src} className={k === n ? 'on' : ''} />
+              ))}
+              <small>toca para ver mais</small>
+            </div>
+          )}
+        </div>
+      </Tilt>
+    </div>
+  )
+}
 
 function PhoneDemo() {
   const [paid, setPaid] = useState(false)
@@ -175,15 +211,9 @@ export default function Home() {
             </h2>
           </Reveal>
           <div className="cards-4">
-            {EVENTS.map(([t, d, img], i) => (
+            {EVENTS.map(([t, d, imgs], i) => (
               <Reveal key={t} delay={i * 120} anim="up">
-                <Tilt className="ev-card">
-                  <div className="img" style={{ backgroundImage: `url(${img})` }} />
-                  <div className="body">
-                    <h3>{t}</h3>
-                    <p>{d}</p>
-                  </div>
-                </Tilt>
+                <EventCard title={t} text={d} images={imgs} />
               </Reveal>
             ))}
           </div>

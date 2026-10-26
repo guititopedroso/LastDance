@@ -91,4 +91,20 @@ body { background: var(--bg); color: var(--white); }
 .hero-video video { opacity: 0; transition: opacity 1.2s ease; }
 .hero-video video.on { opacity: 1; }
 /* Véu bordô por cima do vídeo: o texto lê-se sempre bem */
-.hero-video::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(89, 16, 23, 0.35), rgba(36, 6, 10, 0.88) 80%), linear-gradient(rgba(89, 16, 23, 0.38), rgba(36, 6, 10, 0.45)), linear-gradient(transparent 72%, var(--bg)); }
+.hero-video::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, 0.12), rgba(20, 4, 7, 0.72) 85%), linear-gradient(rgba(89, 16, 23, 0.14), rgba(20, 4, 7, 0.3)), linear-gradient(transparent 75%, var(--bg)); } /* véu mais leve: o vídeo vê-se com cores mais naturais */
+
+/* ---------- Cartão de evento com várias fotos (toque para mudar) ---------- */
+.ev-click { cursor: pointer; -webkit-user-select: none; user-select: none; border-radius: 22px; }
+.ev-click:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.ev-card .img { opacity: 0; transition: opacity 0.7s ease, transform 0.8s ease; }
+.ev-card .img:only-of-type, .ev-card .img.on { opacity: 1; }
+.ev-click:active .ev-card { transform: scale(0.985); }
+.ev-dots { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+.ev-dots span { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 248, 240, 0.35); transition: all 0.3s; }
+.ev-dots span.on { width: 20px; border-radius: 4px; background: var(--accent-light); }
+.ev-dots small { margin-left: 6px; color: var(--gray-300); font-size: 0.75rem; letter-spacing: 0.02em; }
+
+/* Com o véu mais leve, uma sombra suave mantém o texto do topo legível */
+.hero2 .lead { text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7); }
+.hero2 h1 { text-shadow: 0 3px 24px rgba(0, 0, 0, 0.45); }
+.hero2 h1 .shimmer { text-shadow: none; }
