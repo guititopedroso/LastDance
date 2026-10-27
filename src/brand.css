@@ -113,3 +113,55 @@ body { background: var(--bg); color: var(--white); }
 .demo-banner { position: fixed; z-index: 80; left: 50%; transform: translateX(-50%); bottom: max(12px, env(safe-area-inset-bottom)); background: rgba(254, 210, 137, 0.95); color: #3a0b12; padding: 7px 16px; border-radius: 999px; font-size: 0.8rem; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4); white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; }
 .demo-banner a { color: #591017; font-weight: 700; }
 .demo-banner ~ .cookie, body:has(.demo-banner) .cookie { bottom: 56px; }
+
+/* ---------- «Pronto para a noite da tua vida?»: letra mais profissional ---------- */
+.cta-final h2 { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; font-size: clamp(2rem, 4.6vw, 3.4rem); }
+
+/* ---------- Telemóvel (moldura realista) ---------- */
+.iphone { position: relative; width: min(330px, 86vw); margin: 0 auto; padding: 12px; border-radius: 52px; background: linear-gradient(145deg, #3a3a3e, #121214 40%, #2a2a2e); box-shadow: 0 0 0 1.5px #55555c, 0 0 0 3px #0c0c0e, 0 40px 90px rgba(0, 0, 0, 0.6), 0 0 60px rgba(226, 166, 92, 0.15); }
+.iphone-btn { position: absolute; width: 4px; border-radius: 2px; background: linear-gradient(#5b5b62, #2c2c30); }
+.iphone-btn-a { left: -4px; top: 110px; height: 30px; }
+.iphone-btn-b { left: -4px; top: 160px; height: 56px; }
+.iphone-btn-c { right: -4px; top: 150px; height: 84px; }
+.iphone-screen { position: relative; overflow: hidden; border-radius: 42px; background: radial-gradient(ellipse at top, rgba(254, 210, 137, 0.12), transparent 60%), var(--burgundy-deep); padding: 0 18px 26px; min-height: 600px; display: flex; flex-direction: column; }
+.iphone-status { display: flex; align-items: center; justify-content: space-between; height: 50px; font-size: 0.82rem; font-weight: 600; padding: 0 10px; }
+.iphone-island { width: 104px; height: 30px; border-radius: 20px; background: #000; }
+.iphone-icons { display: flex; gap: 3px; align-items: flex-end; }
+.iphone-icons i { display: block; width: 4px; background: var(--white); border-radius: 1px; }
+.iphone-icons i:nth-child(1) { height: 5px; }
+.iphone-icons i:nth-child(2) { height: 8px; }
+.iphone-icons i:nth-child(3) { height: 11px; }
+.iphone-url { margin: 2px 0 14px; text-align: center; font-size: 0.72rem; color: var(--gray-300); background: rgba(255, 255, 255, 0.07); border-radius: 10px; padding: 6px; }
+.iphone-content { flex: 1; }
+.iphone-home { display: block; width: 120px; height: 5px; border-radius: 3px; background: rgba(255, 248, 240, 0.55); margin: 18px auto 0; }
+@media (max-width: 400px) { .iphone-screen { min-height: 560px; } }
+
+/* ---------- Da primeira conversa à última dança (6 passos, linha vertical) ---------- */
+.vsteps { list-style: none; margin: 0 auto; padding: 32px 28px; max-width: 720px; border-radius: 26px; background: rgba(255, 228, 200, 0.045); border: 1px solid var(--glass-border); }
+.vstep { position: relative; padding-bottom: 6px; }
+.vstep:not(:last-child)::before { content: ''; position: absolute; left: 27px; top: 56px; bottom: -6px; width: 2px; background: rgba(254, 210, 137, 0.22); }
+.vstep.done:not(:last-child)::before { background: var(--accent); }
+.vstep-head { display: flex; align-items: center; gap: 18px; width: 100%; background: none; border: 0; padding: 6px 0; cursor: pointer; text-align: left; color: inherit; }
+.vstep-head b { display: block; font-size: 1.2rem; line-height: 1.2; }
+.vstep-head small { color: var(--accent-light); font-size: 0.92rem; }
+.vstep-num { flex: 0 0 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 1.15rem; border: 2px solid rgba(254, 210, 137, 0.35); background: var(--bg-2); color: var(--accent-light); transition: var(--t); position: relative; z-index: 1; }
+.vstep.done .vstep-num { border-color: var(--accent); }
+.vstep.open .vstep-num { background: var(--gradient-gold); color: #3a0b12; border-color: transparent; box-shadow: 0 0 0 6px rgba(226, 166, 92, 0.15); }
+.vstep-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.4s ease; padding-left: 74px; }
+.vstep-body > p { overflow: hidden; color: var(--gray-300); line-height: 1.65; }
+.vstep.open .vstep-body { grid-template-rows: 1fr; }
+.vstep.open .vstep-body > p { padding: 6px 0 18px; }
+.vstep-head:hover .vstep-num { border-color: var(--accent); }
+@media (max-width: 560px) {
+  .vsteps { padding: 22px 16px; }
+  .vstep-num { flex-basis: 46px; height: 46px; font-size: 1rem; }
+  .vstep:not(:last-child)::before { left: 22px; top: 48px; }
+  .vstep-body { padding-left: 64px; }
+  .vstep-head b { font-size: 1.08rem; }
+}
+
+/* ---------- Programa da noite (mais compacto, 9 momentos) ---------- */
+.tl2-compact .tl2-item { padding-bottom: 18px; }
+.tl2-compact .tl2-item::before { top: 4px; }
+.tl2-compact .h { font-size: 0.85rem; }
+.tl2-compact h3 { font-size: 1.05rem; margin: 2px 0 0; font-weight: 600; }

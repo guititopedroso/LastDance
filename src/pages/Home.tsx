@@ -27,19 +27,26 @@ const WHY = [
   ['phone', 'Tudo no telemóvel', 'Inscrição, prestações, mesa e QR numa só área.'],
 ]
 
+/** Da primeira conversa à última dança: [título, com quem, o que acontece] */
 const STEPS = [
-  ['chat', 'Falamos', 'A comissão conta-nos a ideia e o orçamento.'],
-  ['doc', 'Proposta', 'Preço por pessoa fechado e tudo o que está incluído.'],
-  ['ticket', 'Inscrições', 'Cada aluno inscreve-se com o código e paga em prestações.'],
-  ['glass', 'A noite', 'Tratamos de tudo. Vocês só têm de aparecer.'],
+  ['Conversa e visita', 'Contigo', 'Falamos contigo para perceber a ideia, o número de pessoas e o orçamento. Quando faz sentido, visitamos juntos os espaços possíveis.'],
+  ['Proposta e contrato', 'Contigo', 'Enviamos uma proposta clara, com o preço por pessoa, as prestações e tudo o que está incluído. Assinamos o contrato e reservamos a data.'],
+  ['Pré-produção', 'Connosco', 'Conceito, decoração, fornecedores, licenças e seguros. Tratamos de tudo nos bastidores para que nada falhe no dia.'],
+  ['Divulgação', 'Com a organização', 'Entregamos o código do evento à comissão de finalistas, com materiais para divulgar nas turmas e nas redes sociais.'],
+  ['Inscrições', 'Com os participantes', 'Cada aluno inscreve-se com o código em poucos minutos e paga em prestações ao promotor, que regista tudo na plataforma.'],
+  ['Produção', 'Connosco', 'No dia, montamos tudo, recebemos os convidados com QR à porta e coordenamos cada momento até à última dança.'],
 ]
 
 const NIGHT = [
-  ['20:00', 'Red carpet & receção', 'Chegada, QR à porta, fotos e cocktail de boas-vindas.'],
-  ['21:00', 'Jantar de gala', 'Mesas organizadas e menu servido.'],
-  ['22:30', 'Cerimónia & prémios', 'Rei, Rainha e Melhor Outfit, votados por vocês.'],
-  ['23:00', 'Festa', 'DJ e artistas até ao amanhecer.'],
-  ['02:00', 'Afterparty', 'Espaço privado para prolongar a magia.'],
+  ['19h00', 'Receção aos convidados e welcome drink'],
+  ['19h30', 'Cerimónia de faixas e diplomas'],
+  ['20h30', 'Cocktail'],
+  ['21h30', 'Jantar de gala'],
+  ['23h00', 'Entrega de prémios'],
+  ['23h45', 'Corte do bolo'],
+  ['23h45', 'Fogo de artifício'],
+  ['00h00', 'Festa com bar aberto e ceia'],
+  ['04h00', 'Encerramento'],
 ]
 
 const FAQ = [
@@ -85,11 +92,50 @@ function EventCard({ title, text, images }: { title: string; text: string; image
   )
 }
 
+/** Linha do tempo vertical: toca num passo para o abrir. */
+function Steps() {
+  const [open, setOpen] = useState(0)
+  return (
+    <ol className="vsteps">
+      {STEPS.map(([t, who, d], k) => (
+        <li key={t} className={`vstep ${open === k ? 'open' : ''} ${k < open ? 'done' : ''}`}>
+          <button className="vstep-head" onClick={() => setOpen(k)} aria-expanded={open === k}>
+            <span className="vstep-num">{k + 1}</span>
+            <span>
+              <b>{t}</b>
+              <small>{who}</small>
+            </span>
+          </button>
+          <div className="vstep-body">
+            <p>{d}</p>
+          </div>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 function PhoneDemo() {
   const [paid, setPaid] = useState(false)
+  const now = new Date()
+  const time = `${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`
   return (
-    <div className="phone floating">
-      <div className="stack">
+    <div className="iphone floating" aria-label="Exemplo da área do aluno no telemóvel">
+      <span className="iphone-btn iphone-btn-a" />
+      <span className="iphone-btn iphone-btn-b" />
+      <span className="iphone-btn iphone-btn-c" />
+      <div className="iphone-screen">
+        <div className="iphone-status">
+          <span>{time}</span>
+          <span className="iphone-island" />
+          <span className="iphone-icons" aria-hidden>
+            <i />
+            <i />
+            <i />
+          </span>
+        </div>
+        <div className="iphone-url">🔒 lastdance.pt</div>
+      <div className="stack iphone-content">
         <div>
           <b>A minha área</b>
           <p className="small muted">Baile de finalistas · 28 de maio</p>
@@ -121,6 +167,8 @@ function PhoneDemo() {
         <button className="btn btn-gold btn-sm" onClick={() => setPaid(!paid)}>
           {paid ? 'Repor' : 'Simular: pagar o que falta'}
         </button>
+      </div>
+        <span className="iphone-home" />
       </div>
     </div>
   )
@@ -249,21 +297,12 @@ export default function Home() {
         <div className="container">
           <Reveal className="section-head">
             <span className="eyebrow">Como funciona</span>
-            <h2>Simples, do início ao fim</h2>
+            <h2>Da primeira conversa à última dança</h2>
+            <p>Seis passos até ao dia, e depois a noite, hora a hora. Toca num passo para ver o que acontece.</p>
           </Reveal>
-          <div className="steps4">
-            {STEPS.map(([i, t, d], k) => (
-              <Reveal key={t} delay={k * 180}>
-                <div className="num">
-                  <Icon name={i as IconName} size={26} />
-                </div>
-                <h3 style={{ marginBottom: 6 }}>
-                  {k + 1}. {t}
-                </h3>
-                <p className="muted small">{d}</p>
-              </Reveal>
-            ))}
-          </div>
+          <Reveal>
+            <Steps />
+          </Reveal>
         </div>
       </section>
 
@@ -277,15 +316,17 @@ export default function Home() {
                 Uma noite <span className="script shimmer">inesquecível</span>
               </h2>
             </Reveal>
-            <div className="tl2">
-              {NIGHT.map(([h, t, d], k) => (
-                <Reveal key={h} className="tl2-item" anim="left" delay={k * 100}>
+            <div className="tl2 tl2-compact">
+              {NIGHT.map(([h, t], k) => (
+                <Reveal key={k} className="tl2-item" anim="left" delay={k * 70}>
                   <div className="h">{h}</div>
-                  <h3 style={{ fontSize: '1.15rem', margin: '2px 0 4px' }}>{t}</h3>
-                  <p className="muted small">{d}</p>
+                  <h3>{t}</h3>
                 </Reveal>
               ))}
             </div>
+            <p className="small muted" style={{ marginTop: 6 }}>
+              * Programa exemplo, com possível ajuste mediante a escola.
+            </p>
           </div>
           <Reveal anim="right">
             <div className="section-head" style={{ marginBottom: 24 }}>
