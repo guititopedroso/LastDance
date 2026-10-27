@@ -13,7 +13,7 @@ const MARQUEE = ['LASTDANCE 2026/27', 'BAILE DE FINALISTAS', 'UMA NOITE INESQUEC
 /** Cada tipo de evento tem uma ou mais fotos; com várias, ao tocar no cartão passa para a seguinte. */
 const EVENTS: [string, string, string[]][] = [
   ['Bailes de finalistas', '12.º ano · a grande noite de despedida do secundário.', ['/brand/baile-1.webp', '/brand/baile-2.webp', '/brand/baile-3.webp']],
-  ['Bailes do 9.º ano', 'Uma primeira grande noite, segura e à medida da idade.', ['/bg-dance.webp']],
+  ['Bailes do 9.º ano', 'Uma primeira grande noite, segura e à medida da idade.', ['/brand/nono-1.webp', '/brand/nono-2.webp', '/brand/nono-3.webp']],
   ['Bailes universitários', 'Espaços exclusivos, DJs convidados e afterparty.', ['/brand/uni-1.webp', '/brand/uni-2.webp', '/brand/uni-3.webp']],
   ['Jantares de gala', 'Elegância à mesa, diplomas e brindes.', ['/brand/gala-1.webp', '/brand/gala-2.webp', '/brand/gala-3.webp']],
 ]
