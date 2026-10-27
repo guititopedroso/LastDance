@@ -9,15 +9,19 @@ import { useSyncExternalStore } from 'react'
 import type { DB, LDEvent, Participant, ParticipantType, User } from './types'
 import { buildSeed, uid } from './seed'
 import { recalcAmounts } from './logic'
+import { DEMO } from '../mode'
 
 const API = ((import.meta.env.VITE_API_URL as string | undefined) || '').replace(/\/$/, '')
-export const API_MODE = API !== ''
+/** Em /demo nunca usamos a API, mesmo na versão publicada. */
+export const API_MODE = API !== '' && !DEMO
 
-const DEMO_KEY = 'lastdance-db-v3'
-const SESSION_KEY = 'lastdance-session'
-const TOKEN_KEY = 'lastdance-token'
-const CACHE_KEY = 'lastdance-cache'
-const QUEUE_KEY = 'lastdance-queue'
+// A demonstração guarda tudo com outro prefixo: a sessão da demo nunca se mistura com a do site real.
+const NS = DEMO ? 'lastdance-demo' : 'lastdance'
+const DEMO_KEY = `${NS}-db-v3`
+const SESSION_KEY = `${NS}-session`
+const TOKEN_KEY = `${NS}-token`
+const CACHE_KEY = `${NS}-cache`
+const QUEUE_KEY = `${NS}-queue`
 
 const ls = {
   get(k: string) {
@@ -172,7 +176,9 @@ async function api<T = Record<string, unknown>>(route: string, body?: unknown): 
   } catch {
     throw new NetError('Sem ligação à internet.')
   }
-  const data = (await res.json().catch(() => ({}))) as { error?: string }
+  const data = (await res.json().catch(() => null)) as { error?: string } | null
+  // Resposta que não é JSON (servidor em baixo, página de erro do alojamento…)
+  if (!data) throw new ApiError('O servidor não respondeu como esperado. Tenta outra vez daqui a pouco.', res.status)
   if (res.status === 401 && route !== 'login') throw new AuthError(data.error || 'Sessão terminada.')
   if (!res.ok) throw new ApiError(data.error || 'Erro no servidor. Tenta outra vez.', res.status)
   return data as T
@@ -325,7 +331,7 @@ export interface Account {
   detail: string
 }
 
-const ACCOUNTS_KEY = 'lastdance-accounts'
+const ACCOUNTS_KEY = `${NS}-accounts`
 let accounts: Account[] = parse(ls.get(ACCOUNTS_KEY), [] as Account[])
 
 export function useAccounts() {
@@ -350,7 +356,7 @@ export async function login(email: string, password: string): Promise<Account[]>
   }
   try {
     const res = await api<{ accounts: Account[] }>('login', { email, password })
-    return res.accounts
+    return res.accounts ?? []
   } catch (e) {
     if (e instanceof ApiError && e.status === 401) return []
     throw e
@@ -459,12 +465,12 @@ export async function registerParticipant(ev: LDEvent, f: RegisterData): Promise
 
 // ---------- Dados de demonstração no servidor ----------
 
-const DEMO = 'demo-'
+const DEMO_PREFIX = 'demo-'
 
 /** Copia os dados fictícios para a base de dados (tudo com o prefixo demo-, para se poder apagar depois). */
 export function importDemoData() {
   const s = buildSeed()
-  const P = (id?: string) => (id ? DEMO + id : id)
+  const P = (id?: string) => (id ? DEMO_PREFIX + id : id)
   const emails = new Set(db.users.map((u) => u.email.toLowerCase()))
   update((d) => {
     d.venues.push(...s.venues.map((v) => ({ ...v, id: P(v.id)! })))
@@ -482,7 +488,7 @@ export function importDemoData() {
         ...p,
         id: P(p.id)!,
         eventId: P(p.eventId)!,
-        qr: DEMO.toUpperCase() + p.qr,
+        qr: DEMO_PREFIX.toUpperCase() + p.qr,
         enteredBy: P(p.enteredBy),
         payments: p.payments.map((x) => ({ ...x, id: P(x.id)!, receivedBy: x.receivedBy ? P(x.receivedBy)! : null })),
       })),
@@ -491,10 +497,10 @@ export function importDemoData() {
   })
 }
 
-export const hasDemoData = (d: DB) => d.events.some((e) => e.id.startsWith(DEMO)) || d.users.some((u) => u.id.startsWith(DEMO))
+export const hasDemoData = (d: DB) => d.events.some((e) => e.id.startsWith(DEMO_PREFIX)) || d.users.some((u) => u.id.startsWith(DEMO_PREFIX))
 
 export function removeDemoData() {
-  const keep = <T extends { id: string }>(a: T[]) => a.filter((x) => !x.id.startsWith(DEMO))
+  const keep = <T extends { id: string }>(a: T[]) => a.filter((x) => !x.id.startsWith(DEMO_PREFIX))
   update((d) => {
     d.venues = keep(d.venues)
     d.partners = keep(d.partners)
@@ -502,6 +508,6 @@ export function removeDemoData() {
     d.events = keep(d.events)
     d.participants = keep(d.participants)
     d.expenses = keep(d.expenses)
-    d.votes = d.votes.filter((v) => !v.eventId.startsWith(DEMO))
+    d.votes = d.votes.filter((v) => !v.eventId.startsWith(DEMO_PREFIX))
   })
 }

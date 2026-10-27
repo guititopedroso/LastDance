@@ -108,3 +108,8 @@ body { background: var(--bg); color: var(--white); }
 .hero2 .lead { text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7); }
 .hero2 h1 { text-shadow: 0 3px 24px rgba(0, 0, 0, 0.45); }
 .hero2 h1 .shimmer { text-shadow: none; }
+
+/* Aviso da página /demo */
+.demo-banner { position: fixed; z-index: 80; left: 50%; transform: translateX(-50%); bottom: max(12px, env(safe-area-inset-bottom)); background: rgba(254, 210, 137, 0.95); color: #3a0b12; padding: 7px 16px; border-radius: 999px; font-size: 0.8rem; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4); white-space: nowrap; max-width: calc(100% - 24px); overflow: hidden; text-overflow: ellipsis; }
+.demo-banner a { color: #591017; font-weight: 700; }
+.demo-banner ~ .cookie, body:has(.demo-banner) .cookie { bottom: 56px; }

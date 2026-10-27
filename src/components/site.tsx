@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { BRAND, whatsapp } from '../config'
+import { BASE } from '../mode'
 import { Icon } from './icons'
 import { Logo } from './ui'
 
 const LINKS = [
-  ['Eventos', '/#eventos'],
-  ['Porquê nós', '/#quem-somos'],
-  ['Como funciona', '/#como'],
-  ['Perguntas', '/#faq'],
-  ['Contactos', '/#contactos'],
+  ['Eventos', `${BASE}/#eventos`],
+  ['Porquê nós', `${BASE}/#quem-somos`],
+  ['Como funciona', `${BASE}/#como`],
+  ['Perguntas', `${BASE}/#faq`],
+  ['Contactos', `${BASE}/#contactos`],
 ]
 
 export function Navbar() {

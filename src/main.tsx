@@ -10,6 +10,25 @@ import Legal from './pages/Legal'
 import Login from './pages/Login'
 import Inscricao from './pages/Inscricao'
 import Gestao from './pages/gestao/Gestao'
+import { BASE, DEMO } from './mode'
+
+if (DEMO) {
+  // A demonstração não deve aparecer no Google
+  const m = document.createElement('meta')
+  m.name = 'robots'
+  m.content = 'noindex, nofollow'
+  document.head.appendChild(m)
+}
+
+/** Aviso fixo em lastdance.pt/demo. */
+function DemoBanner() {
+  return (
+    <div className="demo-banner" role="note">
+      <b>Demonstração</b> · dados fictícios, ficam só neste browser ·{' '}
+      <a href="/">Ir para o site</a>
+    </div>
+  )
+}
 
 const TITLES: Record<string, string> = {
   inscricao: 'Inscrição',
@@ -33,7 +52,7 @@ function ScrollTop() {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename={BASE || undefined}>
       <ScrollTop />
       <Routes>
         <Route path="/" element={<Home />} />
@@ -47,6 +66,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />
+      {DEMO && <DemoBanner />}
     </BrowserRouter>
   </React.StrictMode>,
 )
