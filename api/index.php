@@ -208,6 +208,7 @@ function apply_op(array $me, array $op): ?string
     $err = can_delete($me, $t, $old);
     if ($err) return $err;
     q("DELETE FROM `$t` WHERE `id` = ?", [$old['id']]);
+    if ($t === 'users') q("DELETE FROM `tokens` WHERE `kind` = 'user' AND `subjectId` = ?", [$old['id']]);
     if ($t === 'participants') {
       q('DELETE FROM `payments` WHERE `participantId` = ?', [$old['id']]);
       q('DELETE FROM `votes` WHERE `voterId` = ? OR `candidateId` = ?', [$old['id'], $old['id']]);
@@ -304,6 +305,11 @@ function only(array $changed, array $allowed): ?string
 function can_write(array $me, string $t, ?array $old, array $new, array $changed): ?string
 {
   $role = $me['role'];
+  if ($t === 'users' && $role === 'admin') {
+    if ($old['id'] === $me['id']) return 'Não podes apagar a tua própria conta.';
+    if ($old['role'] === 'admin' && (int)one("SELECT COUNT(*) AS n FROM `users` WHERE `role` = 'admin'")['n'] <= 1) return 'Tem de ficar pelo menos um administrador.';
+    return null;
+  }
   if ($role === 'admin') return null;
   $prom = in_array($role, ['promotor_chefe', 'promotor'], true);
 

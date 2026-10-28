@@ -569,6 +569,7 @@ function ExpensesTab() {
 
 function TeamTab() {
   const db = useDB()
+  const { user: me } = useSession()
   const [nu, setNu] = useState({ name: '', email: '', role: 'admin' as 'admin' | 'comercial', isPartner: true })
   const [ns, setNs] = useState({ name: '', email: '' })
   const [pass, setPass] = useState<{ who: string; p: string } | null>(null)
@@ -582,6 +583,16 @@ function TeamTab() {
     setPass({ who: name, p })
   }
   const emailTaken = (e: string) => db.users.some((u) => u.email.toLowerCase() === e.toLowerCase())
+  const admins = team.filter((u) => u.role === 'admin').length
+  const removeUser = (id: string, name: string) => {
+    const evs = db.events.filter((e) => e.comercial1 === id || e.comercial2 === id).map((e) => e.name)
+    const warn = evs.length ? `\n\n${name} é comercial em: ${evs.join(', ')}. Esses eventos ficam sem esse comercial.` : ''
+    if (!confirm(`Apagar a conta de ${name}? A pessoa deixa de conseguir entrar.${warn}`)) return
+    update((d) => {
+      d.users = d.users.filter((x) => x.id !== id)
+    })
+    toast('Conta apagada.')
+  }
 
   return (
     <div className="stack">
@@ -651,6 +662,13 @@ function TeamTab() {
             <button className="btn btn-ghost btn-sm" onClick={() => resetPass(u.id, u.name)}>
               Repor palavra-passe
             </button>
+            {u.id === me?.id ? (
+              <span className="small muted">A tua conta</span>
+            ) : u.role === 'admin' && admins <= 1 ? null : (
+              <button className="btn btn-danger btn-sm" onClick={() => removeUser(u.id, u.name)}>
+                Apagar
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -732,14 +750,9 @@ function TeamTab() {
             </button>
             <button
               className="btn btn-danger btn-sm"
-              onClick={() =>
-                confirm(`Remover o acesso de ${u.name}?`) &&
-                update((d) => {
-                  d.users = d.users.filter((x) => x.id !== u.id)
-                })
-              }
+              onClick={() => removeUser(u.id, u.name)}
             >
-              Remover
+              Apagar
             </button>
           </div>
         ))}
