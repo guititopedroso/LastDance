@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { BRAND, whatsapp } from '../config'
-import { Counter, Reveal, ScrollProgress, Sparkles, SplitWords, Tilt, useParallax } from '../components/motion'
+import { Counter, Reveal, ScrollProgress, Sparkles, Tilt } from '../components/motion'
 import { CookieBanner, Footer, Navbar } from '../components/site'
 import { Intro, shouldShowIntro } from '../components/Intro'
 import { HeroVideo } from '../components/HeroVideo'
@@ -176,7 +176,26 @@ function PhoneDemo() {
 
 export default function Home() {
   const [faq, setFaq] = useState<number | null>(0)
-  const py = useParallax(0.35)
+  // Progresso do scroll no topo (0 = só vídeo, 1 = tudo visível), em --p para o CSS
+  const heroRef = useRef<HTMLElement>(null)
+  const [heroStatic] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  useEffect(() => {
+    const el = heroRef.current
+    if (!el) return
+    if (heroStatic) return el.style.setProperty('--p', '1')
+    // Atualizar uma variável CSS é barato: fazemo-lo em cada evento de scroll
+    const update = () => {
+      const p = Math.min(1, Math.max(0, window.scrollY / (window.innerHeight * 0.65)))
+      el.style.setProperty('--p', p.toFixed(3))
+    }
+    update()
+    window.addEventListener('scroll', update, { passive: true })
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update)
+      window.removeEventListener('resize', update)
+    }
+  }, [heroStatic])
   const [intro] = useState(shouldShowIntro)
   const [ready, setReady] = useState(!intro)
 
@@ -186,40 +205,48 @@ export default function Home() {
       <ScrollProgress />
       <Navbar />
 
-      {/* HERO */}
-      <section className="hero2">
-        <div className="hero2-parallax" style={{ transform: `translateY(${py}px)` }}>
-          <HeroVideo />
-        </div>
-        <Sparkles count={30} />
-        {ready && (
-        <div className="container">
-          <span className="badge fade-in" style={{ animationDelay: '0.1s' }}>
-            ✦ Bailes de Finalistas 2026/27
-          </span>
-          <span className="logo-shine hero-logo-wrap" style={{ ['--logo-mask' as string]: 'url(/brand/logo-gold.webp)' }}>
-            <img className="hero-logo" src="/brand/logo-gold.webp" alt="LastDance" width={1183} height={728} />
-          </span>
-          <h1>
-            <SplitWords text="A Noite que Ficará" delay={700} />
-            <span className="word" style={{ animationDelay: '1050ms' }}>
-              <span className="shimmer">Para a História</span>
-            </span>
-          </h1>
-          <p className="lead fade-in" style={{ animationDelay: '1.4s' }}>
-            Bailes de finalistas premium, do primeiro contacto à última dança. Tu vives a noite, nós tratamos de tudo.
-          </p>
-          <div className="row fade-in" style={{ animationDelay: '1.6s' }}>
-            <Link to="/inscricao" className="btn btn-gold pulse">
-              Tenho um código <Icon name="arrow" size={18} className="arrow" />
-            </Link>
-            <a href={whatsapp()} target="_blank" rel="noreferrer" className="btn btn-ghost">
-              Pedir proposta
-            </a>
+      {/* HERO: primeiro só o vídeo; ao fazer scroll o vídeo fica fixo e o conteúdo aparece por cima */}
+      <section className={`hero-scroll ${heroStatic ? 'static' : ''}`} ref={heroRef}>
+        <div className="hero2 hero-stage">
+          <div className="hero2-parallax">
+            <HeroVideo />
           </div>
+          <Sparkles count={30} />
+          {ready && (
+            <div className="container">
+              <span className="badge hs" style={{ ['--s' as string]: 0.02 }}>
+                ✦ Bailes de Finalistas 2026/27
+              </span>
+              <span className="logo-shine hero-logo-wrap hs" style={{ ['--logo-mask' as string]: 'url(/brand/logo-gold.webp)', ['--s' as string]: 0.1 }}>
+                <img className="hero-logo" src="/brand/logo-gold.webp" alt="LastDance" width={1183} height={728} />
+              </span>
+              <h1 className="hs" style={{ ['--s' as string]: 0.28 }}>
+                A Noite que Ficará <span className="shimmer">Para a História</span>
+              </h1>
+              <p className="lead hs" style={{ ['--s' as string]: 0.42 }}>
+                Bailes de finalistas premium, do primeiro contacto à última dança. Tu vives a noite, nós tratamos de tudo.
+              </p>
+              <div className="row hs" style={{ ['--s' as string]: 0.52 }}>
+                <Link to="/inscricao" className="btn btn-gold pulse">
+                  Tenho um código <Icon name="arrow" size={18} className="arrow" />
+                </Link>
+                <a href={whatsapp()} target="_blank" rel="noreferrer" className="btn btn-ghost">
+                  Pedir proposta
+                </a>
+              </div>
+            </div>
+          )}
+          <a
+            href="#numeros"
+            className="scroll-hint"
+            aria-label="Descer"
+            onClick={(e) => {
+              if (heroStatic) return
+              e.preventDefault()
+              window.scrollTo({ top: window.innerHeight * 0.7, behavior: 'smooth' })
+            }}
+          />
         </div>
-        )}
-        <a href="#numeros" className="scroll-hint" aria-label="Descer" />
       </section>
 
       <div className="marquee">
