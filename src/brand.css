@@ -195,3 +195,14 @@ body { background: var(--bg); color: var(--white); }
   .hero-scroll > .hero-stage { padding: 80px 0 60px; }
   .hero-scroll .hero-logo-wrap { width: min(300px, 70vw); }
 }
+
+/* ---------- Números (3 colunas) e outros eventos ---------- */
+.big-stats-3 { grid-template-columns: repeat(3, 1fr); }
+.big-stats-3 > * { display: flex; flex-direction: column; align-items: center; }
+.big-stats-3 .muted { max-width: 220px; }
+@media (max-width: 720px) { .big-stats-3 { grid-template-columns: 1fr; gap: 26px; } }
+.more-events-head { text-align: center; margin: 56px 0 22px; }
+.more-events-head h3 { font-size: clamp(1.5rem, 3vw, 2.1rem); }
+.more-event { height: 100%; text-align: center; }
+.more-event .icon-bubble { margin: 0 auto 14px; }
+.more-event h3 { font-size: 1.15rem; margin-bottom: 6px; }

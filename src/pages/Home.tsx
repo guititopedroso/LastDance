@@ -18,6 +18,13 @@ const EVENTS: [string, string, string[]][] = [
   ['Jantares de gala', 'Elegância à mesa, diplomas e brindes.', ['/brand/gala-1.webp', '/brand/gala-2.webp', '/brand/gala-3.webp']],
 ]
 
+/** Outros eventos que também organizamos: [ícone, título, descrição] */
+const MORE_EVENTS = [
+  ['briefcase', 'Eventos corporate', 'Jantares de empresa, festas de Natal, team building e lançamentos.'],
+  ['cake', 'Aniversários', 'Dos 18 aos 50, uma festa à tua medida, do espaço ao bolo.'],
+  ['balloon', 'Baby shower e gender reveal', 'Decoração, doces e o momento da revelação, pensados ao detalhe.'],
+]
+
 const WHY = [
   ['shield', 'Segurança total', 'QR pessoal à porta e equipa de apoio toda a noite.'],
   ['gem', 'Decoração premium', 'Ambientes temáticos pensados para cada escola.'],
@@ -259,12 +266,11 @@ export default function Home() {
 
       {/* NÚMEROS */}
       <section className="section" id="numeros" style={{ padding: '80px 0' }}>
-        <div className="container big-stats">
+        <div className="container big-stats big-stats-3">
           {[
-            [5000, '+', 'alunos inscritos'],
-            [15, '', 'escolas parceiras'],
-            [30, '+', 'eventos realizados'],
-            [3, '+', 'anos de paixão'],
+            [5, '+', 'anos de experiência'],
+            [50, '+', 'eventos realizados'],
+            [30, '+', 'escolas e empresas que confiaram em nós'],
           ].map(([n, p, l], i) => (
             <Reveal key={l as string} delay={i * 120}>
               <b className="gold">
@@ -289,6 +295,24 @@ export default function Home() {
             {EVENTS.map(([t, d, imgs], i) => (
               <Reveal key={t} delay={i * 120} anim="up">
                 <EventCard title={t} text={d} images={imgs} />
+              </Reveal>
+            ))}
+          </div>
+          <Reveal className="more-events-head">
+            <h3>
+              E não só: <span className="script shimmer">qualquer celebração</span>
+            </h3>
+          </Reveal>
+          <div className="cards-3">
+            {MORE_EVENTS.map(([i, t, d], k) => (
+              <Reveal key={t} delay={k * 120}>
+                <Tilt className="card more-event">
+                  <div className="icon-bubble">
+                    <Icon name={i as IconName} />
+                  </div>
+                  <h3>{t}</h3>
+                  <p className="muted small">{d}</p>
+                </Tilt>
               </Reveal>
             ))}
           </div>
@@ -407,11 +431,10 @@ export default function Home() {
 
       {/* CONTACTOS */}
       <section className="section" id="contactos" style={{ paddingTop: 0 }}>
-        <div className="container cards-3">
+        <div className="container cards-2">
           {[
             ['chat', 'WhatsApp', BRAND.phone, whatsapp()],
             ['mail', 'Email', BRAND.email, `mailto:${BRAND.email}`],
-            ['pin', 'Sede', BRAND.address, undefined],
           ].map(([i, t, v, h], k) => (
             <Reveal key={t} delay={k * 120}>
               <a href={h} target={h?.startsWith('http') ? '_blank' : undefined} rel="noreferrer" style={{ textDecoration: 'none', display: 'block', height: '100%' }}>
