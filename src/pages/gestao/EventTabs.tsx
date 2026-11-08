@@ -131,14 +131,14 @@ export function AwardsTab({ ev, mode = 'full' }: { ev: LDEvent; mode?: 'full' | 
   const settings = mode !== 'results'
   const results = mode !== 'settings'
   const ps = db.participants.filter((p) => p.eventId === ev.id)
-  const paid = ps.filter((p) => fullyPaid(p, ev))
+  const active = ps.filter((p) => !isCancelled(p))
   const votes = db.votes.filter((v) => v.eventId === ev.id)
   const rule = (a: Award) =>
     a.eligible
       ? `Podem ser votadas ${a.eligible.length} pessoas escolhidas.`
       : a.excluded?.length
-        ? `Todos os participantes com tudo pago menos ${a.excluded.length} (${paid.filter((p) => eligibleFor(a, p, ev)).length} pessoas).`
-        : `Pode ser votado qualquer participante com tudo pago (${paid.length} pessoas).`
+        ? `Todos os inscritos menos ${a.excluded.length} (${active.filter((p) => eligibleFor(a, p, ev)).length} pessoas).`
+        : `Pode ser votado qualquer inscrito (${active.length} pessoas).`
   /** Apuramento automático: o mais votado de cada prémio (em empate, fica o primeiro a chegar a esse número). */
   const autoWinners = () => {
     let n = 0
@@ -165,10 +165,10 @@ export function AwardsTab({ ev, mode = 'full' }: { ev: LDEvent; mode?: 'full' | 
       <h3>Votação dos prémios</h3>
       <p className="muted">
         {mode === 'settings'
-          ? `Os participantes com tudo pago votam na app durante o horário do evento (${ev.start} às ${ev.end}). Aqui defines os prémios e quem pode ser votado em cada um. Os votos e os vencedores só são vistos pelo staff e pela administração.`
+          ? `Os participantes com tudo pago votam na app durante o horário do evento (${ev.start} às ${ev.end}) e podem votar em qualquer inscrito. Aqui defines os prémios e quem pode ser votado em cada um. Os votos e os vencedores só são vistos pelo staff e pela administração.`
           : mode === 'results'
             ? 'Os votos são secretos: vês quantos votos tem cada pessoa, mas não quem votou em quem. Escolhe os vencedores e anuncia-os quando chegar o momento.'
-            : `Os participantes com tudo pago votam durante o horário do evento (${ev.start} às ${ev.end}). Defines os prémios e quem pode ser votado em cada um, e depois escolhes os vencedores e anuncias.`}
+            : `Os participantes com tudo pago votam durante o horário do evento (${ev.start} às ${ev.end}) e podem votar em qualquer inscrito. Defines os prémios e quem pode ser votado em cada um, e depois escolhes os vencedores e anuncias.`}
       </p>
       {settings && (
       <div className="row">
@@ -307,7 +307,7 @@ function AwardModal({ ev, award, onClose }: { ev: LDEvent; award: Award; onClose
   const db = useDB()
   const [a, setA] = useState(award)
   const [q, setQ] = useState('')
-  const ps = db.participants.filter((p) => p.eventId === ev.id && fullyPaid(p, ev))
+  const ps = db.participants.filter((p) => p.eventId === ev.id && !isCancelled(p))
   const found = q ? ps.filter((p) => normalize(p.name).includes(normalize(q))).slice(0, 8) : []
   const mode: 'all' | 'except' | 'only' = a.eligible ? 'only' : a.excluded ? 'except' : 'all'
   const list = mode === 'only' ? a.eligible! : a.excluded ?? []
@@ -334,7 +334,7 @@ function AwardModal({ ev, award, onClose }: { ev: LDEvent; award: Award; onClose
             </button>
           </div>
         </div>
-        <p className="small muted">Só podem ser votados participantes com tudo pago.</p>
+        <p className="small muted">Podem ser votados todos os inscritos, mesmo com prestações em falta (as inscrições canceladas ficam de fora).</p>
         {mode !== 'all' && (
           <>
             <input className="input" placeholder={mode === 'only' ? 'Procurar quem pode ser votado…' : 'Procurar quem fica de fora…'} value={q} onChange={(e) => setQ(e.target.value)} />

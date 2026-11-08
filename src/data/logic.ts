@@ -195,9 +195,9 @@ export function sellersLabel(ev: LDEvent, users: User[]) {
 
 // ---------- Votação ----------
 
-/** Pode ser votado neste prémio: tem tudo pago e está dentro da regra do prémio. */
-export function eligibleFor(a: Award, p: Participant, ev: LDEvent) {
-  if (!fullyPaid(p, ev)) return false
+/** Pode ser votado neste prémio: está inscrito (não cancelado) e dentro da regra do prémio. Quem vota é que tem de ter tudo pago. */
+export function eligibleFor(a: Award, p: Participant, _ev?: LDEvent) {
+  if (isCancelled(p)) return false
   if (a.eligible) return a.eligible.includes(p.id)
   return !(a.excluded ?? []).includes(p.id)
 }

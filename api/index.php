@@ -431,7 +431,10 @@ function can_write(array $me, string $t, ?array $old, array $new, array $changed
       $pay = payments_of($ids);
       $byId = [];
       foreach ($rows as $r) $byId[$r['id']] = decode_row('participants', $r);
-      foreach ($ids as $id) if (!isset($byId[$id]) || !fully_paid($byId[$id], $ev, $pay[$id] ?? [])) return 'Só votam e são votados participantes com tudo pago.';
+      // Vota quem tem tudo pago; pode ser votado qualquer inscrito do evento que não tenha cancelado
+      if (!isset($byId[$me['id']]) || !fully_paid($byId[$me['id']], $ev, $pay[$me['id']] ?? [])) return 'Só votam participantes com tudo pago.';
+      $cand = $byId[(string)$new['candidateId']] ?? null;
+      if (!$cand || !empty($cand['cancelledAt'])) return 'Essa pessoa não pode ser votada.';
       if (is_array($award['eligible'] ?? null) && !in_array($new['candidateId'], $award['eligible'], true)) return 'Essa pessoa não pode ser votada neste prémio.';
       if (!is_array($award['eligible'] ?? null) && in_array($new['candidateId'], $award['excluded'] ?? [], true)) return 'Essa pessoa não pode ser votada neste prémio.';
       return null;

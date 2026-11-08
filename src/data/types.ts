@@ -52,7 +52,7 @@ export interface EventPartner {
 export interface Award {
   id: string
   name: string
-  /** null = qualquer participante com tudo pago */
+  /** null = qualquer inscrito (não cancelado) */
   eligible: string[] | null
   /** Com eligible = null: todos menos estes */
   excluded?: string[]
