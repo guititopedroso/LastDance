@@ -122,8 +122,14 @@ export function FinanceTab({ ev }: { ev: LDEvent }) {
 
 // ---------- Prémios ----------
 
-export function AwardsTab({ ev }: { ev: LDEvent }) {
+/**
+ * full: administração (tudo) · settings: promotor chefe (prémios e votação, sem ver votos nem vencedores)
+ * results: staff (votos, escolher e anunciar vencedores, sem mexer nas categorias)
+ */
+export function AwardsTab({ ev, mode = 'full' }: { ev: LDEvent; mode?: 'full' | 'settings' | 'results' }) {
   const db = useDB()
+  const settings = mode !== 'results'
+  const results = mode !== 'settings'
   const ps = db.participants.filter((p) => p.eventId === ev.id)
   const paid = ps.filter((p) => fullyPaid(p, ev))
   const votes = db.votes.filter((v) => v.eventId === ev.id)
@@ -158,9 +164,13 @@ export function AwardsTab({ ev }: { ev: LDEvent }) {
     <div className="stack">
       <h3>Votação dos prémios</h3>
       <p className="muted">
-        Os participantes com tudo pago votam durante o horário do evento ({ev.start} às {ev.end}). Defines os prémios e quem pode ser votado em cada um, e depois escolhes os
-        vencedores e anuncias.
+        {mode === 'settings'
+          ? `Os participantes com tudo pago votam na app durante o horário do evento (${ev.start} às ${ev.end}). Aqui defines os prémios e quem pode ser votado em cada um. Os votos e os vencedores só são vistos pelo staff e pela administração.`
+          : mode === 'results'
+            ? 'Os votos são secretos: vês quantos votos tem cada pessoa, mas não quem votou em quem. Escolhe os vencedores e anuncia-os quando chegar o momento.'
+            : `Os participantes com tudo pago votam durante o horário do evento (${ev.start} às ${ev.end}). Defines os prémios e quem pode ser votado em cada um, e depois escolhes os vencedores e anuncias.`}
       </p>
+      {settings && (
       <div className="row">
         <span className="label">Votação</span>
         <div className="seg">
@@ -178,6 +188,7 @@ export function AwardsTab({ ev }: { ev: LDEvent }) {
           ))}
         </div>
       </div>
+      )}
       <div className={`alert ${open ? 'alert-ok' : 'alert-info'}`}>
         {ev.announced
           ? 'Vencedores anunciados. A votação está fechada.'
@@ -185,8 +196,8 @@ export function AwardsTab({ ev }: { ev: LDEvent }) {
             ? 'A votação está aberta.'
             : ev.votingMode === 'auto'
               ? `Ainda não abriu. Abre a ${dateShort(ev.date)} às ${ev.start}.`
-              : 'A votação está fechada.'}{' '}
-        {voters} pessoa(s) já votaram.
+              : 'A votação está fechada.'}
+        {results && ` ${voters} pessoa(s) já votaram.`}
       </div>
 
       {ev.votingMode !== 'none' &&
@@ -200,19 +211,22 @@ export function AwardsTab({ ev }: { ev: LDEvent }) {
               <div className="row between">
                 <h3>{a.name}</h3>
                 <span className="small muted">
-                  {total} votos ·{' '}
-                  <button className="link" onClick={() => setEdit(structuredClone(a))}>
-                    Editar prémio
-                  </button>
+                  {results && `${total} votos`}
+                  {results && settings && ' · '}
+                  {settings && (
+                    <button className="link" onClick={() => setEdit(structuredClone(a))}>
+                      Editar prémio
+                    </button>
+                  )}
                 </span>
               </div>
               <p className="small muted">{rule(a)}</p>
-              {a.winnerId && (
+              {(results || ev.announced) && a.winnerId && (
                 <div className="alert alert-ok">
                   Vencedor escolhido: <b>{name(a.winnerId)}</b>
                 </div>
               )}
-              {ranking.length === 0 ? (
+              {!results ? null : ranking.length === 0 ? (
                 <p className="small muted">Ainda sem votos.</p>
               ) : (
                 <div className="list">
@@ -243,7 +257,7 @@ export function AwardsTab({ ev }: { ev: LDEvent }) {
           )
         })}
 
-      {ev.votingMode !== 'none' && (
+      {settings && ev.votingMode !== 'none' && (
         <div className="row">
           <button className="btn btn-ghost" onClick={() => setEdit({ id: '', name: '', eligible: null })}>
             + Adicionar prémio
@@ -251,6 +265,7 @@ export function AwardsTab({ ev }: { ev: LDEvent }) {
         </div>
       )}
 
+      {results && (
       <div className="card stack">
         <h3>Anunciar vencedores</h3>
         <p className="small muted">
@@ -281,6 +296,7 @@ export function AwardsTab({ ev }: { ev: LDEvent }) {
           )}
         </div>
       </div>
+      )}
 
       {edit && <AwardModal ev={ev} award={edit} onClose={() => setEdit(null)} />}
     </div>

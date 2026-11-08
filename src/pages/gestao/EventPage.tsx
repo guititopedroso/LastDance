@@ -41,7 +41,8 @@ export default function EventPage({ eventId, user }: { eventId?: string; user: U
 
   const tabs = [
     { id: 'inscritos' as const, label: 'Inscritos', count: s.ps.length },
-    ...(isAdmin ? [{ id: 'financas' as const, label: 'Finanças' }, { id: 'premios' as const, label: 'Prémios' }] : []),
+    ...(isAdmin ? [{ id: 'financas' as const, label: 'Finanças' }] : []),
+    ...(isAdmin || isChief ? [{ id: 'premios' as const, label: 'Prémios' }] : []),
     ...(!isCom ? [{ id: 'recebimentos' as const, label: user.role === 'promotor' ? 'Os meus recebimentos' : 'Recebimentos' }] : []),
     ...(!isCom ? [{ id: 'atraso' as const, label: 'Em atraso', count: s.overdueCount, red: true }] : []),
     ...((isAdmin || isChief || isCom) && s.cancelled.length ? [{ id: 'cancelamentos' as const, label: 'Cancelamentos', count: s.cancelled.length }] : []),
@@ -163,7 +164,7 @@ export default function EventPage({ eventId, user }: { eventId?: string; user: U
 
       {tab === 'inscritos' && <Registrations participants={s.all} user={user} exportName={`inscritos-${ev.code}`} eventId={isCom ? undefined : ev.id} />}
       {tab === 'financas' && isAdmin && <FinanceTab ev={ev} />}
-      {tab === 'premios' && isAdmin && <AwardsTab ev={ev} />}
+      {tab === 'premios' && (isAdmin || isChief) && <AwardsTab ev={ev} mode={isAdmin ? 'full' : 'settings'} />}
       {tab === 'recebimentos' && <ReceiptsTab ev={ev} user={user} />}
       {tab === 'atraso' && <OverdueTab ev={ev} />}
       {tab === 'cancelamentos' && <CancellationsTab ev={ev} user={user} />}

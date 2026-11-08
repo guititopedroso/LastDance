@@ -380,6 +380,21 @@ function photo_file(?string $src): ?string
   return $src && preg_match('/[?&]f=([a-f0-9]{32}\.(?:jpg|png|webp))$/', $src, $m) ? $m[1] : null;
 }
 
+/** Mantém os vencedores guardados (quem não é staff/administração não os vê nem os escolhe). */
+function keep_winners(?string $oldJson, ?string $newJson): ?string
+{
+  $new = json_decode((string)$newJson, true);
+  if (!is_array($new)) return $newJson;
+  $won = [];
+  foreach (json_decode((string)$oldJson, true) ?: [] as $a) if (!empty($a['winnerId'])) $won[$a['id']] = $a['winnerId'];
+  foreach ($new as &$a) {
+    if (!is_array($a)) continue;
+    unset($a['winnerId']);
+    if (isset($a['id'], $won[$a['id']])) $a['winnerId'] = $won[$a['id']];
+  }
+  return json_encode($new, JSON_UNESCAPED_UNICODE);
+}
+
 function staff_can(array $me, string $eventId): bool
 {
   return empty($me['staffEventIds']) || in_array($eventId, $me['staffEventIds'], true);

@@ -1,13 +1,58 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/icons'
-import { Kpi, Modal, toast } from '../../components/ui'
+import { Kpi, Modal, Tabs, toast } from '../../components/ui'
 import { ageAt, dateLong, dateTime, eur, eventWhen, fullyPaid, isCancelled, missing, normalize } from '../../data/logic'
 import { update, useDB } from '../../data/store'
 import { PTYPE_LONG, type Participant, type User } from '../../data/types'
+import { AwardsTab } from './EventTabs'
 
 type Result = { kind: 'ok' | 'used' | 'unpaid' | 'cancelled' | 'notfound' | 'other'; p?: Participant; msg?: string }
 
-export default function StaffDoor({ user }: { user: User }) {
+/** Área do staff: entradas à porta e resultados dos prémios (só o staff e a administração veem os votos). */
+export default function StaffArea({ user }: { user: User }) {
+  const db = useDB()
+  const [tab, setTab] = useState<'entradas' | 'premios'>('entradas')
+  const withAwards = db.events
+    .filter((e) => !e.archived && e.votingMode !== 'none' && e.awards.length && (!user.staffEventIds?.length || user.staffEventIds.includes(e.id)))
+    .sort((a, b) => a.date.localeCompare(b.date))
+  const [evId, setEvId] = useState(withAwards[0]?.id ?? '')
+  const ev = withAwards.find((e) => e.id === evId) ?? withAwards[0]
+  return (
+    <div className="stack" style={{ maxWidth: 760, margin: '0 auto' }}>
+      {withAwards.length > 0 && (
+        <Tabs
+          tabs={[
+            { id: 'entradas' as const, label: 'Entradas' },
+            { id: 'premios' as const, label: 'Prémios' },
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
+      )}
+      {tab === 'entradas' || !ev ? (
+        <StaffDoor user={user} />
+      ) : (
+        <>
+          {withAwards.length > 1 && (
+            <select className="input" value={ev.id} onChange={(e) => setEvId(e.target.value)} aria-label="Evento">
+              {withAwards.map((e) => (
+                <option key={e.id} value={e.id}>
+                  {e.name} · {dateLong(e.date)}
+                </option>
+              ))}
+            </select>
+          )}
+          <h1 className="page-title" style={{ margin: 0 }}>
+            {ev.name}
+          </h1>
+          <AwardsTab ev={ev} mode="results" />
+        </>
+      )}
+    </div>
+  )
+}
+
+function StaffDoor({ user }: { user: User }) {
   const db = useDB()
   const allowed = db.events.filter((e) => !e.archived && (!user.staffEventIds?.length || user.staffEventIds.includes(e.id))).sort((a, b) => a.date.localeCompare(b.date))
   const [evId, setEvId] = useState(allowed[0]?.id ?? '')

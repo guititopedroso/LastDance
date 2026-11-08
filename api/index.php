@@ -108,6 +108,8 @@ function route_bootstrap(): void
       $e = decode_row('events', $r);
       $e['partners'] = []; // custos e parceiros: só a administração
       if ($role === 'participante') unset($e['commission'], $e['comercial1'], $e['comercial2'], $e['share1']);
+      // Resultados dos prémios: só o staff e a administração os veem antes do anúncio
+      if ($role !== 'staff' && empty($e['announced'])) $e['awards'] = array_map(fn($a) => array_diff_key($a, ['winnerId' => 1]), $e['awards'] ?? []);
       return $e;
     }, $evRows);
     $evIds = array_column($d['events'], 'id');
@@ -163,6 +165,15 @@ function route_bootstrap(): void
       $d['users'][] = $o;
     }
     if ($role === 'participante') $d['votes'] = array_map(fn($r) => decode_row('votes', $r), all('SELECT * FROM `votes` WHERE `voterId` = ?', [$me['id']]));
+    // Staff: contagem dos votos dos seus eventos, sem saber quem votou (o votante vai trocado por um código)
+    if ($role === 'staff' && $evIds) {
+      $d['votes'] = array_map(function ($r) {
+        $v = decode_row('votes', $r);
+        $v['voterId'] = 'v' . substr(hash('sha256', $v['voterId'] . '|' . $v['awardId']), 0, 12);
+        $v['id'] = $v['awardId'] . ':' . $v['voterId'];
+        return $v;
+      }, all('SELECT * FROM `votes` WHERE `eventId` IN (' . in_list($evIds) . ')', $evIds));
+    }
     // Fotos: o participante só as vê com tudo pago (app desbloqueada) e sem as denunciadas por outros; a equipa do evento vê todas.
     if ($role === 'participante') {
       $mine = null;
@@ -276,6 +287,7 @@ function apply_op(array $me, array $op): ?string
     } else $new['enteredBy'] = null;
   }
 
+  if ($t === 'events' && $old && !in_array($me['role'], ['admin', 'staff'], true)) $new['awards'] = keep_winners($old['awards'] ?? null, $new['awards'] ?? null);
   $changed = changed_fields($t, $old, $new);
   $pw = (isset(SPEC[$t]['password']) && isset($row['password']) && is_string($row['password']) && $row['password'] !== '') ? $row['password'] : null;
   if ($pw !== null) {
@@ -297,6 +309,11 @@ function apply_op(array $me, array $op): ?string
     q("INSERT INTO `$t` (`" . implode('`, `', $cols) . '`) VALUES (' . in_list($cols) . ')', array_values($new));
   }
   if ($pw !== null) q("UPDATE `$t` SET `password` = ? WHERE `id` = ?", [password_hash($pw, PASSWORD_DEFAULT), $new['id']]);
+  // Prémio apagado: os votos dele também saem
+  if ($t === 'events' && in_array('awards', $changed, true)) {
+    $ids = array_column(json_decode((string)$new['awards'], true) ?: [], 'id');
+    q('DELETE FROM `votes` WHERE `eventId` = ?' . ($ids ? ' AND `awardId` NOT IN (' . in_list($ids) . ')' : ''), array_merge([$new['id']], $ids));
+  }
   return null;
 }
 
@@ -382,7 +399,22 @@ function can_write(array $me, string $t, ?array $old, array $new, array $changed
       return only($changed, ['id', 'name', 'email', 'phone', 'password', 'role', 'eventId', 'isPartner', 'staffEventIds']);
 
     case 'events':
-      if ($prom && $old && $old['id'] === $me['eventId']) return only($changed, ['tables']);
+      if ($prom && $old && $old['id'] === $me['eventId']) {
+        if ($role === 'promotor') return only($changed, ['tables']);
+        $err = only($changed, ['tables', 'awards', 'votingMode']);
+        if ($err) return $err;
+        foreach (json_decode((string)$new['awards'], true) ?: [] as $a) if (!is_array($a) || empty($a['id']) || mb_strlen(trim((string)($a['name'] ?? ''))) < 2) return 'Cada prémio precisa de um nome.';
+        if (in_array('votingMode', $changed, true) && !in_array($new['votingMode'], ['auto', 'open', 'closed', 'none'], true)) return 'Modo de votação inválido.';
+        return null;
+      }
+      if ($role === 'staff' && $old && staff_can($me, $old['id'])) {
+        $err = only($changed, ['awards', 'announced', 'votingMode']);
+        if ($err) return $err;
+        // O staff só escolhe os vencedores: nomes e regras dos prémios ficam iguais
+        $strip = fn($j) => array_map(fn($a) => array_diff_key($a, ['winnerId' => 1]), json_decode((string)$j, true) ?: []);
+        if ($strip($old['awards']) != $strip($new['awards'])) return 'O staff só pode escolher os vencedores dos prémios.';
+        return null;
+      }
       return 'Sem permissão para alterar o evento.';
 
     case 'votes':
