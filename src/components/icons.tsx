@@ -26,6 +26,16 @@ const P: Record<string, string> = {
   check: 'M20 6 9 17l-5-5',
   instagram: 'M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5z M16 11.4A4 4 0 1 1 12.6 8 4 4 0 0 1 16 11.4z M17.5 6.5h.01',
   logout: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9',
+  home: 'M3 10.5 12 3l9 7.5 M5 9v11h5v-6h4v6h5V9',
+  trophy: 'M8 21h8 M12 17v4 M7 4h10v5a5 5 0 0 1-10 0z M17 5h3v2a4 4 0 0 1-3 3.9 M7 5H4v2a4 4 0 0 0 3 3.9',
+  image: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M8.5 10a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z M21 15l-5-5L5 21',
+  plus: 'M12 5v14 M5 12h14',
+  flag: 'M4 22V4 M4 4h13l-2 4 2 4H4',
+  trash: 'M3 6h18 M8 6V4h8v2 M6 6l1 15h10l1-15 M10 11v6 M14 11v6',
+  crown: 'M3 8l4 4 5-7 5 7 4-4-2 11H5z M5 22h14',
+  qr: 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h3v3h-3z M20 14v.01 M14 20h.01 M17 20h4v-3',
+  back: 'M15 18l-6-6 6-6',
+  search: 'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.3-4.3',
 }
 
 export type IconName = keyof typeof P

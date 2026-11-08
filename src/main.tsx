@@ -10,6 +10,7 @@ import Legal from './pages/Legal'
 import Login from './pages/Login'
 import Inscricao from './pages/Inscricao'
 import Gestao from './pages/gestao/Gestao'
+import WebApp from './pages/app/WebApp'
 import { BASE, DEMO } from './mode'
 
 if (DEMO) {
@@ -34,6 +35,7 @@ const TITLES: Record<string, string> = {
   inscricao: 'Inscrição',
   entrar: 'Log-in',
   gestao: 'A minha área',
+  app: 'App',
   termos: 'Termos e Condições',
   privacidade: 'Política de Privacidade',
   cookies: 'Política de Cookies',
@@ -60,6 +62,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/entrar" element={<Login />} />
         <Route path="/area-cliente" element={<Navigate to="/entrar" replace />} />
         <Route path="/gestao/*" element={<Gestao />} />
+        <Route path="/app/*" element={<WebApp />} />
         <Route path="/termos" element={<Legal page="termos" />} />
         <Route path="/privacidade" element={<Legal page="privacidade" />} />
         <Route path="/cookies" element={<Legal page="cookies" />} />

@@ -206,3 +206,13 @@ body { background: var(--bg); color: var(--white); }
 .more-event { height: 100%; text-align: center; }
 .more-event .icon-bubble { margin: 0 auto 14px; }
 .more-event h3 { font-size: 1.15rem; margin-bottom: 6px; }
+
+/* Área do aluno: atalho para a app do evento */
+.app-cta { display: flex; flex-direction: row; align-items: center; gap: 14px; text-decoration: none; color: inherit; background: linear-gradient(135deg, rgba(226, 166, 92, 0.24), rgba(36, 6, 10, 0.7)) !important; border-color: rgba(254, 210, 137, 0.45) !important; transition: var(--t); }
+.app-cta:hover { transform: translateY(-2px); box-shadow: var(--shadow-gold); }
+
+/* Gestão: fotos da app */
+.photo-admin { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+.photo-admin-item { display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 16px; background: rgba(36, 6, 10, 0.62); border: 1px solid rgba(254, 210, 137, 0.13); }
+.photo-admin-item.flag { border-color: rgba(255, 122, 122, 0.5); }
+.photo-admin-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; display: block; }

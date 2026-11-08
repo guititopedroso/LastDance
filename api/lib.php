@@ -23,6 +23,7 @@ const SPEC = [
   'venues' => ['id' => 's', 'name' => 's', 'costPerPerson' => 'n', 'minimum' => 'n', 'capacity' => 'n'],
   'partners' => ['id' => 's', 'type' => 's', 'name' => 's', 'baseCost' => 'n'],
   'expenses' => ['id' => 's', 'description' => 's', 'category' => 's', 'amount' => 'n', 'date' => 's', 'paidBy' => 's', 'reimbursed' => 'b'],
+  'photos' => ['id' => 's', 'eventId' => 's', 'authorId' => 's', 'authorName' => 's', 'src' => 's', 'caption' => 's', 'emoji' => 's', 'createdAt' => 's', 'reported' => 'b'],
 ];
 
 function cfg(): array
@@ -167,7 +168,7 @@ function fetch_row(string $t, string $id): ?array
   return one("SELECT * FROM `$t` WHERE `id` = ?", [$id]);
 }
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 /** Acrescenta colunas que faltem (instalações feitas com uma versão anterior). Corre uma vez por versão. */
 function migrate(): void
@@ -179,6 +180,8 @@ function migrate(): void
   }
   if ($v && (int)$v['v'] >= SCHEMA_VERSION) return;
   $sqlite = (cfg()['driver'] ?? 'mysql') === 'sqlite';
+  // Tabelas novas (versão 3: fotos da app)
+  db()->exec('CREATE TABLE IF NOT EXISTS `photos` (`id` VARCHAR(40) NOT NULL PRIMARY KEY, `eventId` VARCHAR(40) NOT NULL, `authorId` VARCHAR(40) NULL)' . ($sqlite ? '' : ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'));
   $types = ['s' => 'TEXT NULL', 'n' => 'DECIMAL(10,2) NULL', 'b' => 'TINYINT(1) NULL', 'j' => 'MEDIUMTEXT NULL', 'pw' => 'VARCHAR(255) NULL'];
   foreach (SPEC as $t => $cols) {
     $have = $sqlite ? array_column(all("PRAGMA table_info(`$t`)"), 'name') : array_column(all("SHOW COLUMNS FROM `$t`"), 'Field');
@@ -361,6 +364,20 @@ function voting_open(array $ev): bool
   $end = strtotime($ev['date'] . ' ' . ($ev['end'] ?? '04:00'));
   if ($end <= $start) $end += 86400;
   return time() >= $start && time() <= $end;
+}
+
+/** Pasta das fotos: FORA do public_html, para não ser apagada quando o site é publicado outra vez. */
+function uploads_dir(): string
+{
+  $dir = cfg()['uploads_dir'] ?? dirname(__DIR__, 2) . '/lastdance-uploads';
+  if (!is_dir($dir) && !@mkdir($dir, 0755, true)) fail(500, 'Não foi possível criar a pasta das fotos no servidor.');
+  return $dir;
+}
+
+/** Nome do ficheiro guardado no endereço da foto (…?r=photo&f=NOME). */
+function photo_file(?string $src): ?string
+{
+  return $src && preg_match('/[?&]f=([a-f0-9]{32}\.(?:jpg|png|webp))$/', $src, $m) ? $m[1] : null;
 }
 
 function staff_can(array $me, string $eventId): bool

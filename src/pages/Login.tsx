@@ -3,7 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import { BackLink, PasswordInput } from '../components/forms'
 import { Icon } from '../components/icons'
 import { Logo, toast } from '../components/ui'
-import { API_MODE, chooseAccount, login, recoverPassword, resetDemo, type Account } from '../data/store'
+import { fullyPaid } from '../data/logic'
+import { API_MODE, chooseAccount, getDB, login, recoverPassword, resetDemo, type Account } from '../data/store'
 
 /** Casos de demonstração (só no modo protótipo). Palavra-passe de todos: demo1234. */
 const DEMO: [string, [string, string][]][] = [
@@ -57,7 +58,11 @@ export default function Login() {
     setBusy(true)
     try {
       await chooseAccount(a, all)
-      nav('/gestao')
+      // Quem já tem tudo pago entra diretamente na app do evento
+      const d = getDB()
+      const p = a.session.kind === 'participant' ? d.participants.find((x) => x.id === a.session.id) : undefined
+      const ev = p && d.events.find((e) => e.id === p.eventId)
+      nav(p && ev && fullyPaid(p, ev) ? '/app' : '/gestao')
     } finally {
       setBusy(false)
     }

@@ -7,9 +7,9 @@ import { eur, eventPrice, eventStats, eventWhen, userCommission, commissionShare
 import { uid } from '../../data/seed'
 import { update, useDB } from '../../data/store'
 import { CATEGORY_LABEL, type User } from '../../data/types'
-import { AwardsTab, CancellationsTab, FinanceTab, OverdueTab, ReceiptsTab, TablesTab } from './EventTabs'
+import { AwardsTab, CancellationsTab, FinanceTab, OverdueTab, PhotosTab, ReceiptsTab, TablesTab } from './EventTabs'
 
-type Tab = 'inscritos' | 'financas' | 'premios' | 'recebimentos' | 'atraso' | 'cancelamentos' | 'mesas'
+type Tab = 'inscritos' | 'financas' | 'premios' | 'recebimentos' | 'atraso' | 'cancelamentos' | 'mesas' | 'fotos'
 
 export default function EventPage({ eventId, user }: { eventId?: string; user: User }) {
   const params = useParams()
@@ -46,6 +46,9 @@ export default function EventPage({ eventId, user }: { eventId?: string; user: U
     ...(!isCom ? [{ id: 'atraso' as const, label: 'Em atraso', count: s.overdueCount, red: true }] : []),
     ...((isAdmin || isChief || isCom) && s.cancelled.length ? [{ id: 'cancelamentos' as const, label: 'Cancelamentos', count: s.cancelled.length }] : []),
     { id: 'mesas' as const, label: 'Mesas', count: ev.tables.length },
+    ...(isAdmin || isChief
+      ? [{ id: 'fotos' as const, label: 'Fotos', count: db.photos.filter((x) => x.eventId === ev.id && x.reported).length || db.photos.filter((x) => x.eventId === ev.id).length, red: db.photos.some((x) => x.eventId === ev.id && x.reported) }]
+      : []),
   ]
 
   const resetChiefPass = () => {
@@ -165,6 +168,7 @@ export default function EventPage({ eventId, user }: { eventId?: string; user: U
       {tab === 'atraso' && <OverdueTab ev={ev} />}
       {tab === 'cancelamentos' && <CancellationsTab ev={ev} user={user} />}
       {tab === 'mesas' && <TablesTab ev={ev} readOnly={isCom} />}
+      {tab === 'fotos' && (isAdmin || isChief) && <PhotosTab ev={ev} />}
 
       {modal === 'edit' && (
         <Modal wide onClose={() => setModal(null)}>

@@ -17,7 +17,7 @@ export const API_MODE = API !== '' && !DEMO
 
 // A demonstração guarda tudo com outro prefixo: a sessão da demo nunca se mistura com a do site real.
 const NS = DEMO ? 'lastdance-demo' : 'lastdance'
-const DEMO_KEY = `${NS}-db-v3`
+const DEMO_KEY = `${NS}-db-v4`
 const SESSION_KEY = `${NS}-session`
 const TOKEN_KEY = `${NS}-token`
 const CACHE_KEY = `${NS}-cache`
@@ -50,9 +50,10 @@ const parse = <T,>(s: string | null, fallback: T): T => {
   }
 }
 
-const emptyDB = (): DB => ({ version: 1, users: [], events: [], participants: [], votes: [], venues: [], partners: [], expenses: [] })
+const emptyDB = (): DB => ({ version: 1, users: [], events: [], participants: [], votes: [], venues: [], partners: [], expenses: [], photos: [] })
 
 let db: DB = API_MODE ? (ls.get(TOKEN_KEY) ? parse(ls.get(CACHE_KEY), emptyDB()) : emptyDB()) : parse(ls.get(DEMO_KEY), null as DB | null) ?? buildSeed()
+db.photos ??= [] // cópias guardadas antes de haver fotos
 let loaded = !API_MODE || (!!ls.get(TOKEN_KEY) && !!ls.get(CACHE_KEY))
 let offline = false
 let serverVersion = ''
@@ -116,7 +117,7 @@ export function useSyncStatus() {
 type Row = Record<string, unknown>
 export type Op = { t: string; op: 'upsert'; row: Row } | { t: string; op: 'delete'; id: string }
 
-const ORDER = ['venues', 'partners', 'users', 'events', 'participants', 'payments', 'expenses', 'votes']
+const ORDER = ['venues', 'partners', 'users', 'events', 'participants', 'payments', 'expenses', 'votes', 'photos']
 
 function diffList(t: string, a: Row[], b: Row[], key: (x: Row) => string, ups: Op[], dels: Op[]) {
   const A = new Map(a.map((x) => [key(x), x]))
@@ -142,6 +143,7 @@ function diff(a: DB, b: DB): Op[] {
   diffList('payments', pays(a.participants), pays(b.participants), id, ups, dels)
   diffList('expenses', a.expenses as unknown as Row[], b.expenses as unknown as Row[], id, ups, dels)
   diffList('votes', a.votes as unknown as Row[], b.votes as unknown as Row[], (v) => `${v.awardId}:${v.voterId}`, ups, dels)
+  diffList('photos', (a.photos ?? []) as unknown as Row[], (b.photos ?? []) as unknown as Row[], id, ups, dels)
   const rank = (o: Op) => ORDER.indexOf(o.t)
   ups.sort((x, y) => rank(x) - rank(y))
   dels.sort((x, y) => rank(y) - rank(x))
@@ -247,7 +249,7 @@ export async function refresh() {
   try {
     const res = await api<{ db: DB; version: string }>('bootstrap')
     if (queue.length) return // entretanto houve alterações locais; voltamos a tentar depois de as enviar
-    db = res.db
+    db = { ...res.db, photos: res.db.photos ?? [] }
     serverVersion = String(res.version)
     loaded = true
     offline = false
@@ -286,6 +288,71 @@ if (API_MODE) {
     void flush()
     scheduleRefresh(0)
   }
+}
+
+// ---------- Fotos (Memórias) ----------
+
+/** Reduz a foto (máx. 1600 px, JPEG): envia-se depressa pelos dados móveis e perde a localização GPS. */
+export async function shrinkImage(file: File, max = 1600, quality = 0.82): Promise<Blob> {
+  const url = URL.createObjectURL(file)
+  try {
+    const img = await new Promise<HTMLImageElement>((ok, bad) => {
+      const i = new Image()
+      i.onload = () => ok(i)
+      i.onerror = () => bad(new Error('Não foi possível ler esta imagem. Experimenta outra foto.'))
+      i.src = url
+    })
+    const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight))
+    const c = document.createElement('canvas')
+    c.width = Math.round(img.naturalWidth * k)
+    c.height = Math.round(img.naturalHeight * k)
+    c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height)
+    return await new Promise<Blob>((ok, bad) => c.toBlob((b) => (b ? ok(b) : bad(new Error('Não foi possível preparar a foto.'))), 'image/jpeg', quality))
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
+/** Envia uma foto para as Memórias do evento. onProgress recebe 0–100. */
+export async function uploadPhoto(eventId: string, file: File, caption: string, emoji: string, onProgress?: (n: number) => void): Promise<void> {
+  const blob = await shrinkImage(file, API_MODE ? 1600 : 900, API_MODE ? 0.82 : 0.7)
+  if (!API_MODE) {
+    // Demonstração: a foto fica no browser (mais pequena, para caber no armazenamento local)
+    const src = await new Promise<string>((ok) => {
+      const r = new FileReader()
+      r.onload = () => ok(String(r.result))
+      r.readAsDataURL(blob)
+    })
+    const me = session && (session.kind === 'user' ? db.users.find((u) => u.id === session!.id) : db.participants.find((p) => p.id === session!.id))
+    onProgress?.(100)
+    update((d) => {
+      d.photos.unshift({ id: 'f' + uid(), eventId, authorId: me?.id ?? '', authorName: me?.name ?? 'Convidado', src, caption: caption || undefined, emoji: emoji || undefined, createdAt: new Date().toISOString() })
+    })
+    return
+  }
+  const form = new FormData()
+  form.append('foto', blob, 'foto.jpg')
+  form.append('eventId', eventId)
+  form.append('caption', caption)
+  form.append('emoji', emoji)
+  await new Promise<void>((ok, bad) => {
+    const x = new XMLHttpRequest()
+    x.open('POST', `${API}/index.php?r=upload`)
+    const t = token()
+    if (t) x.setRequestHeader('X-Auth-Token', t)
+    x.upload.onprogress = (e) => e.lengthComputable && onProgress?.(Math.round((e.loaded / e.total) * 100))
+    x.onload = () => {
+      let res: { error?: string } | null = null
+      try {
+        res = JSON.parse(x.responseText)
+      } catch {}
+      if (x.status >= 200 && x.status < 300 && res) ok()
+      else bad(new Error(res?.error || 'Não foi possível enviar a foto. Tenta outra vez.'))
+    }
+    x.onerror = () => bad(new Error('Sem ligação à internet. Tenta outra vez quando tiveres rede.'))
+    x.send(form)
+  })
+  await refresh()
 }
 
 // ---------- Sessão ----------
@@ -494,6 +561,7 @@ export function importDemoData() {
       })),
     )
     d.expenses.push(...s.expenses.map((x) => ({ ...x, id: P(x.id)!, paidBy: x.paidBy === 'empresa' ? 'empresa' : P(x.paidBy)! })))
+    d.photos.push(...s.photos.map((x) => ({ ...x, id: P(x.id)!, eventId: P(x.eventId)!, authorId: P(x.authorId)! })))
   })
 }
 
@@ -509,5 +577,6 @@ export function removeDemoData() {
     d.participants = keep(d.participants)
     d.expenses = keep(d.expenses)
     d.votes = d.votes.filter((v) => !v.eventId.startsWith(DEMO_PREFIX))
+    d.photos = d.photos.filter((x) => !x.eventId.startsWith(DEMO_PREFIX))
   })
 }

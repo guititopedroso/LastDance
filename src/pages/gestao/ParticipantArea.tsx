@@ -9,7 +9,6 @@ import {
   dateShort,
   dateTime,
   daysFromNow,
-  eligibleFor,
   eur,
   eventPast,
   eventWhen,
@@ -18,14 +17,12 @@ import {
   instStatus,
   isCancelled,
   missing,
-  normalize,
   ordinal,
   paidFor,
   refundPending,
   refunded,
   totalDue,
   totalPaid,
-  votingOpen,
 } from '../../data/logic'
 import { update, useDB } from '../../data/store'
 import { DIETS, PTYPE_LONG, type Participant } from '../../data/types'
@@ -65,7 +62,7 @@ export default function ParticipantArea({ p }: { p: Participant }) {
       {sp.get('novo') && <div className="alert alert-ok">Inscrição feita! 🎉 Guarda o teu email e palavra-passe: é com eles que voltas a esta área.</div>}
       <div>
         <h1 className="page-title">A minha área</h1>
-        <p className="muted">Aqui vês as tuas prestações, a tua mesa, o teu QR de entrada e, no dia do evento, votas nos prémios.</p>
+        <p className="muted">Aqui vês as tuas prestações, a tua mesa e os teus dados. Com tudo pago, desbloqueias o QR e a app do evento.</p>
       </div>
       <div className="card" style={{ background: 'linear-gradient(135deg, rgba(226, 166, 92, 0.18), rgba(255,255,255,0.03))', borderColor: 'rgba(226, 166, 92, 0.35)' }}>
         <span className="badge">{ev.code}</span>
@@ -80,6 +77,19 @@ export default function ParticipantArea({ p }: { p: Participant }) {
         )}
         {past && !cancelled && <p className="script gold" style={{ fontSize: '1.5rem', marginTop: 10 }}>Obrigado por teres feito parte desta noite ✨</p>}
       </div>
+
+      {allPaid && !cancelled && (
+        <Link to="/app" className="card app-cta">
+          <div className="icon-bubble" style={{ margin: 0, flexShrink: 0 }}>
+            <Icon name="sparkle" />
+          </div>
+          <div className="grow">
+            <b>A tua app LastDance está desbloqueada</b>
+            <div className="small muted">QR de entrada, votações do Rei e da Rainha e as fotos da noite.</div>
+          </div>
+          <span className="btn btn-gold btn-sm">Abrir</span>
+        </Link>
+      )}
 
       {cancelled && (
         <div className="card stack">
@@ -210,7 +220,9 @@ export default function ParticipantArea({ p }: { p: Participant }) {
                 <Icon name="lock" />
               </div>
               <b>QR ainda não disponível</b>
-              <p className="small muted">Fica disponível quando todas as prestações estiverem pagas. Faltam {eur(missing(p, ev))}.</p>
+              <p className="small muted">
+                Fica disponível quando todas as prestações estiverem pagas, junto com a app do evento (votações e fotos). Faltam {eur(missing(p, ev))}.
+              </p>
             </>
           )}
         </div>
@@ -241,7 +253,6 @@ export default function ParticipantArea({ p }: { p: Participant }) {
         </div>
       )}
 
-      {!cancelled && <Voting p={p} />}
 
       {chief && (
         <div className="card row" style={{ flexWrap: 'nowrap' }}>
@@ -333,85 +344,6 @@ export default function ParticipantArea({ p }: { p: Participant }) {
           </Link>
         </p>
       </div>
-    </div>
-  )
-}
-
-function Voting({ p }: { p: Participant }) {
-  const db = useDB()
-  const ev = db.events.find((e) => e.id === p.eventId)!
-  const [q, setQ] = useState<Record<string, string>>({})
-  if (ev.votingMode === 'none' && !ev.announced) return null
-
-  if (ev.announced) {
-    const winners = ev.awards.filter((a) => a.winnerId)
-    return (
-      <div className="card stack">
-        <h3>Vencedores da noite</h3>
-        {winners.map((a) => (
-          <div key={a.id} className="row between">
-            <span className="muted">{a.name}</span>
-            <b className="gold">{db.participants.find((x) => x.id === a.winnerId)?.name}</b>
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  const open = votingOpen(ev)
-  if (!open)
-    return (
-      <div className="card stack">
-        <h3>Votação dos prémios</h3>
-        <p className="muted">
-          A votação abre no dia do evento, às {ev.start}, e fecha às {ev.end}.
-        </p>
-      </div>
-    )
-  if (!fullyPaid(p, ev))
-    return (
-      <div className="card stack">
-        <h3>Votação dos prémios</h3>
-        <p className="muted">Só pode votar quem tem tudo pago.</p>
-      </div>
-    )
-
-  const evPs = db.participants.filter((x) => x.eventId === ev.id && !isCancelled(x))
-  return (
-    <div className="card stack">
-      <h3>Votação dos prémios · aberta</h3>
-      <p className="small muted">O teu voto é secreto.</p>
-      {ev.awards.map((a) => {
-        const mine = db.votes.find((v) => v.awardId === a.id && v.voterId === p.id)
-        const pool = evPs.filter((x) => eligibleFor(a, x, ev))
-        const term = q[a.id] ?? ''
-        const shown = a.eligible ? pool : term.length > 1 ? pool.filter((x) => normalize(x.name).includes(normalize(term))).slice(0, 6) : []
-        return (
-          <div key={a.id} className="stack" style={{ borderTop: '1px solid var(--glass-border)', paddingTop: 12 }}>
-            <b>{a.name}</b>
-            {mine && <span className="small gold">O teu voto: {db.participants.find((x) => x.id === mine.candidateId)?.name}</span>}
-            {!a.eligible && <input className="input" placeholder="Escreve o nome de quem queres votar" value={term} onChange={(e) => setQ({ ...q, [a.id]: e.target.value })} />}
-            <div className="chips">
-              {shown.map((c) => (
-                <button
-                  key={c.id}
-                  className={`chip ${mine?.candidateId === c.id ? 'on' : ''}`}
-                  onClick={() => {
-                    update((d) => {
-                      d.votes = d.votes.filter((v) => !(v.awardId === a.id && v.voterId === p.id))
-                      d.votes.push({ eventId: ev.id, awardId: a.id, voterId: p.id, candidateId: c.id })
-                    })
-                    setQ({ ...q, [a.id]: '' })
-                    toast(`Votaste em ${c.name} para ${a.name}.`)
-                  }}
-                >
-                  {c.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        )
-      })}
     </div>
   )
 }

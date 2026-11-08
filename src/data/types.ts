@@ -185,6 +185,22 @@ export interface Vote {
   candidateId: string
 }
 
+/** Foto partilhada na app do evento (Memórias). */
+export interface Photo {
+  id: string
+  eventId: string
+  /** Participante ou membro da equipa que enviou */
+  authorId: string
+  authorName: string
+  /** Endereço da imagem (no servidor) ou data URL (demonstração) */
+  src: string
+  caption?: string
+  emoji?: string
+  createdAt: string
+  /** Denunciada por alguém: deixa de aparecer aos participantes até a organização rever */
+  reported?: boolean
+}
+
 export interface Venue {
   id: string
   name: string
@@ -225,4 +241,5 @@ export interface DB {
   venues: Venue[]
   partners: Partner[]
   expenses: Expense[]
+  photos: Photo[]
 }

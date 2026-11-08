@@ -1,6 +1,6 @@
 // Dados fictícios de demonstração. Substituídos pela base de dados real mais tarde.
-import type { Award, DB, LDEvent, Participant, ParticipantType, Payment, Table, Category } from './types'
-import { eventPrice, recalcAmounts } from './logic'
+import type { Award, DB, LDEvent, Participant, ParticipantType, Payment, Photo, Table, Category } from './types'
+import { eventPrice, fullyPaid, recalcAmounts } from './logic'
 
 let seed = 20260
 function rnd() {
@@ -358,7 +358,10 @@ export function buildSeed(): DB {
   }
   const pastPs = participants.filter((x) => x.eventId === past.id)
   named(pastPs[0], 'Inês Barbosa Reis', 'realizado@lastdance.pt')
-  past.awards.forEach((a, k) => (a.winnerId = pastPs[k + 1].id))
+  // Vencedores coerentes: Rei → rapaz, Rainha → rapariga
+  const girl = (x: Participant) => /a$|^(Inês|Íris|Alice|Leonor|Beatriz|Matilde|Margarida|Raquel)$/.test(x.name.split(' ')[0])
+  const winners = [pastPs.slice(1).find((x) => !girl(x))!, pastPs.slice(1).find(girl)!, pastPs[3]]
+  past.awards.forEach((a, k) => (a.winnerId = winners[k].id))
 
   // Evento esgotado, com votação aberta agora
   const soldVenue = venues[5]
@@ -366,7 +369,7 @@ export function buildSeed(): DB {
     id: sid('e'), name: 'Jantar de gala · Curso de Turismo da ETP Sesimbra', code: 'ESGOTADO26', venueId: soldVenue.id, location: soldVenue.name,
     category: 'outro', date: new Date().toISOString().slice(0, 10), start: '19:30', end: '23:59', hasClasses: false, classes: [],
     installments: [{ amount: 30, due: '2026-09-30' }, { amount: 30, due: '2026-10-20' }], commission: 6, partners: [], comercial1: 'u-com1', share1: 100,
-    archived: false, votingMode: 'open', awards: ['Melhor Outfit', 'Mais Divertido'].map((name) => ({ id: sid('aw'), name, eligible: null })), announced: false,
+    archived: false, votingMode: 'open', awards: ['Rei da Noite', 'Rainha da Noite', 'Melhor Outfit', 'Mais Divertido'].map((name) => ({ id: sid('aw'), name, eligible: null })), announced: false,
     tables: Array.from({ length: 3 }, (_, k) => ({ id: sid('t'), name: `Mesa ${k + 1}`, seats: 10 })), capacity: 30,
   }
   events.push(sold)
@@ -385,6 +388,25 @@ export function buildSeed(): DB {
   named(participants.filter((x) => x.eventId === sold.id && x.payments.length === 2)[0], 'Mafalda Sousa Pinto', 'votacao@lastdance.pt')
   void eventPrice
 
+  // Memórias (fotos da app) no evento com votação aberta e no evento já realizado
+  const CAPTIONS: [string, string][] = [
+    ['As melhores amigas de sempre', '❤️'], ['Quem leva o prémio?', '👑'], ['Momento mágico', '✨'], ['O cocktail estava top', '🥂'],
+    ['Já com saudades', '😍'], ['Foto de grupo!', '📸'], ['Jantar de gala', '⭐'], ['Pista cheia até ao fim', '💃'], ['Look do ano', '🔥'],
+  ]
+  const PICS = ['baile-1', 'gala-1', 'baile-2', 'gala-2', 'uni-1', 'baile-3', 'gala-3', 'uni-2', 'uni-3']
+  const photos: Photo[] = []
+  for (const [ev, hours] of [[sold, 1], [past, 24 * 120]] as const) {
+    const authors = participants.filter((x) => x.eventId === ev.id && fullyPaid(x, ev))
+    PICS.forEach((pic, k) => {
+      const a = authors[(k * 3) % authors.length]
+      const [caption, emoji] = CAPTIONS[k]
+      photos.push({
+        id: sid('f'), eventId: ev.id, authorId: a.id, authorName: a.name, src: `/brand/${pic}.webp`, caption, emoji,
+        createdAt: new Date(Date.now() - (hours * 60 + k * 9) * 60000).toISOString(),
+      })
+    })
+  }
+
   const expenses: DB['expenses'] = [
     ['Portagens — visitas a escolas', 'Deslocações', 22.4, '2026-10-03', 'u-admin1', false],
     ['Impressão de cartazes', 'Marketing', 47.8, '2026-09-28', 'u-admin2', false],
@@ -402,5 +424,5 @@ export function buildSeed(): DB {
     reimbursed: reimbursed as boolean,
   }))
 
-  return { version: 1, users, events, participants, votes: [], venues, partners, expenses }
+  return { version: 1, users, events, participants, votes: [], venues, partners, expenses, photos }
 }

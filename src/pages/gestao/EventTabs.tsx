@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Kpi, Modal, toast } from '../../components/ui'
 import { cashIn, dateShort, dateTime, daysFromNow, eligibleFor, eur, eventStats, exportCSV, fullyPaid, isCancelled, normalize, ordinal, overdueList, refundPending, refunded, votingOpen } from '../../data/logic'
 import { uid } from '../../data/seed'
-import { update, useDB } from '../../data/store'
+import { update, uploadPhoto, useDB } from '../../data/store'
 import { PARTNER_TYPES, PTYPE_LABEL, PTYPE_LONG, type Award, type LDEvent, type User, type VotingMode } from '../../data/types'
 
 const mutEv = (id: string, fn: (e: LDEvent) => void) =>
@@ -867,6 +867,106 @@ export function CancellationsTab({ ev, user }: { ev: LDEvent; user: User }) {
             Registar
           </button>
         </Modal>
+      )}
+    </div>
+  )
+}
+
+// ---------- Fotos (Memórias da app) ----------
+
+export function PhotosTab({ ev }: { ev: LDEvent }) {
+  const db = useDB()
+  const [only, setOnly] = useState(false)
+  const [sending, setSending] = useState<string | null>(null)
+  const input = useRef<HTMLInputElement>(null)
+  const all = db.photos.filter((x) => x.eventId === ev.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  const reported = all.filter((x) => x.reported)
+  const shown = only ? reported : all
+
+  const send = async (files: FileList | null) => {
+    if (!files?.length) return
+    const list = Array.from(files)
+    try {
+      for (let i = 0; i < list.length; i++) {
+        setSending(`A enviar ${i + 1} de ${list.length}…`)
+        await uploadPhoto(ev.id, list[i], '', '')
+      }
+      toast(list.length === 1 ? 'Foto adicionada.' : `${list.length} fotos adicionadas.`)
+    } catch (e) {
+      toast(e instanceof Error ? e.message : 'Não foi possível enviar.')
+    } finally {
+      setSending(null)
+      if (input.current) input.current.value = ''
+    }
+  }
+
+  return (
+    <div className="stack">
+      <p className="muted small">
+        As fotos que os participantes partilham na app (Memórias). Uma foto denunciada deixa de aparecer aos participantes até a reveres. Também podes juntar as fotos oficiais do
+        fotógrafo.
+      </p>
+      <div className="row">
+        <button className={`chip ${!only ? 'on' : ''}`} onClick={() => setOnly(false)}>
+          Todas ({all.length})
+        </button>
+        <button className={`chip ${only ? 'on' : ''}`} onClick={() => setOnly(true)}>
+          Denunciadas ({reported.length})
+        </button>
+        <span className="grow" />
+        <input ref={input} type="file" accept="image/*" multiple hidden onChange={(e) => void send(e.target.files)} />
+        <button className="btn btn-gold btn-sm" disabled={!!sending} onClick={() => input.current?.click()}>
+          {sending ?? 'Adicionar fotos'}
+        </button>
+      </div>
+      {shown.length === 0 ? (
+        <div className="empty">{only ? 'Nenhuma foto denunciada.' : 'Ainda não há fotos neste evento.'}</div>
+      ) : (
+        <div className="photo-admin">
+          {shown.map((x) => (
+            <div key={x.id} className={`photo-admin-item ${x.reported ? 'flag' : ''}`}>
+              <a href={x.src} target="_blank" rel="noreferrer">
+                <img src={x.src} alt={x.caption ?? `Foto de ${x.authorName}`} loading="lazy" />
+              </a>
+              <div className="small">
+                <b>{x.authorName}</b>
+                <div className="muted">{dateTime(x.createdAt)}</div>
+                {x.caption && (
+                  <div>
+                    {x.emoji} {x.caption}
+                  </div>
+                )}
+                {x.reported && <span className="pill overdue">Denunciada</span>}
+              </div>
+              <div className="row" style={{ gap: 6 }}>
+                {x.reported && (
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    onClick={() =>
+                      update((d) => {
+                        const y = d.photos.find((z) => z.id === x.id)
+                        if (y) y.reported = false
+                      })
+                    }
+                  >
+                    Manter
+                  </button>
+                )}
+                <button
+                  className="btn btn-danger btn-sm"
+                  onClick={() =>
+                    confirm('Apagar esta foto? Não dá para desfazer.') &&
+                    update((d) => {
+                      d.photos = d.photos.filter((z) => z.id !== x.id)
+                    })
+                  }
+                >
+                  Apagar
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )

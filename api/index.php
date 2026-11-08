@@ -1,5 +1,5 @@
 <?php
-// LastDance API · todas as rotas: index.php?r=login | logout | bootstrap | version | sync | event | register
+// LastDance API · todas as rotas: index.php?r=login | logout | bootstrap | version | sync | event | register | upload | photo
 declare(strict_types=1);
 require __DIR__ . '/lib.php';
 
@@ -15,6 +15,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') exit;
 try {
   $r = $_GET['r'] ?? '';
   $post = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
+  if ($r === 'photo') route_photo(); // imagens: não precisam da base de dados
   migrate();
   match (true) {
     $r === 'recover' && $post => route_recover(),
@@ -25,6 +26,7 @@ try {
     $r === 'sync' && $post => route_sync(),
     $r === 'event' => route_event(),
     $r === 'register' && $post => route_register(),
+    $r === 'upload' && $post => route_upload(),
     default => fail(404, 'Rota desconhecida.'),
   };
 } catch (PDOException $e) {
@@ -92,11 +94,11 @@ function route_bootstrap(): void
 {
   $me = require_me();
   $role = $me['role'];
-  $d = ['version' => 1, 'users' => [], 'events' => [], 'participants' => [], 'votes' => [], 'venues' => [], 'partners' => [], 'expenses' => []];
+  $d = ['version' => 1, 'users' => [], 'events' => [], 'participants' => [], 'votes' => [], 'venues' => [], 'partners' => [], 'expenses' => [], 'photos' => []];
   $evIds = [];
 
   if ($role === 'admin') {
-    foreach (['users', 'events', 'votes', 'venues', 'partners', 'expenses'] as $t) $d[$t] = array_map(fn($r) => decode_row($t, $r), all("SELECT * FROM `$t`"));
+    foreach (['users', 'events', 'votes', 'venues', 'partners', 'expenses', 'photos'] as $t) $d[$t] = array_map(fn($r) => decode_row($t, $r), all("SELECT * FROM `$t`"));
     $parts = all('SELECT * FROM `participants`');
   } else {
     if ($role === 'comercial') $evRows = all('SELECT * FROM `events` WHERE `comercial1` = ? OR `comercial2` = ?', [$me['id'], $me['id']]);
@@ -161,6 +163,17 @@ function route_bootstrap(): void
       $d['users'][] = $o;
     }
     if ($role === 'participante') $d['votes'] = array_map(fn($r) => decode_row('votes', $r), all('SELECT * FROM `votes` WHERE `voterId` = ?', [$me['id']]));
+    // Fotos: o participante só as vê com tudo pago (app desbloqueada) e sem as denunciadas por outros; a equipa do evento vê todas.
+    if ($role === 'participante') {
+      $mine = null;
+      foreach ($d['participants'] as $p) if ($p['id'] === $me['id']) $mine = $p;
+      $ev = $evById[$me['eventId']] ?? null;
+      if ($mine && $ev && fully_paid($mine, $ev, $mine['payments'])) {
+        $d['photos'] = array_map(fn($r) => decode_row('photos', $r), all('SELECT * FROM `photos` WHERE `eventId` = ? AND (`reported` IS NULL OR `reported` = 0 OR `authorId` = ?) ORDER BY `createdAt` DESC', [$me['eventId'], $me['id']]));
+      }
+    } elseif (in_array($role, ['promotor_chefe', 'promotor', 'comercial'], true) && $evIds) {
+      $d['photos'] = array_map(fn($r) => decode_row('photos', $r), all('SELECT * FROM `photos` WHERE `eventId` IN (' . in_list($evIds) . ') ORDER BY `createdAt` DESC', $evIds));
+    }
   } else {
     foreach ($d['users'] as &$u) $u['password'] = '';
   }
@@ -209,6 +222,7 @@ function apply_op(array $me, array $op): ?string
     if ($err) return $err;
     q("DELETE FROM `$t` WHERE `id` = ?", [$old['id']]);
     if ($t === 'users') q("DELETE FROM `tokens` WHERE `kind` = 'user' AND `subjectId` = ?", [$old['id']]);
+    if ($t === 'photos' && ($f = photo_file($old['src'] ?? null))) @unlink(uploads_dir() . '/' . $f);
     if ($t === 'participants') {
       q('DELETE FROM `payments` WHERE `participantId` = ?', [$old['id']]);
       q('DELETE FROM `votes` WHERE `voterId` = ? OR `candidateId` = ?', [$old['id'], $old['id']]);
@@ -305,11 +319,6 @@ function only(array $changed, array $allowed): ?string
 function can_write(array $me, string $t, ?array $old, array $new, array $changed): ?string
 {
   $role = $me['role'];
-  if ($t === 'users' && $role === 'admin') {
-    if ($old['id'] === $me['id']) return 'Não podes apagar a tua própria conta.';
-    if ($old['role'] === 'admin' && (int)one("SELECT COUNT(*) AS n FROM `users` WHERE `role` = 'admin'")['n'] <= 1) return 'Tem de ficar pelo menos um administrador.';
-    return null;
-  }
   if ($role === 'admin') return null;
   $prom = in_array($role, ['promotor_chefe', 'promotor'], true);
 
@@ -384,6 +393,7 @@ function can_write(array $me, string $t, ?array $old, array $new, array $changed
       $award = null;
       foreach ($ev['awards'] ?? [] as $a) if ($a['id'] === $new['awardId']) $award = $a;
       if (!$award) return 'Prémio inválido.';
+      if ($new['candidateId'] === $me['id']) return 'Não podes votar em ti próprio.';
       $ids = [$me['id'], (string)$new['candidateId']];
       $rows = all('SELECT * FROM `participants` WHERE `id` IN (?, ?) AND `eventId` = ?', array_merge($ids, [$me['eventId']]));
       $pay = payments_of($ids);
@@ -393,6 +403,17 @@ function can_write(array $me, string $t, ?array $old, array $new, array $changed
       if (is_array($award['eligible'] ?? null) && !in_array($new['candidateId'], $award['eligible'], true)) return 'Essa pessoa não pode ser votada neste prémio.';
       if (!is_array($award['eligible'] ?? null) && in_array($new['candidateId'], $award['excluded'] ?? [], true)) return 'Essa pessoa não pode ser votada neste prémio.';
       return null;
+
+    case 'photos':
+      // As fotos novas chegam pela rota upload; aqui só se denuncia (participantes) ou revê (promotor chefe).
+      if (!$old) return 'Usa o botão de adicionar foto.';
+      if ($old['eventId'] !== $me['eventId']) return 'Essa foto não é do teu evento.';
+      if ($me['kind'] === 'participant') {
+        $err = only($changed, ['reported']);
+        return $err ?? ((int)$new['reported'] === 1 ? null : 'Sem permissão.');
+      }
+      if ($role === 'promotor_chefe') return only($changed, ['reported', 'caption']);
+      return 'Sem permissão.';
   }
   return 'Sem permissão.';
 }
@@ -400,6 +421,11 @@ function can_write(array $me, string $t, ?array $old, array $new, array $changed
 function can_delete(array $me, string $t, array $old): ?string
 {
   $role = $me['role'];
+  if ($t === 'users' && $role === 'admin') {
+    if ($old['id'] === $me['id']) return 'Não podes apagar a tua própria conta.';
+    if ($old['role'] === 'admin' && (int)one("SELECT COUNT(*) AS n FROM `users` WHERE `role` = 'admin'")['n'] <= 1) return 'Tem de ficar pelo menos um administrador.';
+    return null;
+  }
   if ($role === 'admin') return null;
   if ($t === 'payments' && in_array($role, ['promotor_chefe', 'promotor'], true)) {
     $p = fetch_row('participants', $old['participantId']);
@@ -408,11 +434,74 @@ function can_delete(array $me, string $t, array $old): ?string
     return null;
   }
   if ($t === 'users' && $role === 'promotor_chefe' && $old['role'] === 'promotor' && $old['eventId'] === $me['eventId']) return null;
+  if ($t === 'photos' && ($old['authorId'] === $me['id'] || ($role === 'promotor_chefe' && $old['eventId'] === $me['eventId']))) return null;
   if ($t === 'votes' && $me['kind'] === 'participant' && $old['voterId'] === $me['id']) {
     $ev = event_obj($me['eventId']);
     return $ev && voting_open($ev) ? null : 'A votação não está aberta.';
   }
   return 'Sem permissão para apagar.';
+}
+
+// ---------- Fotos da app (Memórias) ----------
+
+function route_upload(): void
+{
+  $me = require_me();
+  $role = $me['role'];
+  $eventId = (string)($_POST['eventId'] ?? '');
+  if ($me['kind'] === 'participant') {
+    $p = fetch_row('participants', $me['id']);
+    $ev = event_obj($me['eventId']);
+    if (!$p || !$ev || $eventId !== $me['eventId'] || !fully_paid(decode_row('participants', $p), $ev, payments_of([$p['id']])[$p['id']] ?? [])) fail(403, 'A app fica disponível quando tiveres tudo pago.');
+    $name = $p['name'];
+    $count = (int)one('SELECT COUNT(*) AS n FROM `photos` WHERE `eventId` = ? AND `authorId` = ?', [$eventId, $me['id']])['n'];
+    if ($count >= 80) fail(400, 'Já partilhaste muitas fotos neste evento. Apaga algumas para adicionar mais.');
+  } else {
+    if ($role !== 'admin' && !(in_array($role, ['promotor_chefe', 'promotor'], true) && $eventId === $me['eventId'])) fail(403, 'Sem permissão para adicionar fotos a este evento.');
+    if (!event_obj($eventId)) fail(400, 'Evento inválido.');
+    $name = fetch_row('users', $me['id'])['name'] ?? 'LastDance';
+  }
+
+  $f = $_FILES['foto'] ?? null;
+  if (!$f || ($f['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) fail(400, 'A foto não chegou ao servidor. Tenta outra vez.');
+  if ($f['size'] > 12 * 1024 * 1024) fail(400, 'A foto é demasiado grande (máx. 12 MB).');
+  $info = @getimagesize($f['tmp_name']);
+  $ext = [IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp'][$info[2] ?? 0] ?? null;
+  if (!$info || !$ext || $info[0] < 50 || $info[1] < 50 || $info[0] * $info[1] > 25e6) fail(400, 'Formato de imagem inválido. Usa JPG, PNG ou WEBP.');
+
+  $file = bin2hex(random_bytes(16)) . '.' . $ext;
+  $dest = uploads_dir() . '/' . $file;
+  // Voltamos a gravar a imagem (quando o servidor deixa): fica sem dados escondidos, como a localização GPS.
+  $img = function_exists('imagecreatefromstring') ? @imagecreatefromstring((string)file_get_contents($f['tmp_name'])) : false;
+  $ok = $img ? match ($ext) { 'png' => imagepng($img, $dest, 6), 'webp' => imagewebp($img, $dest, 82), default => imagejpeg($img, $dest, 84) } : move_uploaded_file($f['tmp_name'], $dest);
+  if (!$ok) fail(500, 'Não foi possível guardar a foto no servidor.');
+  @chmod($dest, 0644);
+
+  $base = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/api/index.php')), '/');
+  $row = [
+    'id' => new_id('f'), 'eventId' => $eventId, 'authorId' => $me['id'], 'authorName' => $name, 'src' => $base . '/index.php?r=photo&f=' . $file,
+    'caption' => mb_substr(trim((string)($_POST['caption'] ?? '')), 0, 80) ?: null, 'emoji' => mb_substr(trim((string)($_POST['emoji'] ?? '')), 0, 8) ?: null,
+    'createdAt' => now_iso(), 'reported' => 0,
+  ];
+  $r = encode_row('photos', $row);
+  q('INSERT INTO `photos` (`' . implode('`, `', array_keys($r)) . '`) VALUES (' . in_list($r) . ')', array_values($r));
+  bump_version();
+  out(['photo' => decode_row('photos', $r)]);
+}
+
+/** Mostra uma foto. O nome é aleatório e impossível de adivinhar. */
+function route_photo(): void
+{
+  $f = (string)($_GET['f'] ?? '');
+  if (!preg_match('/^[a-f0-9]{32}\.(jpg|png|webp)$/', $f, $m)) fail(404, 'Foto não encontrada.');
+  $path = (cfg()['uploads_dir'] ?? dirname(__DIR__, 2) . '/lastdance-uploads') . '/' . $f;
+  if (!is_file($path)) fail(404, 'Foto não encontrada.');
+  header('Content-Type: ' . ['jpg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp'][$m[1]]);
+  header('Content-Length: ' . filesize($path));
+  header('Cache-Control: private, max-age=31536000, immutable');
+  header('X-Content-Type-Options: nosniff');
+  readfile($path);
+  exit;
 }
 
 // ---------- Inscrição pública ----------
