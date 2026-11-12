@@ -19,6 +19,7 @@ import {
   missing,
   ordinal,
   paidFor,
+  plan,
   refundPending,
   refunded,
   totalDue,
@@ -34,8 +35,10 @@ export default function ParticipantArea({ p }: { p: Participant }) {
   const [choosing, setChoosing] = useState(false)
   const [f, setF] = useState({ phone: p.phone, diet: p.diet, health: p.health ?? '' })
   const ev = db.events.find((e) => e.id === p.eventId)!
-  const paidCount = ev.installments.filter((_, i) => instStatus(p, ev, i) === 'paid').length
-  const next = ev.installments.map((inst, i) => ({ inst, i })).find(({ i }) => instStatus(p, ev, i) !== 'paid')
+  const rows = plan(p, ev)
+  const paidCount = rows.filter((r) => r.status === 'paid').length
+  const next = ev.installments.map((inst, i) => ({ inst, i })).find(({ i }) => rows[i].status !== 'paid')
+  const rolled = rows.some((r) => r.rolled)
   const table = ev.tables.find((t) => t.id === p.tableId)
   const mates = table ? db.participants.filter((x) => x.tableId === table.id && x.id !== p.id && !isCancelled(x)) : []
   const allPaid = fullyPaid(p, ev)
@@ -118,15 +121,15 @@ export default function ParticipantArea({ p }: { p: Participant }) {
           ) : (
             <>
               <p className="muted">
-                {paidCount} de {ev.installments.length} prestações pagas · {eur(totalPaid(p))} de {eur(due)}
-                {missing(p, ev) > 0 && ` · faltam ${eur(missing(p, ev))}`}
+                O teu baile custa <b style={{ color: 'var(--white)' }}>{eur(due)}</b>, dividido em {ev.installments.length} prestações. Já pagaste {eur(totalPaid(p))}
+                {missing(p, ev) > 0 ? ` · faltam ${eur(missing(p, ev))}.` : '.'}
               </p>
               <div className="progress">
                 <div style={{ width: `${due ? Math.min(100, (totalPaid(p) / due) * 100) : 100}%` }} />
               </div>
               {next && (
                 <div className={`alert ${instStatus(p, ev, next.i) === 'overdue' ? 'alert-err' : 'alert-info'}`}>
-                  {instStatus(p, ev, next.i) === 'overdue' ? '⚠ Tens uma prestação em atraso: ' : 'Próxima prestação: '}a {ordinal(next.i)}, {eur(instAmount(p, ev, next.i) - paidFor(p, next.i))}
+                  {rows[next.i].status === 'overdue' ? '⚠ Tens uma prestação em atraso: ' : 'Próxima prestação: '}a {ordinal(next.i)}, {eur(rows[next.i].left)}
                   {next.inst.due &&
                     (daysFromNow(next.inst.due) >= 0
                       ? `, até ${dateShort(next.inst.due)} (daqui a ${daysFromNow(next.inst.due)} dias).`
@@ -135,15 +138,15 @@ export default function ParticipantArea({ p }: { p: Participant }) {
               )}
               <div className="list">
                 {ev.installments.map((inst, i) => {
-                  const st = instStatus(p, ev, i)
-                  const paid = paidFor(p, i)
+                  const st = rows[i].status
+                  const paid = rows[i].paid
                   return (
                     <div key={i} className="list-item">
                       <div className="grow">
                         <div className="t">{ordinal(i)} prestação</div>
                         <div className="s">{inst.due ? `Até ${dateShort(inst.due)}` : 'Sem data-limite'}</div>
                       </div>
-                      <b>{eur(instAmount(p, ev, i))}</b>
+                      <b>{eur(rows[i].amount)}</b>
                       <StatusPill s={st} label={st === 'partial' || (st === 'overdue' && paid > 0) ? `Parcial · ${eur(paid)}` : undefined} />
                     </div>
                   )
@@ -170,7 +173,11 @@ export default function ParticipantArea({ p }: { p: Participant }) {
                   </div>
                 </details>
               )}
-              <p className="small muted">Pagas cada prestação ao promotor do teu evento, que a regista aqui. Não há pagamentos online.</p>
+              {rolled && <p className="small gold">Numa prestação pagaste um valor diferente do previsto: a diferença foi dividida pelas prestações seguintes.</p>}
+              <p className="small muted">
+                Pagas cada prestação ao promotor do teu evento, que a regista aqui. Se numa prestação só puderes pagar uma parte, o que falta é dividido pelas
+                prestações seguintes. Não há pagamentos online.
+              </p>
             </>
           )}
         </div>

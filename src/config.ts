@@ -4,7 +4,6 @@ export const BRAND = {
   email: 'geral@lastdance.pt',
   phone: '+351 969 037 376',
   phoneRaw: '351969037376',
-  address: 'Avenida da Liberdade, Lisboa',
   instagram: 'https://www.instagram.com/',
   tiktok: 'https://www.tiktok.com/',
 }

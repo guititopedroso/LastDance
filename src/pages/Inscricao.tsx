@@ -118,7 +118,7 @@ export default function Inscricao() {
                 <div className="small gold" style={{ fontWeight: 600 }}>
                   {ev.modalities?.length || ev.extras?.length
                     ? `A partir de ${eur(Math.min(eventPrice(ev), ...(ev.modalities ?? []).map((m) => m.price)))} em ${ev.installments.length} prestações`
-                    : `${eur(eventPrice(ev))} em ${ev.installments.length} prestações de ${ev.installments.map((i) => eur(i.amount)).join(' + ')}`}
+                    : `O baile custa ${eur(eventPrice(ev))}, dividido em ${ev.installments.length} prestações`}
                 </div>
               </div>
             </div>
@@ -225,7 +225,7 @@ export default function Inscricao() {
               )}
               {(!!ev.modalities?.length || !!ev.extras?.length) && (
                 <div className="alert alert-info small">
-                  Total: <b>{eur(personPrice(ev, mod || undefined, ext))}</b> em {ev.installments.length} prestações. Podes mudar a modalidade e os extras mais tarde, na tua área.
+                  O teu baile custa <b>{eur(personPrice(ev, mod || undefined, ext))}</b>, dividido em {ev.installments.length} prestações. Podes mudar a modalidade e os extras mais tarde, na tua área.
                 </div>
               )}
               <div className="field">

@@ -291,14 +291,18 @@ function paid_for(array $payments, int $i): float
   return $s;
 }
 
+/**
+ * Tem tudo pago: o total pago cobre o preço da pessoa. As prestações reajustam-se sozinhas
+ * (quem paga menos numa prestação paga o resto nas seguintes), por isso conta o total e não cada prestação.
+ */
 function fully_paid(array $p, array $ev, array $payments): bool
 {
   if (!empty($p['cancelledAt'])) return false;
   if (!empty($p['offer'])) return true;
-  foreach ($ev['installments'] ?? [] as $i => $inst) {
-    if (paid_for($payments, $i) < inst_amount($p, $ev, $i) - 0.001) return false;
-  }
-  return true;
+  $due = 0.0; $paid = 0.0;
+  foreach ($ev['installments'] ?? [] as $i => $inst) $due += inst_amount($p, $ev, $i);
+  foreach ($payments as $x) if (($x['kind'] ?? 'payment') !== 'refund') $paid += (float)$x['amount'];
+  return $paid >= $due - 0.001;
 }
 
 function person_price(array $ev, ?string $modalityId, array $extras): float

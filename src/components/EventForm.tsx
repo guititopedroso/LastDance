@@ -82,10 +82,13 @@ export function EventForm({ existing, onDone }: { existing?: LDEvent; onDone?: (
     set('code', code)
   }
 
-  const setN = (n: number) => {
-    const inst = Array.from({ length: n }, (_, i) => ev.installments[i] ?? { amount: 0 })
-    set('installments', inst)
+  // O preço é um só; as prestações dividem-no em partes iguais (a última leva os cêntimos que sobram)
+  const split = (price: number, n: number) => {
+    const cents = Math.round(price * 100), part = Math.floor(cents / n)
+    return Array.from({ length: n }, (_, i) => ({ ...(ev.installments[i] ?? {}), amount: (i === n - 1 ? cents - part * (n - 1) : part) / 100 }))
   }
+  const setN = (n: number) => set('installments', split(total, n))
+  const setPrice = (price: number) => set('installments', split(price, ev.installments.length))
 
   const setPartner = (pid: string, on: boolean) => {
     set('partners', on ? [...ev.partners, { partnerId: pid }] : ev.partners.filter((x) => x.partnerId !== pid))
@@ -99,7 +102,7 @@ export function EventForm({ existing, onDone }: { existing?: LDEvent; onDone?: (
     if (!code) return setErr('Gera ou escreve um código.')
     if (getDB().events.some((x) => x.code === code && x.id !== ev.id)) return setErr('Esse código já está a ser usado noutro evento.')
     if (!ev.comercial1) return setErr('Escolhe o comercial 1.')
-    if (total <= 0) return setErr('Define o valor das prestações.')
+    if (total <= 0) return setErr('Define o preço do baile.')
     if (!existing && promoterEmail && getDB().users.some((u) => u.email.toLowerCase() === promoterEmail.toLowerCase()))
       return setErr('Já existe uma conta com esse email de promotor.')
     const classes = ev.hasClasses
@@ -237,6 +240,10 @@ export function EventForm({ existing, onDone }: { existing?: LDEvent; onDone?: (
 
       <div className="grid-2">
         <div className="field">
+          <label>Preço do baile por pessoa (€)</label>
+          <input className="input" type="number" step="0.01" min="0" value={total || ''} placeholder="Ex.: 65" onChange={(e) => setPrice(+e.target.value)} />
+        </div>
+        <div className="field">
           <label>Nº de prestações</label>
           <select className="input" value={ev.installments.length} onChange={(e) => setN(+e.target.value)}>
             {[1, 2, 3, 4, 5, 6].map((n) => (
@@ -244,25 +251,17 @@ export function EventForm({ existing, onDone }: { existing?: LDEvent; onDone?: (
             ))}
           </select>
         </div>
-        <div className="field">
-          <label>Comissão fixa por pessoa (€)</label>
-          <input className="input" type="number" step="0.5" min="0" value={ev.commission} onChange={(e) => set('commission', +e.target.value)} />
-        </div>
       </div>
       <div className="field">
-        <label>Valor e data-limite de cada prestação</label>
+        <label>Comissão fixa por pessoa (€)</label>
+        <input className="input" type="number" step="0.5" min="0" value={ev.commission} onChange={(e) => set('commission', +e.target.value)} />
+      </div>
+      <div className="field">
+        <label>Data-limite de cada prestação</label>
         {ev.installments.map((inst, i) => (
-          <div key={i} className="row" style={{ flexWrap: 'nowrap' }}>
+          <div key={i} className="row" style={{ flexWrap: 'nowrap', alignItems: 'center' }}>
             <span style={{ width: 34 }}>{i + 1}.ª</span>
-            <input
-              className="input"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="€"
-              value={inst.amount || ''}
-              onChange={(e) => set('installments', ev.installments.map((x, k) => (k === i ? { ...x, amount: +e.target.value } : x)))}
-            />
+            <span style={{ width: 110 }} className="muted">{eur(inst.amount || 0)}</span>
             <input
               className="input"
               type="date"
@@ -271,7 +270,10 @@ export function EventForm({ existing, onDone }: { existing?: LDEvent; onDone?: (
             />
           </div>
         ))}
-        <span className="small muted">Preço total por pessoa: {eur(total)}. A data-limite é opcional: sem data, a prestação nunca fica em atraso.</span>
+        <span className="small muted">
+          O baile custa {eur(total)} por pessoa, dividido em {ev.installments.length} prestações. Se alguém pagar menos numa prestação, o que falta é dividido
+          pelas seguintes. A data-limite é opcional: sem data, a prestação nunca fica em atraso.
+        </span>
       </div>
       <div className="field">
         <label>Limite de lotação (opcional)</label>
@@ -282,7 +284,7 @@ export function EventForm({ existing, onDone }: { existing?: LDEvent; onDone?: (
       <div className="field">
         <label>Modalidades (opcional)</label>
         <span className="small muted">
-          Ex.: «Só welcome drink» ou «Só jantar», com o preço total de cada uma. Sem modalidades, todos pagam o preço das prestações acima («Completo»).
+          Ex.: «Só welcome drink» ou «Só jantar», com o preço total de cada uma. Sem modalidades, todos pagam o preço do baile acima («Completo»).
         </span>
         <PriceList items={ev.modalities ?? []} onChange={(v) => set('modalities', v)} placeholder="Nome da modalidade" prefix="m" />
       </div>

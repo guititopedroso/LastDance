@@ -58,7 +58,7 @@ const NIGHT = [
 
 const FAQ = [
   ['Quanto custa?', 'Depende do espaço, do número de pessoas e do que incluir. Fazemos uma proposta com preço por pessoa fechado, sem surpresas.'],
-  ['Posso pagar em prestações?', 'Sim. Cada evento tem 2 a 4 prestações, pagas ao promotor da tua escola, que regista tudo na plataforma.'],
+  ['Posso pagar em prestações?', 'Sim. O baile tem um preço total, dividido em prestações que pagas ao promotor da tua escola. Se numa prestação só puderes pagar uma parte, o que falta é dividido pelas prestações seguintes.'],
   ['Como me inscrevo?', 'Pede o código à tua comissão de finalistas, carrega em «Inscrição» e preenche os dados em 2 minutos.'],
   ['Como entro no baile?', 'Com tudo pago, recebes um QR pessoal. À porta lemos o QR e confirmamos o Cartão de Cidadão.'],
   ['Com quanta antecedência devemos falar convosco?', 'Idealmente 8 a 12 meses antes — as melhores datas de maio e junho esgotam cedo.'],

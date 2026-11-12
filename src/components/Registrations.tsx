@@ -14,6 +14,7 @@ import {
   normalize,
   ordinal,
   paidFor,
+  plan,
   personPrice,
   recalcAmounts,
   refundPending,
@@ -22,7 +23,7 @@ import {
   totalPaid,
 } from '../data/logic'
 import { uid } from '../data/seed'
-import { update, useDB } from '../data/store'
+import { getDB, update, useDB } from '../data/store'
 import { DIETS, PTYPES, PTYPE_LABEL, PTYPE_LONG, type LDEvent, type Participant, type ParticipantType, type User } from '../data/types'
 import { Modal, StatusPill, newPassword, toast } from './ui'
 
@@ -370,19 +371,28 @@ export function PaymentModal({ pid, user, onClose }: { pid: string; user: User; 
         .payments.push({ id: 'pg' + uid(), installment: idx, amount: Math.round(amt * 100) / 100, receivedBy: user.id, at: new Date().toISOString(), kind })
     })
     toast(kind === 'adjust' ? 'Diferença acertada.' : `Registado ${eur(amt)} na ${ordinal(idx)} prestação.`)
-    // Passa sozinho para a prestação seguinte que falte
-    const next = ev.installments.findIndex((_, i) => i > idx && paidFor(p, i) < instAmount(p, ev, i) - 0.001)
-    if (kind === 'payment' && amt >= left - 0.001 && next >= 0) choose(next)
+    // Passa sozinho para a prestação seguinte que falte (com os valores já reajustados)
+    const fresh = getDB().participants.find((x) => x.id === pid)!
+    const rows = plan(fresh, ev)
+    const next = rows.findIndex((r, i) => i > idx && r.status !== 'paid')
+    if (kind === 'payment' && next >= 0 && rows[idx].status === 'paid') {
+      setIdx(next)
+      setValue(rows[next].left.toFixed(2).replace('.', ','))
+    }
   }
 
   const num = parseFloat(value.replace(',', '.')) || 0
   const pays = p.payments.filter((x) => x.installment === idx)
+  const isLast = idx === ev.installments.length - 1
+  // Pode receber menos (o resto passa para as próximas) ou mais (desconta nas próximas), até ao que falta no total
+  const maxNow = isLast ? left : Math.max(left, missing(p, ev))
+  const amt = Math.min(num, maxNow)
 
   return (
     <Modal onClose={onClose}>
       <h3>Receber pagamento</h3>
       <p className="small muted">
-        {p.name} · {eur(totalPaid(p))} de {eur(totalDue(p, ev))}
+        {p.name} · baile de {eur(totalDue(p, ev))} · pago {eur(totalPaid(p))}
         {missing(p, ev) > 0 && ` · faltam ${eur(missing(p, ev))}`}
       </p>
       <div className="chips" style={{ margin: '16px 0' }}>
@@ -403,10 +413,14 @@ export function PaymentModal({ pid, user, onClose }: { pid: string; user: User; 
           <div className="field">
             <label>Valor recebido (€)</label>
             <input className="input" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
+            {amt > 0 && amt < left - 0.001 && !isLast && <span className="small gold">Os {eur(left - amt)} que faltam são divididos pelas próximas prestações.</span>}
+            {amt > 0 && amt < left - 0.001 && isLast && <span className="small muted">Fica a faltar {eur(left - amt)} nesta prestação.</span>}
+            {amt > left + 0.001 && <span className="small gold">Os {eur(amt - left)} a mais descontam nas próximas prestações.</span>}
+            {num > maxNow + 0.001 && <span className="small muted">O máximo que falta pagar é {eur(maxNow)}.</span>}
           </div>
           <div className="row">
-            <button className="btn btn-gold" disabled={num <= 0} onClick={() => register('payment', Math.min(num, left))}>
-              Registar {eur(Math.min(num, left))}
+            <button className="btn btn-gold" disabled={amt <= 0} onClick={() => register('payment', amt)}>
+              Registar {eur(amt)}
             </button>
             {paid > 0 && perms.edit && (
               <button className="btn btn-ghost" onClick={() => register('adjust', left)} title="Perdoar o valor que falta nesta prestação">
@@ -462,7 +476,7 @@ export function PaymentModal({ pid, user, onClose }: { pid: string; user: User; 
 export function ChoicesEditor({ p, ev, onSave, onCancel }: { p: Participant; ev: LDEvent; onSave: (m?: string, x?: string[]) => void; onCancel: () => void }) {
   const [mod, setMod] = useState(p.modalityId ?? '')
   const [ext, setExt] = useState<string[]>(p.extras ?? [])
-  const preview = recalcAmounts(p, ev, mod || undefined, ext) ?? ev.installments.map((i) => i.amount)
+  const preview = plan({ ...p, customAmounts: recalcAmounts(p, ev, mod || undefined, ext) }, ev).map((r) => r.amount)
   return (
     <div className="stack">
       {!!ev.modalities?.length && (

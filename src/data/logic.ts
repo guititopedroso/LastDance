@@ -39,8 +39,11 @@ export function personPrice(ev: LDEvent, modalityId?: string, extras?: string[])
   return base + (extras ?? []).reduce((s, id) => s + (ev.extras?.find((x) => x.id === id)?.price ?? 0), 0)
 }
 
-/** Valor da prestação i para esta pessoa. */
-export const instAmount = (p: Participant, ev: LDEvent, i: number) => p.customAmounts?.[i] ?? ev.installments[i].amount
+/**
+ * Plano base da prestação i para esta pessoa (o que o evento definiu, ou o plano depois de mudar modalidade/extras).
+ * Serve só para saber o preço total e a proporção entre prestações; o valor a pagar em cada uma é calculado em `plan`.
+ */
+export const instBase = (p: Participant, ev: LDEvent, i: number) => p.customAmounts?.[i] ?? ev.installments[i].amount
 
 /** Pago nesta prestação (pagamentos + diferenças acertadas). */
 export function paidFor(p: Participant, idx: number) {
@@ -55,7 +58,7 @@ export function paidFor(p: Participant, idx: number) {
  */
 export function recalcAmounts(p: Participant, ev: LDEvent, modalityId?: string, extras?: string[]): number[] | undefined {
   const target = Math.round(personPrice(ev, modalityId, extras) * 100) / 100
-  const cur = ev.installments.map((_, i) => instAmount(p, ev, i))
+  const cur = ev.installments.map((_, i) => instBase(p, ev, i))
   const open = ev.installments.map((_, i) => i).filter((i) => paidFor(p, i) <= 0.001)
   const locked = cur.reduce((s, v, i) => (open.includes(i) ? s : s + v), 0)
   const out = [...cur]
@@ -76,14 +79,49 @@ export function recalcAmounts(p: Participant, ev: LDEvent, modalityId?: string, 
 }
 
 export type InstStatus = 'paid' | 'partial' | 'missing' | 'overdue' | 'offer'
+export type PlanRow = { amount: number; paid: number; left: number; status: InstStatus; rolled: boolean }
+
+const r2 = (v: number) => Math.round(v * 100) / 100
+
+/**
+ * Plano de pagamento desta pessoa. O evento tem um preço total, dividido em prestações.
+ * Uma prestação com algum pagamento fica fechada com o que foi pago: se faltou dinheiro (ou se sobrou),
+ * a diferença reparte-se pelas prestações seguintes, na proporção do plano. A última prestação leva o que faltar.
+ * Uma prestação sem pagamento nenhum e com a data-limite ultrapassada fica em atraso.
+ * A mesma regra existe no servidor (api/lib.php → fully_paid usa o total).
+ */
+export function plan(p: Participant, ev: LDEvent): PlanRow[] {
+  const n = ev.installments.length
+  const base = ev.installments.map((_, i) => instBase(p, ev, i))
+  let remaining = r2(base.reduce((s, v) => s + v, 0))
+  const rows: PlanRow[] = []
+  for (let i = 0; i < n; i++) {
+    const paid = r2(paidFor(p, i))
+    const wRest = base.slice(i).reduce((s, v) => s + v, 0)
+    const target = Math.max(0, i === n - 1 ? remaining : r2(wRest > 0 ? (remaining * base[i]) / wRest : remaining / (n - i)))
+    const due = ev.installments[i].due
+    if (p.offer) {
+      rows.push({ amount: target, paid, left: 0, status: 'offer', rolled: false })
+      remaining = r2(remaining - target)
+    } else if (paid > 0.001 && i < n - 1) {
+      // fechada com o que foi pago; a diferença passa para as seguintes
+      rows.push({ amount: paid, paid, left: 0, status: 'paid', rolled: Math.abs(paid - target) > 0.009 })
+      remaining = r2(remaining - paid)
+    } else {
+      const left = r2(Math.max(0, target - paid))
+      const status: InstStatus = left <= 0.001 ? 'paid' : due && daysFromNow(due) < 0 ? 'overdue' : paid > 0 ? 'partial' : 'missing'
+      rows.push({ amount: target, paid, left, status, rolled: false })
+      remaining = r2(remaining - Math.max(target, paid))
+    }
+  }
+  return rows
+}
+
+/** Valor da prestação i para esta pessoa (já com o reajuste das prestações anteriores). */
+export const instAmount = (p: Participant, ev: LDEvent, i: number) => plan(p, ev)[i].amount
 
 export function instStatus(p: Participant, ev: LDEvent, idx: number): InstStatus {
-  if (p.offer) return 'offer'
-  const inst = ev.installments[idx]
-  const paid = paidFor(p, idx)
-  if (paid >= instAmount(p, ev, idx) - 0.001) return 'paid'
-  if (inst.due && daysFromNow(inst.due) < 0) return 'overdue'
-  return paid > 0 ? 'partial' : 'missing'
+  return plan(p, ev)[idx].status
 }
 
 /** Coberto pelas prestações (pagamentos + diferenças acertadas). */
@@ -92,15 +130,14 @@ export const totalPaid = (p: Participant) => p.payments.filter((x) => x.kind !==
 export const cashIn = (p: Participant) => p.payments.reduce((s, x) => s + (x.kind === 'payment' ? x.amount : x.kind === 'refund' ? -x.amount : 0), 0)
 export const refunded = (p: Participant) => p.payments.filter((x) => x.kind === 'refund').reduce((s, x) => s + x.amount, 0)
 export const refundPending = (p: Participant) => (isCancelled(p) ? Math.max(0, (p.refundDue ?? 0) - refunded(p)) : 0)
-export const totalDue = (p: Participant, ev: LDEvent) => (p.offer || isCancelled(p) ? 0 : ev.installments.reduce((s, _, i) => s + instAmount(p, ev, i), 0))
+export const totalDue = (p: Participant, ev: LDEvent) => (p.offer || isCancelled(p) ? 0 : ev.installments.reduce((s, _, i) => s + instBase(p, ev, i), 0))
 export const missing = (p: Participant, ev: LDEvent) => Math.max(0, totalDue(p, ev) - totalPaid(p))
-export const fullyPaid = (p: Participant, ev: LDEvent) => !isCancelled(p) && (p.offer || ev.installments.every((_, i) => instStatus(p, ev, i) === 'paid'))
+export const fullyPaid = (p: Participant, ev: LDEvent) => !isCancelled(p) && (p.offer || totalPaid(p) >= totalDue(p, ev) - 0.001)
 
 export function overdueList(p: Participant, ev: LDEvent) {
   if (p.offer || isCancelled(p)) return []
-  return ev.installments
-    .map((inst, i) => ({ i, inst, left: instAmount(p, ev, i) - paidFor(p, i) }))
-    .filter(({ inst, left }) => left > 0.001 && inst.due && daysFromNow(inst.due) < 0)
+  const rows = plan(p, ev)
+  return ev.installments.map((inst, i) => ({ i, inst, left: rows[i].left })).filter(({ i }) => rows[i].status === 'overdue')
 }
 
 /** Idade no dia do evento (para o staff ver se é maior de idade). */
