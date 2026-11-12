@@ -672,7 +672,7 @@ function TeamTab() {
           </div>
         </div>
       )}
-      <p className="muted">Cada pessoa entra com o seu email e palavra-passe. Os sócios não têm comissão individual: a parte deles nos eventos fica para o lucro da empresa.</p>
+      <p className="muted">Cada pessoa entra com o seu email e palavra-passe. Quem tiver a data de nascimento preenchida pode recuperar a palavra-passe sozinho na página de entrada. Os sócios não têm comissão individual: a parte deles nos eventos fica para o lucro da empresa.</p>
       {pass && (
         <div className="alert alert-info">
           Nova palavra-passe de {pass.who}: <b>{pass.p}</b>
@@ -708,6 +708,20 @@ function TeamTab() {
                 }
               />
               Acesso de administrador
+            </label>
+            <label className="small" title="Com a data preenchida, a pessoa pode recuperar a palavra-passe sozinha (email + data de nascimento)">
+              Nascimento{' '}
+              <input
+                className="input"
+                type="date"
+                style={{ width: 'auto', display: 'inline-block', padding: '4px 8px' }}
+                value={u.birth ?? ''}
+                onChange={(e) =>
+                  update((d) => {
+                    d.users.find((x) => x.id === u.id)!.birth = e.target.value || undefined
+                  })
+                }
+              />
             </label>
             <button className="btn btn-ghost btn-sm" onClick={() => resetPass(u.id, u.name)}>
               Repor palavra-passe
@@ -795,6 +809,20 @@ function TeamTab() {
                 <span className="small muted">Nenhum marcado = acesso a todos.</span>
               </div>
             </details>
+            <label className="small" title="Com a data preenchida, a pessoa pode recuperar a palavra-passe sozinha (email + data de nascimento)">
+              Nascimento{' '}
+              <input
+                className="input"
+                type="date"
+                style={{ width: 'auto', display: 'inline-block', padding: '4px 8px' }}
+                value={u.birth ?? ''}
+                onChange={(e) =>
+                  update((d) => {
+                    d.users.find((x) => x.id === u.id)!.birth = e.target.value || undefined
+                  })
+                }
+              />
+            </label>
             <button className="btn btn-ghost btn-sm" onClick={() => resetPass(u.id, u.name)}>
               Repor palavra-passe
             </button>

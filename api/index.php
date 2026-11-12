@@ -61,7 +61,7 @@ function route_login(): void
   fail(401, 'Email ou palavra-passe incorretos.');
 }
 
-/** Participantes: nova palavra-passe com email + data de nascimento da inscrição. */
+/** Nova palavra-passe com email + data de nascimento (inscrições e contas da equipa que tenham a data preenchida). */
 function route_recover(): void
 {
   if (too_many_attempts()) fail(429, 'Demasiadas tentativas. Espera 15 minutos.');
@@ -72,13 +72,19 @@ function route_recover(): void
   if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $birth)) fail(400, 'Confirma o email e a data de nascimento.');
   if (strlen($pass) < 6) fail(400, 'A palavra-passe tem de ter pelo menos 6 caracteres.');
   $ids = array_column(all("SELECT `id` FROM `participants` WHERE LOWER(`email`) = LOWER(?) AND `birth` = ? AND (`hostId` IS NULL OR `hostId` = '')", [$email, $birth]), 'id');
-  if (!$ids) {
+  $uids = array_column(all("SELECT `id` FROM `users` WHERE LOWER(`email`) = LOWER(?) AND `birth` = ?", [$email, $birth]), 'id');
+  if (!$ids && !$uids) {
     record_attempt();
     out(['updated' => 0]);
   }
   $hash = password_hash($pass, PASSWORD_DEFAULT);
-  q('UPDATE `participants` SET `password` = ? WHERE `id` IN (' . in_list($ids) . ')', array_merge([$hash], $ids));
-  out(['updated' => count($ids)]);
+  if ($ids) q('UPDATE `participants` SET `password` = ? WHERE `id` IN (' . in_list($ids) . ')', array_merge([$hash], $ids));
+  if ($uids) {
+    q('UPDATE `users` SET `password` = ? WHERE `id` IN (' . in_list($uids) . ')', array_merge([$hash], $uids));
+    // Termina as sessões abertas dessa conta da equipa
+    q("DELETE FROM `tokens` WHERE `kind` = 'user' AND `subjectId` IN (" . in_list($uids) . ')', $uids);
+  }
+  out(['updated' => count($ids) + count($uids)]);
 }
 
 function route_logout(): void
@@ -159,6 +165,7 @@ function route_bootstrap(): void
     foreach ($users as $u) {
       $o = decode_row('users', $u);
       $o['password'] = '';
+      if ($o['id'] !== $me['id']) unset($o['birth']);
       if ($o['id'] !== $me['id'] && $role !== 'promotor_chefe') $o['email'] = '';
       if ($o['id'] !== $me['id'] && $o['role'] !== 'promotor_chefe' && !in_array($role, ['promotor_chefe', 'promotor'], true)) unset($o['phone']);
       if ($role === 'participante' && $o['role'] !== 'promotor_chefe' && $o['id'] !== $me['id']) unset($o['eventId']);

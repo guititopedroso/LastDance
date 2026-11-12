@@ -5,7 +5,7 @@ date_default_timezone_set('Europe/Lisbon');
 
 /** Tipos de cada coluna: s texto, n número, b sim/não, j lista/objeto (JSON), pw palavra-passe (nunca sai do servidor). */
 const SPEC = [
-  'users' => ['id' => 's', 'name' => 's', 'email' => 's', 'password' => 'pw', 'role' => 's', 'isPartner' => 'b', 'eventId' => 's', 'staffEventIds' => 'j', 'phone' => 's'],
+  'users' => ['id' => 's', 'name' => 's', 'email' => 's', 'password' => 'pw', 'role' => 's', 'isPartner' => 'b', 'eventId' => 's', 'staffEventIds' => 'j', 'phone' => 's', 'birth' => 's'],
   'events' => [
     'id' => 's', 'name' => 's', 'code' => 's', 'venueId' => 's', 'location' => 's', 'category' => 's', 'date' => 's', 'start' => 's', 'end' => 's',
     'hasClasses' => 'b', 'classes' => 'j', 'installments' => 'j', 'commission' => 'n', 'capacity' => 'n', 'partners' => 'j',
@@ -168,7 +168,7 @@ function fetch_row(string $t, string $id): ?array
   return one("SELECT * FROM `$t` WHERE `id` = ?", [$id]);
 }
 
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 /** Acrescenta colunas que faltem (instalações feitas com uma versão anterior). Corre uma vez por versão. */
 function migrate(): void

@@ -448,12 +448,18 @@ export async function chooseAccount(a: Account, all: Account[]) {
   if (API_MODE) await refresh()
 }
 
-/** Participantes: nova palavra-passe com email + data de nascimento. */
+/** Nova palavra-passe com email + data de nascimento (alunos, e equipa com data de nascimento preenchida). */
 export async function recoverPassword(email: string, birth: string, password: string): Promise<number> {
   if (!API_MODE) {
-    const ps = db.participants.filter((p) => p.email.toLowerCase() === email.trim().toLowerCase() && p.birth === birth)
-    if (ps.length) update((d) => d.participants.forEach((p) => ps.some((x) => x.id === p.id) && (p.password = password)))
-    return ps.length
+    const em = email.trim().toLowerCase()
+    const ps = db.participants.filter((p) => !p.hostId && p.email.toLowerCase() === em && p.birth === birth)
+    const us = db.users.filter((u) => u.email.toLowerCase() === em && !!u.birth && u.birth === birth)
+    if (ps.length || us.length)
+      update((d) => {
+        d.participants.forEach((p) => ps.some((x) => x.id === p.id) && (p.password = password))
+        d.users.forEach((u) => us.some((x) => x.id === u.id) && (u.password = password))
+      })
+    return ps.length + us.length
   }
   const r = await api<{ updated: number }>('recover', { email, birth, password })
   return r.updated

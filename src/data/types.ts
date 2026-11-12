@@ -26,6 +26,8 @@ export interface User {
   staffEventIds?: string[]
   /** Telemóvel (o aluno vê o do promotor chefe do seu evento) */
   phone?: string
+  /** Data de nascimento (AAAA-MM-DD): se estiver preenchida, a pessoa pode recuperar a palavra-passe com email + data */
+  birth?: string
 }
 
 export type Category = '12' | '9' | 'uni' | 'outro'

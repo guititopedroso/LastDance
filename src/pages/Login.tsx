@@ -135,7 +135,7 @@ export default function Login() {
             <div className="auth-head">
               <Logo h={48} />
               <h1>Recuperar palavra-passe</h1>
-              <p className="muted small">Para alunos inscritos. Confirma o teu email e a data de nascimento da inscrição e escolhe uma palavra-passe nova.</p>
+              <p className="muted small">Confirma o teu email e a data de nascimento (a da inscrição, ou a registada na tua conta da equipa) e escolhe uma palavra-passe nova.</p>
             </div>
             {recDone ? (
               <>
@@ -168,7 +168,7 @@ export default function Login() {
                 <button className="btn btn-gold" disabled={busy}>
                   {busy ? 'A alterar…' : 'Alterar palavra-passe'}
                 </button>
-                <p className="small muted">És promotor ou da equipa? Pede uma palavra-passe nova à administração.</p>
+                <p className="small muted">És da equipa e não tens a data de nascimento registada? Pede uma palavra-passe nova à administração.</p>
                 <button type="button" className="link small" style={{ alignSelf: 'center' }} onClick={() => (setMode('login'), setErr(''))}>
                   Voltar ao log-in
                 </button>
