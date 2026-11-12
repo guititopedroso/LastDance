@@ -293,29 +293,10 @@ export function EventForm({ existing, onDone }: { existing?: LDEvent; onDone?: (
         <span className="small muted">Ex.: after-party ou pack de fotografias. Somam ao preço; as prestações em falta atualizam-se sozinhas.</span>
         <PriceList items={ev.extras ?? []} onChange={(v) => set('extras', v)} placeholder="Nome do extra" prefix="x" />
       </div>
-      <div className="field">
-        <label>Quem se pode inscrever com o código</label>
-        <div className="chips">
-          {PTYPES.map((t) => {
-            const on = (ev.signupTypes ?? DEFAULT_SIGNUP_TYPES).includes(t)
-            return (
-              <button
-                type="button"
-                key={t}
-                className={`chip ${on ? 'on' : ''}`}
-                onClick={() => {
-                  const cur = ev.signupTypes ?? DEFAULT_SIGNUP_TYPES
-                  const next = on ? cur.filter((x) => x !== t) : [...cur, t]
-                  if (next.length) set('signupTypes', next)
-                }}
-              >
-                {PTYPE_LONG[t]}
-              </button>
-            )
-          })}
-        </div>
-        <span className="small muted">Os outros tipos (ex.: professores) só a organização adiciona, em «Adicionar pessoa».</span>
-      </div>
+      <p className="small muted">
+        Quem se inscreve com o código fica como aluno (finalista). Professores e outras pessoas são adicionados pela organização, em «Adicionar pessoa»; os
+        acompanhantes são adicionados pelos alunos na área deles.
+      </p>
 
       <div className="field">
         <label>Parceiros destacados (só a administração vê)</label>

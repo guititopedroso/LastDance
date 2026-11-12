@@ -5,7 +5,7 @@ import { Icon } from '../components/icons'
 import { Logo, Modal } from '../components/ui'
 import { eur, eventPrice, eventWhen, personPrice } from '../data/logic'
 import { API_MODE, findEventByCode, registerParticipant } from '../data/store'
-import { DEFAULT_SIGNUP_TYPES, DIETS, PTYPE_LONG, type LDEvent, type ParticipantType } from '../data/types'
+import { DIETS, type LDEvent } from '../data/types'
 
 export default function Inscricao() {
   const nav = useNavigate()
@@ -14,7 +14,7 @@ export default function Inscricao() {
   const [ev, setEv] = useState<LDEvent | null>(null)
   const [err, setErr] = useState('')
   const [privacy, setPrivacy] = useState(false)
-  const [f, setF] = useState({ name: '', birth: '', phone: '', email: '', type: '' as ParticipantType | '', turma: '', password: '', password2: '', diet: '', health: '', consent: false, guardianName: '', guardianPhone: '' })
+  const [f, setF] = useState({ name: '', birth: '', phone: '', email: '', turma: '', password: '', password2: '', diet: '', health: '', consent: false, guardianName: '', guardianPhone: '' })
   const [mod, setMod] = useState('')
   const [ext, setExt] = useState<string[]>([])
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -50,7 +50,8 @@ export default function Inscricao() {
         birth: f.birth,
         phone: f.phone,
         email: f.email.trim(),
-        type: f.type as ParticipantType,
+        // Quem se inscreve com o código da escola é sempre aluno (finalista)
+        type: 'finalista',
         turma: f.turma || undefined,
         password: f.password,
         diet: f.diet,
@@ -144,30 +145,17 @@ export default function Inscricao() {
                 <label>Email *</label>
                 <input className="input" type="email" inputMode="email" autoComplete="email" required value={f.email} onChange={set('email')} />
               </div>
-              <div className="grid-2">
+              {ev.hasClasses && (
                 <div className="field">
-                  <label>Tipo de participante *</label>
-                  <select className="input" required value={f.type} onChange={set('type')}>
+                  <label>Turma (opcional)</label>
+                  <select className="input" value={f.turma} onChange={set('turma')}>
                     <option value="">Escolher</option>
-                    {(ev.signupTypes?.length ? ev.signupTypes : DEFAULT_SIGNUP_TYPES).map((t) => (
-                      <option key={t} value={t}>
-                        {PTYPE_LONG[t]}
-                      </option>
+                    {ev.classes.map((c) => (
+                      <option key={c}>{c}</option>
                     ))}
                   </select>
                 </div>
-                {ev.hasClasses && (
-                  <div className="field">
-                    <label>Turma (opcional)</label>
-                    <select className="input" value={f.turma} onChange={set('turma')}>
-                      <option value="">Escolher</option>
-                      {ev.classes.map((c) => (
-                        <option key={c}>{c}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
             <div className="form-section stack">

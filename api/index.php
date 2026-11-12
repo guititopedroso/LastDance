@@ -612,14 +612,14 @@ function route_register(): void
   $email = $f('email');
   $phone = $f('phone', 30);
   $birth = $f('birth', 10);
-  $type = $f('type', 20);
   $diet = $f('diet', 60);
   $turma = $f('turma', 40);
   $pass = (string)($b['password'] ?? '');
   if (mb_strlen($name) < 3 || !filter_var($email, FILTER_VALIDATE_EMAIL) || strlen(preg_replace('/\D/', '', $phone)) < 9 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $birth))
     fail(400, 'Confirma o nome, o email, o telemóvel e a data de nascimento.');
-  $allowedTypes = $ev['signupTypes'] ?? ['finalista', 'nao_finalista', 'externo'];
-  if (!in_array($type, $allowedTypes ?: ['finalista', 'nao_finalista', 'externo'], true) || !$diet) fail(400, 'Escolhe o tipo de participante e a alimentação.');
+  // Quem se inscreve com o código da escola é sempre aluno (finalista); os outros são adicionados pela organização ou como acompanhantes
+  $type = 'finalista';
+  if (!$diet) fail(400, 'Escolhe a alimentação.');
   $gName = $f('guardianName');
   $gPhone = $f('guardianPhone', 30);
   if ($ev['category'] === '9' && (mb_strlen($gName) < 3 || strlen(preg_replace('/\D/', '', $gPhone)) < 9)) fail(400, 'Indica o nome e o telefone do encarregado de educação.');
