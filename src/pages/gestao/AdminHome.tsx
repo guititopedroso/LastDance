@@ -2,13 +2,14 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EventForm } from '../../components/EventForm'
 import { Registrations } from '../../components/Registrations'
+import { GuestsTotals } from '../../components/Guests'
 import { Kpi, Modal, Tabs, newPassword, toast } from '../../components/ui'
 import { cashIn, dateLong, dateShort, eur, eventPrice, eventStats, eventWhen, isCancelled, refundPending, refunded, sellersLabel } from '../../data/logic'
 import { uid } from '../../data/seed'
 import { API_MODE, hasDemoData, importDemoData, removeDemoData, update, useDB, useSession } from '../../data/store'
 import { CATEGORIES, CATEGORY_LABEL, EXPENSE_CATEGORIES, PARTNER_TYPES, type Category, type DB, type Expense, type Partner, type PartnerType, type Venue } from '../../data/types'
 
-type Tab = 'painel' | 'eventos' | 'inscricoes' | 'cancelamentos' | 'contas' | 'quintas' | 'parceiros' | 'despesas' | 'equipa'
+type Tab = 'painel' | 'eventos' | 'inscricoes' | 'modalidades' | 'cancelamentos' | 'contas' | 'quintas' | 'parceiros' | 'despesas' | 'equipa'
 
 function CategoryChips({ value, onChange, db }: { value: '' | Category; onChange: (c: '' | Category) => void; db: DB }) {
   const active = db.events.filter((e) => !e.archived)
@@ -55,6 +56,7 @@ export default function AdminHome() {
           { id: 'painel', label: 'Painel' },
           { id: 'eventos', label: 'Eventos e códigos' },
           { id: 'inscricoes', label: 'Todas as inscrições' },
+          { id: 'modalidades', label: 'Modalidades e acompanhantes', count: db.participants.filter((p) => p.hostId && !isCancelled(p)).length },
           { id: 'cancelamentos', label: 'Cancelamentos', count: db.participants.filter(isCancelled).length },
           { id: 'contas', label: 'Contas' },
           { id: 'quintas', label: 'Quintas' },
@@ -74,7 +76,7 @@ export default function AdminHome() {
             <Kpi bad k={`Em atraso · ${sum('overdueCount')} pessoas`} v={eur(sum('overdueAmount'))} />
             <Kpi k="Comissões a pagar" v={eur(sum('commissionToPay'))} />
             <Kpi k="Comissões que ficam na empresa" v={eur(sum('commissionKept'))} />
-            <Kpi k={`Inscritos (${sum('offers')} ofertas)`} v={sum('paying') + sum('offers')} />
+            <Kpi k={`Inscritos (${sum('offers')} ofertas · ${[...stats.values()].reduce((a, x) => a + x.ps.filter((p) => p.hostId).length, 0)} acompanhantes)`} v={sum('paying') + sum('offers')} />
             <Kpi bad={sum('refundsPending') > 0} k={`Cancelamentos · ${eur(sum('refundsPending'))} por devolver`} v={[...stats.values()].reduce((a, x) => a + x.cancelled.length, 0)} />
             <Kpi k="Eventos" v={events.length} />
           </div>
@@ -110,6 +112,7 @@ export default function AdminHome() {
       {tab === 'eventos' && <EventsTab />}
 
       {tab === 'inscricoes' && user && <AllRegistrations />}
+      {tab === 'modalidades' && <AllModalities />}
 
       {tab === 'contas' && (
         <>
@@ -203,6 +206,29 @@ function AllRegistrations() {
         </select>
       </div>
       <Registrations participants={ps} user={user!} showEvent={!evId} exportName="inscricoes-lastdance" />
+    </>
+  )
+}
+
+function AllModalities() {
+  const db = useDB()
+  const [evId, setEvId] = useState('')
+  const active = db.events.filter((e) => !e.archived)
+  const events = evId ? active.filter((e) => e.id === evId) : active
+  return (
+    <>
+      <div className="field" style={{ maxWidth: 520, marginBottom: 14 }}>
+        <label>Evento</label>
+        <select className="input" value={evId} onChange={(e) => setEvId(e.target.value)}>
+          <option value="">Todos os eventos</option>
+          {active.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <GuestsTotals events={events} showEvent={!evId} />
     </>
   )
 }

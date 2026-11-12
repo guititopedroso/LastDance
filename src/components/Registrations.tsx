@@ -7,6 +7,8 @@ import {
   eur,
   exportCSV,
   fullyPaid,
+  guestsOf,
+  hostOf,
   instAmount,
   instStatus,
   isCancelled,
@@ -21,6 +23,7 @@ import {
   refunded,
   totalDue,
   totalPaid,
+  typeLabel,
 } from '../data/logic'
 import { uid } from '../data/seed'
 import { getDB, update, useDB } from '../data/store'
@@ -61,7 +64,7 @@ export function Registrations({
   const perms = permsFor(user)
   const evById = useMemo(() => new Map(db.events.map((e) => [e.id, e])), [db.events])
   const [q, setQ] = useState('')
-  const [type, setType] = useState<'' | ParticipantType>('')
+  const [type, setType] = useState<'' | ParticipantType | 'guest'>('')
   const [turma, setTurma] = useState('')
   const [diet, setDiet] = useState('')
   const [sort, setSort] = useState<'name' | 'recent' | 'turma' | 'missing'>('name')
@@ -79,18 +82,19 @@ export function Registrations({
     active.forEach((p) => p.diet !== 'Nenhuma' && m.set(p.diet, (m.get(p.diet) ?? 0) + 1))
     return [...m.entries()].sort((a, b) => b[1] - a[1])
   }, [active])
-  const typeCounts = (t: ParticipantType) => active.filter((p) => p.type === t).length
+  const typeCounts = (t: ParticipantType) => active.filter((p) => p.type === t && !p.hostId).length
+  const guestCount = active.filter((p) => p.hostId).length
 
   const base = useMemo(() => {
     const nq = normalize(q)
     return participants.filter(
       (p) =>
-        (!nq || normalize(`${p.name} ${p.email} ${p.phone} ${p.turma ?? ''}`).includes(nq)) &&
-        (!type || p.type === type) &&
+        (!nq || normalize(`${p.name} ${p.email} ${p.phone} ${p.turma ?? ''} ${hostOf(db, p)?.name ?? ''}`).includes(nq)) &&
+        (!type || (type === 'guest' ? !!p.hostId : p.type === type && !p.hostId)) &&
         (!turma || p.turma === turma) &&
         (!diet || (diet === '__any' ? p.diet !== 'Nenhuma' : p.diet === diet)),
     )
-  }, [participants, q, type, turma, diet])
+  }, [participants, q, type, turma, diet, db])
 
   const payCounts = useMemo(() => {
     const c = { all: 0, missing: 0, paid: 0, offer: 0, cancelled: 0 }
@@ -133,14 +137,14 @@ export function Registrations({
     const maxInst = Math.max(...rows.map((p) => evById.get(p.eventId)!.installments.length), 0)
     exportCSV(exportName, [
       [
-        'Nome', 'Evento', 'Tipo', 'Turma', 'Email', 'Telemóvel', 'Nascimento', 'Encarregado de educação', 'Telefone do encarregado', 'Alimentação', 'Saúde', 'Modalidade', 'Extras', 'Mesa', 'Oferta', 'Estado',
+        'Nome', 'Evento', 'Tipo', 'Acompanhante de', 'Turma', 'Email', 'Telemóvel', 'Nascimento', 'Encarregado de educação', 'Telefone do encarregado', 'Alimentação', 'Saúde', 'Modalidade', 'Extras', 'Mesa', 'Oferta', 'Estado',
         ...Array.from({ length: maxInst }, (_, i) => `${ordinal(i)} prestação`),
         'Total', 'Pago', 'Em falta', 'Devolvido', 'Entrou',
       ],
       ...rows.map((p) => {
         const ev = evById.get(p.eventId)!
         return [
-          p.name, ev.name, PTYPE_LONG[p.type], p.turma ?? '', p.email, p.phone, p.birth, p.guardianName ?? '', p.guardianPhone ?? '', p.diet, p.health ?? '',
+          p.name, ev.name, p.hostId ? 'Acompanhante' : PTYPE_LONG[p.type], hostOf(db, p)?.name ?? '', p.turma ?? '', p.email, p.phone, p.birth, p.guardianName ?? '', p.guardianPhone ?? '', p.diet, p.health ?? '',
           ev.modalities?.find((m) => m.id === p.modalityId)?.name ?? '',
           (p.extras ?? []).map((x) => ev.extras?.find((e) => e.id === x)?.name ?? x).join(', '),
           ev.tables.find((t) => t.id === p.tableId)?.name ?? '',
@@ -169,13 +173,14 @@ export function Registrations({
             reset()
           }}
         />
-        <select className="input" value={type} onChange={(e) => (setType(e.target.value as ParticipantType | ''), reset())}>
+        <select className="input" value={type} onChange={(e) => (setType(e.target.value as ParticipantType | '' | 'guest'), reset())}>
           <option value="">Todos os tipos</option>
           {PTYPES.filter((t) => typeCounts(t) > 0 || t === 'finalista').map((t) => (
             <option key={t} value={t}>
               {PTYPE_LONG[t]} ({typeCounts(t)})
             </option>
           ))}
+          {guestCount > 0 && <option value="guest">Acompanhantes de alunos ({guestCount})</option>}
         </select>
         {classes.length > 0 ? (
           <select className="input" value={turma} onChange={(e) => (setTurma(e.target.value), reset())}>
@@ -266,7 +271,7 @@ export function Registrations({
                   <td>
                     <b>{p.name}</b>
                     <div className="small muted">
-                      {PTYPE_LABEL[p.type]}
+                      {typeLabel(db, p)}
                       {p.turma ? ` · ${p.turma}` : ''}
                       {showEvent ? ` · ${ev.name}` : ''}
                       {p.enteredAt ? ' · ✓ entrou' : ''}
@@ -392,7 +397,8 @@ export function PaymentModal({ pid, user, onClose }: { pid: string; user: User; 
     <Modal onClose={onClose}>
       <h3>Receber pagamento</h3>
       <p className="small muted">
-        {p.name} · baile de {eur(totalDue(p, ev))} · pago {eur(totalPaid(p))}
+        {p.name}
+        {p.hostId ? ` (acompanhante de ${hostOf(db, p)?.name ?? '—'}, que paga)` : ''} · baile de {eur(totalDue(p, ev))} · pago {eur(totalPaid(p))}
         {missing(p, ev) > 0 && ` · faltam ${eur(missing(p, ev))}`}
       </p>
       <div className="chips" style={{ margin: '16px 0' }}>
@@ -567,9 +573,20 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
     <Modal onClose={onClose}>
       <h3>{p.name}</h3>
       <p className="small muted">
-        {PTYPE_LONG[p.type]}
+        {typeLabel(db, p, true)}
         {p.turma ? ` · ${p.turma}` : ''} · {ev.name}
       </p>
+      {p.hostId && (
+        <div className="alert alert-info small" style={{ marginTop: 12 }}>
+          Acompanhante sem conta própria: quem paga as prestações é {hostOf(db, p)?.name ?? 'o aluno'}
+          {hostOf(db, p)?.phone ? ` (${hostOf(db, p)!.phone})` : ''}. Não vota nem pode ser votado.
+        </div>
+      )}
+      {guestsOf(db, p).filter((g) => !isCancelled(g)).length > 0 && (
+        <div className="small muted" style={{ marginTop: 8 }}>
+          Acompanhantes: {guestsOf(db, p).filter((g) => !isCancelled(g)).map((g) => g.name).join(', ')}
+        </div>
+      )}
       {cancelled && (
         <div className="alert alert-err small" style={{ marginTop: 12 }}>
           Inscrição cancelada a {dateShort(p.cancelledAt!)}
@@ -674,6 +691,11 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
           <p className="small muted">
             Já pagou {eur(cashIn(p) + refunded(p))}. Indica quanto lhe vais devolver (0 se não houver devolução). A pessoa deixa de contar para mesas, entrada, votação e comissões.
           </p>
+          {guestsOf(db, p).filter((g) => !isCancelled(g)).length > 0 && (
+            <div className="alert alert-info small">
+              Tem {guestsOf(db, p).filter((g) => !isCancelled(g)).length} acompanhante(s), que continuam inscritos. Se também desistirem, cancela-os na ficha de cada um.
+            </div>
+          )}
           <div className="grid-2">
             <div className="field">
               <label>Valor a devolver (€)</label>
@@ -738,7 +760,7 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
               </>
             )}
             <dt>Consentimento</dt>
-            <dd>{p.consent ? `Aceite a ${dateShort(p.createdAt)}` : p.addedBy ? `Adicionado por ${name(p.addedBy)}` : 'Sem registo (inscrição anterior)'}</dd>
+            <dd>{p.consent ? `Aceite a ${dateShort(p.createdAt)}${p.hostId ? ' (confirmado pelo aluno)' : ''}` : p.addedBy ? `Adicionado por ${name(p.addedBy)}` : 'Sem registo (inscrição anterior)'}</dd>
             <dt>Mesa</dt>
             <dd>{ev.tables.find((t) => t.id === p.tableId)?.name ?? 'Sem mesa'}</dd>
             <dt>Entrada</dt>
@@ -805,7 +827,7 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
                 {p.offer ? 'Retirar oferta' : 'Oferta'}
               </button>
             )}
-            {perms.edit && (
+            {perms.edit && !p.hostId && (
               <button
                 className="btn btn-ghost btn-sm"
                 onClick={() => {
@@ -845,9 +867,10 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
               <button
                 className="btn btn-danger btn-sm"
                 onClick={() => {
-                  if (!confirm(`Apagar a inscrição de ${p.name}? Esta ação não pode ser desfeita.`)) return
+                  const gs = guestsOf(db, p).length
+                  if (!confirm(`Apagar a inscrição de ${p.name}${gs ? ` e dos seus ${gs} acompanhante(s)` : ''}? Esta ação não pode ser desfeita.`)) return
                   update((d) => {
-                    d.participants = d.participants.filter((y) => y.id !== pid)
+                    d.participants = d.participants.filter((y) => y.id !== pid && y.hostId !== pid)
                   })
                   onClose()
                   toast('Inscrição apagada.')

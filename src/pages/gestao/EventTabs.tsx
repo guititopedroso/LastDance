@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { Kpi, Modal, toast } from '../../components/ui'
-import { cashIn, dateShort, dateTime, daysFromNow, eligibleFor, eur, eventStats, exportCSV, fullyPaid, isCancelled, normalize, ordinal, overdueList, refundPending, refunded, votingOpen } from '../../data/logic'
+import { cashIn, dateShort, dateTime, daysFromNow, eligibleFor, eur, eventStats, exportCSV, fullyPaid, guestsAfterHosts, hostOf, isCancelled, isGuest, normalize, ordinal, overdueList, refundPending, refunded, typeLabel, votingOpen } from '../../data/logic'
 import { uid } from '../../data/seed'
 import { update, uploadPhoto, useDB } from '../../data/store'
 import { PARTNER_TYPES, PTYPE_LABEL, PTYPE_LONG, type Award, type LDEvent, type User, type VotingMode } from '../../data/types'
@@ -131,14 +131,14 @@ export function AwardsTab({ ev, mode = 'full' }: { ev: LDEvent; mode?: 'full' | 
   const settings = mode !== 'results'
   const results = mode !== 'settings'
   const ps = db.participants.filter((p) => p.eventId === ev.id)
-  const active = ps.filter((p) => !isCancelled(p))
+  const active = ps.filter((p) => !isCancelled(p) && !isGuest(p))
   const votes = db.votes.filter((v) => v.eventId === ev.id)
   const rule = (a: Award) =>
     a.eligible
       ? `Podem ser votadas ${a.eligible.length} pessoas escolhidas.`
       : a.excluded?.length
         ? `Todos os inscritos menos ${a.excluded.length} (${active.filter((p) => eligibleFor(a, p, ev)).length} pessoas).`
-        : `Pode ser votado qualquer inscrito (${active.length} pessoas).`
+        : `Pode ser votado qualquer inscrito (${active.length} pessoas; os acompanhantes não contam).`
   /** Apuramento automático: o mais votado de cada prémio (em empate, fica o primeiro a chegar a esse número). */
   const autoWinners = () => {
     let n = 0
@@ -307,7 +307,7 @@ function AwardModal({ ev, award, onClose }: { ev: LDEvent; award: Award; onClose
   const db = useDB()
   const [a, setA] = useState(award)
   const [q, setQ] = useState('')
-  const ps = db.participants.filter((p) => p.eventId === ev.id && !isCancelled(p))
+  const ps = db.participants.filter((p) => p.eventId === ev.id && !isCancelled(p) && !isGuest(p))
   const found = q ? ps.filter((p) => normalize(p.name).includes(normalize(q))).slice(0, 8) : []
   const mode: 'all' | 'except' | 'only' = a.eligible ? 'only' : a.excluded ? 'except' : 'all'
   const list = mode === 'only' ? a.eligible! : a.excluded ?? []
@@ -489,7 +489,7 @@ export function OverdueTab({ ev }: { ev: LDEvent }) {
   const total = rows.reduce((s, r) => s + r.od.reduce((a, o) => a + o.left, 0), 0)
 
   const copy = () => {
-    const txt = rows.map((r) => `${r.p.name}${r.p.turma ? ` (${r.p.turma})` : ''} — ${r.od.map((o) => `${ordinal(o.i)} ${eur(o.left)}`).join(', ')}`).join('\n')
+    const txt = rows.map((r) => `${r.p.name}${r.p.hostId ? ` (acompanhante de ${hostOf(db, r.p)?.name ?? '—'})` : r.p.turma ? ` (${r.p.turma})` : ''} — ${r.od.map((o) => `${ordinal(o.i)} ${eur(o.left)}`).join(', ')}`).join('\n')
     navigator.clipboard?.writeText(`Prestações em atraso · ${ev.name}\n\n${txt}`)
     toast('Lista copiada. Cola no grupo da turma.')
   }
@@ -509,13 +509,17 @@ export function OverdueTab({ ev }: { ev: LDEvent }) {
         </button>
       </div>
       <div className="list">
-        {rows.map(({ p, od }) => (
+        {rows.map(({ p, od }) => {
+          // Acompanhante: quem paga é o aluno, por isso o lembrete vai para ele
+          const host = hostOf(db, p)
+          const who = host ?? p
+          return (
           <div key={p.id} className="list-item">
             <div className="grow">
               <div className="t">{p.name}</div>
               <div className="s">
-                {PTYPE_LONG[p.type]}
-                {p.turma ? ` · ${p.turma}` : ''} · {p.phone} · {p.email}
+                {typeLabel(db, p, true)}
+                {p.turma ? ` · ${p.turma}` : ''} · {who.phone} {who.email ? `· ${who.email}` : ''}
               </div>
               <div className="pills" style={{ marginTop: 6 }}>
                 {od.map((o) => (
@@ -530,14 +534,17 @@ export function OverdueTab({ ev }: { ev: LDEvent }) {
               className="btn btn-ghost btn-sm"
               target="_blank"
               rel="noreferrer"
-              href={`https://wa.me/351${p.phone.replace(/\D/g, '').slice(-9)}?text=${encodeURIComponent(
-                `Olá ${p.name.split(' ')[0]}! Lembrete LastDance: tens ${od.map((o) => `a ${ordinal(o.i)} prestação (${eur(o.left)})`).join(' e ')} do ${ev.name} em atraso. Obrigado!`,
+              href={`https://wa.me/351${who.phone.replace(/\D/g, '').slice(-9)}?text=${encodeURIComponent(
+                host
+                  ? `Olá ${host.name.split(' ')[0]}! Lembrete LastDance: o teu acompanhante ${p.name} tem ${od.map((o) => `a ${ordinal(o.i)} prestação (${eur(o.left)})`).join(' e ')} do ${ev.name} em atraso. Obrigado!`
+                  : `Olá ${p.name.split(' ')[0]}! Lembrete LastDance: tens ${od.map((o) => `a ${ordinal(o.i)} prestação (${eur(o.left)})`).join(' e ')} do ${ev.name} em atraso. Obrigado!`,
               )}`}
             >
               Lembrar
             </a>
           </div>
-        ))}
+          )
+        })}
         {rows.length === 0 && <div className="empty">Ninguém em atraso. 🎉</div>}
       </div>
     </div>
@@ -565,13 +572,19 @@ export function TablesTab({ ev, readOnly }: { ev: LDEvent; readOnly?: boolean })
       const t = ev.tables.find((x) => x.id === tid)!
       if (occ(tid) >= t.seats) return toast(`${t.name} está cheia.`)
     }
+    const me = ps.find((p) => p.id === pid)
+    // Os acompanhantes que estavam com o aluno (ou sem mesa) vão com ele, se houver lugar
+    const guests = ps.filter((g) => g.hostId === pid && (!g.tableId || g.tableId === me?.tableId))
+    const room = tid ? ev.tables.find((x) => x.id === tid)!.seats - occ(tid) - 1 : Infinity
     update((d) => {
       d.participants.find((p) => p.id === pid)!.tableId = tid
+      guests.slice(0, Math.max(0, room)).forEach((g) => (d.participants.find((p) => p.id === g.id)!.tableId = tid))
     })
+    if (guests.length > room) toast(`Não havia lugar para todos os acompanhantes de ${me?.name}.`)
   }
 
   const autoSeat = (by: 'turma' | 'name') => {
-    const order = [...unseated].sort((a, b) => (by === 'turma' ? (a.turma ?? 'zz').localeCompare(b.turma ?? 'zz') : 0) || a.name.localeCompare(b.name, 'pt'))
+    const order = guestsAfterHosts([...unseated].sort((a, b) => (by === 'turma' ? (a.turma ?? 'zz').localeCompare(b.turma ?? 'zz') : 0) || a.name.localeCompare(b.name, 'pt')))
     update((d) => {
       const left = new Map(ev.tables.map((t) => [t.id, t.seats - occ(t.id)]))
       for (const p of order) {
@@ -607,8 +620,8 @@ export function TablesTab({ ev, readOnly }: { ev: LDEvent; readOnly?: boolean })
   const exportTables = () =>
     exportCSV(`mesas-${ev.code}`, [
       ['Mesa', 'Nome', 'Tipo', 'Turma', 'Alimentação'],
-      ...ev.tables.flatMap((t) => ps.filter((p) => p.tableId === t.id).map((p) => [t.name, p.name, PTYPE_LABEL[p.type], p.turma ?? '', p.diet])),
-      ...unseated.map((p) => ['Sem mesa', p.name, PTYPE_LABEL[p.type], p.turma ?? '', p.diet]),
+      ...ev.tables.flatMap((t) => ps.filter((p) => p.tableId === t.id).map((p) => [t.name, p.name, typeLabel(db, p), p.turma ?? '', p.diet])),
+      ...unseated.map((p) => ['Sem mesa', p.name, typeLabel(db, p), p.turma ?? '', p.diet]),
     ])
 
   return (
@@ -683,7 +696,7 @@ export function TablesTab({ ev, readOnly }: { ev: LDEvent; readOnly?: boolean })
                     {p.name}
                     <span className="muted">
                       {' '}
-                      · {PTYPE_LABEL[p.type]}
+                      · {typeLabel(db, p)}
                       {p.turma ? ` · ${p.turma}` : ''}
                       {p.diet !== 'Nenhuma' ? ` · ${p.diet}` : ''}
                     </span>

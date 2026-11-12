@@ -16,7 +16,7 @@ const SPEC = [
     'id' => 's', 'eventId' => 's', 'name' => 's', 'birth' => 's', 'phone' => 's', 'email' => 's', 'password' => 'pw', 'type' => 's', 'turma' => 's',
     'diet' => 's', 'health' => 's', 'consent' => 'b', 'createdAt' => 's', 'offer' => 'b', 'tableId' => 's', 'enteredAt' => 's', 'enteredBy' => 's', 'qr' => 's',
     'guardianName' => 's', 'guardianPhone' => 's', 'modalityId' => 's', 'extras' => 'j', 'customAmounts' => 'j', 'cancelledAt' => 's', 'cancelReason' => 's',
-    'refundDue' => 'n', 'addedBy' => 's',
+    'refundDue' => 'n', 'addedBy' => 's', 'hostId' => 's',
   ],
   'payments' => ['id' => 's', 'participantId' => 's', 'installment' => 'n', 'amount' => 'n', 'receivedBy' => 's', 'at' => 's', 'kind' => 's'],
   'votes' => ['id' => 's', 'eventId' => 's', 'awardId' => 's', 'voterId' => 's', 'candidateId' => 's'],
@@ -168,7 +168,7 @@ function fetch_row(string $t, string $id): ?array
   return one("SELECT * FROM `$t` WHERE `id` = ?", [$id]);
 }
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 /** Acrescenta colunas que faltem (instalações feitas com uma versão anterior). Corre uma vez por versão. */
 function migrate(): void
@@ -419,6 +419,31 @@ function keep_winners(?string $oldJson, ?string $newJson): ?string
     if (isset($a['id'], $won[$a['id']])) $a['winnerId'] = $won[$a['id']];
   }
   return json_encode($new, JSON_UNESCAPED_UNICODE);
+}
+
+/** Máximo de acompanhantes por aluno (igual a MAX_GUESTS no site). */
+const MAX_GUESTS = 10;
+
+/**
+ * Um aluno quer adicionar um acompanhante na sua área. Devolve o erro, ou null se pode.
+ * Só quem se inscreveu sozinho com o código do evento (não adicionado à mão, não acompanhante, não cancelado).
+ */
+function guest_create_error(array $me, array $new, array $changed): ?string
+{
+  $host = fetch_row('participants', $me['id']);
+  if (!$host || !empty($host['hostId']) || !empty($host['addedBy']) || !empty($host['cancelledAt']))
+    return 'Só quem se inscreveu com o código do evento pode adicionar acompanhantes.';
+  $ev = event_obj((string)$host['eventId']);
+  if (!$ev || !empty($ev['archived'])) return 'Este evento já não aceita inscrições.';
+  $n = (int)one("SELECT COUNT(*) AS n FROM `participants` WHERE `hostId` = ? AND (`cancelledAt` IS NULL OR `cancelledAt` = '')", [$host['id']])['n'];
+  if ($n >= MAX_GUESTS) return 'Já tens ' . MAX_GUESTS . ' acompanhantes, que é o máximo.';
+  if (!empty($ev['capacity'])) {
+    $count = (int)one("SELECT COUNT(*) AS n FROM `participants` WHERE `eventId` = ? AND (`cancelledAt` IS NULL OR `cancelledAt` = '')", [$ev['id']])['n'];
+    if ($count >= (int)$ev['capacity']) return 'O evento está lotado: já não é possível adicionar acompanhantes.';
+  }
+  if (mb_strlen(trim((string)$new['name'])) < 3) return 'Indica o nome completo do acompanhante.';
+  if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$new['birth'])) return 'Indica a data de nascimento do acompanhante.';
+  return only($changed, ['id', 'eventId', 'name', 'birth', 'phone', 'type', 'diet', 'health', 'consent', 'createdAt', 'offer', 'tableId', 'qr', 'modalityId', 'extras', 'customAmounts', 'hostId']);
 }
 
 function staff_can(array $me, string $eventId): bool

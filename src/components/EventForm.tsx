@@ -284,7 +284,7 @@ export function EventForm({ existing, onDone }: { existing?: LDEvent; onDone?: (
       <div className="field">
         <label>Modalidades (opcional)</label>
         <span className="small muted">
-          Ex.: «Só welcome drink» ou «Só jantar», com o preço total de cada uma. Sem modalidades, todos pagam o preço do baile acima («Completo»).
+          Ex.: «Só jantar», «Só cocktail» ou «Só festa», com o preço total de cada uma. Sem modalidade, paga-se o preço do baile acima («Completo», all access).
         </span>
         <PriceList items={ev.modalities ?? []} onChange={(v) => set('modalities', v)} placeholder="Nome da modalidade" prefix="m" />
       </div>

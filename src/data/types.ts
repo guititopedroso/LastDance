@@ -67,7 +67,7 @@ export interface Table {
 
 export type VotingMode = 'auto' | 'open' | 'closed' | 'none'
 
-/** Modalidade (ex.: Completo, Só welcome drink, Só jantar): substitui o preço base. */
+/** Modalidade (ex.: Só jantar, Só cocktail, Só festa): substitui o preço base. */
 export interface Modality {
   id: string
   name: string
@@ -176,7 +176,15 @@ export interface Participant {
   refundDue?: number
   /** Quem adicionou à mão (vazio = inscreveu-se sozinho) */
   addedBy?: string
+  /**
+   * Acompanhante: id do aluno que o adicionou na sua área. Não tem conta nem acesso à app,
+   * não vota nem pode ser votado; o aluno paga as prestações dele (separadas das suas).
+   */
+  hostId?: string
 }
+
+/** Máximo de acompanhantes por aluno. */
+export const MAX_GUESTS = 10
 
 export interface Vote {
   eventId: string

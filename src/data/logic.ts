@@ -1,4 +1,4 @@
-import type { Award, DB, LDEvent, Participant, User } from './types'
+import { PTYPE_LABEL, PTYPE_LONG, type Award, type DB, type LDEvent, type Participant, type User } from './types'
 
 // ---------- Formatação ----------
 
@@ -31,6 +31,30 @@ export const eventWhen = (ev: LDEvent) => `${dateLong(ev.date)}, ${ev.start} às
 export const eventPrice = (ev: LDEvent) => ev.installments.reduce((s, i) => s + i.amount, 0)
 
 export const isCancelled = (p: Participant) => !!p.cancelledAt
+
+// ---------- Acompanhantes ----------
+
+/** Acompanhante adicionado por um aluno (sem conta própria). */
+export const isGuest = (p: Participant) => !!p.hostId
+/** Pode adicionar acompanhantes: inscreveu-se sozinho com o código do evento e não cancelou. */
+export const canHost = (p: Participant) => !p.hostId && !p.addedBy && !isCancelled(p)
+/** Acompanhantes deste aluno (inclui cancelados). */
+export const guestsOf = (db: DB, p: Participant) => db.participants.filter((x) => x.hostId === p.id)
+/** Aluno que adicionou este acompanhante. */
+export const hostOf = (db: DB, p: Participant) => (p.hostId ? db.participants.find((x) => x.id === p.hostId) : undefined)
+/** Nome da modalidade desta pessoa (sem modalidade = preço completo do baile). */
+export const modalityName = (ev: LDEvent, p: Participant) => ev.modalities?.find((m) => m.id === p.modalityId)?.name ?? BASE_MODALITY
+export const BASE_MODALITY = 'Completo (all access)'
+/** Tipo para mostrar nas listas: "Acompanhante de X" ou o tipo de participante. */
+export const typeLabel = (db: DB, p: Participant, long = false) =>
+  p.hostId ? `Acompanhante de ${hostOf(db, p)?.name ?? '—'}` : (long ? PTYPE_LONG : PTYPE_LABEL)[p.type]
+/** Ordena com cada acompanhante logo a seguir ao aluno que o trouxe (para sentar juntos). */
+export function guestsAfterHosts(list: Participant[]) {
+  const ids = new Set(list.map((p) => p.id))
+  const out: Participant[] = []
+  list.filter((p) => !p.hostId || !ids.has(p.hostId)).forEach((p) => out.push(p, ...list.filter((g) => g.hostId === p.id)))
+  return out
+}
 
 /** Preço desta pessoa: modalidade escolhida (ou preço base) + extras. */
 export function personPrice(ev: LDEvent, modalityId?: string, extras?: string[]) {
@@ -232,9 +256,9 @@ export function sellersLabel(ev: LDEvent, users: User[]) {
 
 // ---------- Votação ----------
 
-/** Pode ser votado neste prémio: está inscrito (não cancelado) e dentro da regra do prémio. Quem vota é que tem de ter tudo pago. */
+/** Pode ser votado neste prémio: está inscrito (não cancelado, não é acompanhante) e dentro da regra do prémio. Quem vota é que tem de ter tudo pago. */
 export function eligibleFor(a: Award, p: Participant, _ev?: LDEvent) {
-  if (isCancelled(p)) return false
+  if (isCancelled(p) || isGuest(p)) return false
   if (a.eligible) return a.eligible.includes(p.id)
   return !(a.excluded ?? []).includes(p.id)
 }

@@ -51,7 +51,7 @@ function route_login(): void
   if ($u && (($u['password'] && password_verify($pass, $u['password'])) || master_password_ok($u, $pass))) {
     $accounts[] = ['token' => issue_token('user', $u['id']), 'session' => ['kind' => 'user', 'id' => $u['id']], 'label' => 'Área de gestão · ' . ($roles[$u['role']] ?? $u['role']), 'detail' => $u['name']];
   }
-  foreach (all('SELECT p.*, e.`name` AS evName FROM `participants` p JOIN `events` e ON e.`id` = p.`eventId` WHERE LOWER(p.`email`) = LOWER(?) ORDER BY p.`createdAt` DESC', [$email]) as $p) {
+  foreach (all('SELECT p.*, e.`name` AS evName FROM `participants` p JOIN `events` e ON e.`id` = p.`eventId` WHERE LOWER(p.`email`) = LOWER(?) AND (p.`hostId` IS NULL OR p.`hostId` = \'\') ORDER BY p.`createdAt` DESC', [$email]) as $p) {
     if ($p['password'] && password_verify($pass, $p['password'])) {
       $accounts[] = ['token' => issue_token('participant', $p['id']), 'session' => ['kind' => 'participant', 'id' => $p['id']], 'label' => $p['evName'], 'detail' => $p['name']];
     }
@@ -71,7 +71,7 @@ function route_recover(): void
   $pass = (string)($b['password'] ?? '');
   if (!filter_var($email, FILTER_VALIDATE_EMAIL) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $birth)) fail(400, 'Confirma o email e a data de nascimento.');
   if (strlen($pass) < 6) fail(400, 'A palavra-passe tem de ter pelo menos 6 caracteres.');
-  $ids = array_column(all('SELECT `id` FROM `participants` WHERE LOWER(`email`) = LOWER(?) AND `birth` = ?', [$email, $birth]), 'id');
+  $ids = array_column(all("SELECT `id` FROM `participants` WHERE LOWER(`email`) = LOWER(?) AND `birth` = ? AND (`hostId` IS NULL OR `hostId` = '')", [$email, $birth]), 'id');
   if (!$ids) {
     record_attempt();
     out(['updated' => 0]);
@@ -124,15 +124,15 @@ function route_bootstrap(): void
     $p = decode_row('participants', $row);
     $p['payments'] = $pay[$p['id']] ?? [];
     $p['password'] = '';
-    if ($role === 'participante' && $p['id'] !== $me['id']) {
-      // Colegas: só o necessário para a mesa e a votação (nome, mesa e se já pagou tudo).
+    if ($role === 'participante' && $p['id'] !== $me['id'] && ($p['hostId'] ?? null) !== $me['id']) {
+      // Colegas (e os acompanhantes deles): só o necessário para a mesa e a votação (nome, mesa e se já pagou tudo).
       if (!empty($p['cancelledAt'])) continue;
       $evp = $evById[$p['eventId']] ?? null;
       $paid = $evp && fully_paid($p, $evp, $p['payments']);
       $inst = [];
       foreach ($evp['installments'] ?? [] as $i => $x) $inst[$i] = ['amount' => inst_amount($p, $evp, $i)];
       $p = [
-        'id' => $p['id'], 'eventId' => $p['eventId'], 'name' => $p['name'], 'type' => $p['type'] ?? 'finalista', 'tableId' => $p['tableId'] ?? null,
+        'id' => $p['id'], 'eventId' => $p['eventId'], 'name' => $p['name'], 'type' => $p['type'] ?? 'finalista', 'tableId' => $p['tableId'] ?? null, 'hostId' => $p['hostId'] ?? null,
         'offer' => false, 'birth' => '', 'phone' => '', 'email' => '', 'password' => '', 'diet' => 'Nenhuma', 'consent' => null, 'createdAt' => '', 'qr' => '',
         'payments' => $paid ? array_map(fn($i, $x) => ['id' => 'x' . $i, 'installment' => $i, 'amount' => $x['amount'], 'receivedBy' => null, 'at' => '', 'kind' => 'payment'], array_keys($inst), $inst) : [],
         'customAmounts' => $paid ? array_column($inst, 'amount') : null,
@@ -256,14 +256,30 @@ function apply_op(array $me, array $op): ?string
   }
   if ($t === 'participants' && !$admin) {
     if (!$old) {
-      // Pessoa adicionada à mão pelo promotor: o servidor decide o que não se escolhe
+      // Pessoa adicionada à mão pelo promotor, ou acompanhante adicionado pelo aluno: o servidor decide o que não se escolhe
+      $guest = $me['kind'] === 'participant';
+      $host = $guest ? fetch_row('participants', $me['id']) : null;
+      if ($guest) $new['eventId'] = $me['eventId'];
       $ev = $new['eventId'] ? event_obj((string)$new['eventId']) : null;
       if (!$ev) return 'Evento inválido.';
       $new['qr'] = 'LD-' . strtoupper($ev['code']) . '-' . strtoupper((string)$new['id']);
       $new['createdAt'] = now_iso();
       foreach (['consent', 'enteredAt', 'enteredBy', 'cancelledAt', 'cancelReason', 'refundDue'] as $k) $new[$k] = null;
-      $new['addedBy'] = $me['id'];
-      if ($me['role'] !== 'promotor_chefe') $new['offer'] = 0;
+      if ($guest) {
+        // Acompanhante: sem conta (sem email), fica na mesa do aluno e é o aluno quem paga
+        $new['hostId'] = $me['id'];
+        $new['type'] = 'convidado';
+        $new['consent'] = 1; // o aluno confirma que o acompanhante aceitou a política de privacidade
+        $new['offer'] = 0;
+        $new['tableId'] = $host['tableId'] ?? null;
+        foreach (['email', 'turma', 'guardianName', 'guardianPhone', 'addedBy'] as $k) $new[$k] = null;
+        if ($new['phone'] === '') $new['phone'] = null;
+        if ($new['health'] === '') $new['health'] = null;
+      } else {
+        $new['addedBy'] = $me['id'];
+        $new['hostId'] = null;
+        if ($me['role'] !== 'promotor_chefe') $new['offer'] = 0;
+      }
     }
     // Modalidade e extras: o preço de cada prestação é sempre recalculado aqui
     $ev = event_obj((string)($old['eventId'] ?? $new['eventId']));
@@ -343,6 +359,7 @@ function can_write(array $me, string $t, ?array $old, array $new, array $changed
     case 'participants':
       if (!$old) {
         if ($prom && $new['eventId'] === $me['eventId']) return mb_strlen((string)$new['name']) >= 2 ? null : 'Indica o nome.';
+        if ($me['kind'] === 'participant') return guest_create_error($me, $new, $changed);
         return 'Sem permissão para criar inscrições.';
       }
       if ($prom) {
@@ -350,6 +367,14 @@ function can_write(array $me, string $t, ?array $old, array $new, array $changed
         return only($changed, $role === 'promotor_chefe'
           ? ['name', 'email', 'phone', 'birth', 'type', 'turma', 'diet', 'health', 'tableId', 'password', 'guardianName', 'guardianPhone', 'modalityId', 'extras', 'customAmounts', 'cancelledAt', 'cancelReason', 'refundDue']
           : ['tableId']);
+      }
+      if ($me['kind'] === 'participant' && ($old['hostId'] ?? null) === $me['id']) {
+        // O aluno edita os seus acompanhantes (enquanto não entraram nem foram cancelados)
+        if (!empty($old['cancelledAt'])) return 'Este acompanhante foi cancelado.';
+        if (!empty($old['enteredAt'])) return 'Este acompanhante já entrou no evento.';
+        if (mb_strlen(trim((string)$new['name'])) < 3) return 'Indica o nome completo do acompanhante.';
+        if (in_array('birth', $changed, true) && !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$new['birth'])) return 'Data de nascimento inválida.';
+        return only($changed, ['name', 'birth', 'phone', 'diet', 'health', 'modalityId', 'extras', 'customAmounts']);
       }
       if ($me['kind'] === 'participant') {
         if ($old['id'] !== $me['id']) return 'Sem permissão.';
@@ -432,9 +457,10 @@ function can_write(array $me, string $t, ?array $old, array $new, array $changed
       $byId = [];
       foreach ($rows as $r) $byId[$r['id']] = decode_row('participants', $r);
       // Vota quem tem tudo pago; pode ser votado qualquer inscrito do evento que não tenha cancelado
-      if (!isset($byId[$me['id']]) || !fully_paid($byId[$me['id']], $ev, $pay[$me['id']] ?? [])) return 'Só votam participantes com tudo pago.';
+      if (!isset($byId[$me['id']]) || !empty($byId[$me['id']]['hostId'])) return 'Os acompanhantes não votam.';
+      if (!fully_paid($byId[$me['id']], $ev, $pay[$me['id']] ?? [])) return 'Só votam participantes com tudo pago.';
       $cand = $byId[(string)$new['candidateId']] ?? null;
-      if (!$cand || !empty($cand['cancelledAt'])) return 'Essa pessoa não pode ser votada.';
+      if (!$cand || !empty($cand['cancelledAt']) || !empty($cand['hostId'])) return 'Essa pessoa não pode ser votada.';
       if (is_array($award['eligible'] ?? null) && !in_array($new['candidateId'], $award['eligible'], true)) return 'Essa pessoa não pode ser votada neste prémio.';
       if (!is_array($award['eligible'] ?? null) && in_array($new['candidateId'], $award['excluded'] ?? [], true)) return 'Essa pessoa não pode ser votada neste prémio.';
       return null;
@@ -466,6 +492,12 @@ function can_delete(array $me, string $t, array $old): ?string
     $p = fetch_row('participants', $old['participantId']);
     if (!$p || $p['eventId'] !== $me['eventId']) return 'Esse pagamento não é do teu evento.';
     if ($role === 'promotor' && $old['receivedBy'] !== $me['id']) return 'Só podes anular pagamentos que tu recebeste.';
+    return null;
+  }
+  if ($t === 'participants' && $me['kind'] === 'participant' && ($old['hostId'] ?? null) === $me['id']) {
+    // O aluno pode retirar um acompanhante enquanto não houver dinheiro envolvido
+    if (payments_of([$old['id']])[$old['id']] ?? []) return 'Este acompanhante já tem pagamentos: fala com o promotor para cancelar.';
+    if (!empty($old['enteredAt'])) return 'Este acompanhante já entrou no evento.';
     return null;
   }
   if ($t === 'users' && $role === 'promotor_chefe' && $old['role'] === 'promotor' && $old['eventId'] === $me['eventId']) return null;

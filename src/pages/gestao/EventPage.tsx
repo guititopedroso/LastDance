@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { EventForm } from '../../components/EventForm'
 import { Registrations } from '../../components/Registrations'
+import { GuestsTotals } from '../../components/Guests'
 import { Kpi, Modal, Tabs, newPassword, toast } from '../../components/ui'
 import { eur, eventPrice, eventStats, eventWhen, userCommission, commissionShares } from '../../data/logic'
 import { uid } from '../../data/seed'
@@ -9,7 +10,7 @@ import { update, useDB } from '../../data/store'
 import { CATEGORY_LABEL, type User } from '../../data/types'
 import { AwardsTab, CancellationsTab, FinanceTab, OverdueTab, PhotosTab, ReceiptsTab, TablesTab } from './EventTabs'
 
-type Tab = 'inscritos' | 'financas' | 'premios' | 'recebimentos' | 'atraso' | 'cancelamentos' | 'mesas' | 'fotos'
+type Tab = 'inscritos' | 'modalidades' | 'financas' | 'premios' | 'recebimentos' | 'atraso' | 'cancelamentos' | 'mesas' | 'fotos'
 
 export default function EventPage({ eventId, user }: { eventId?: string; user: User }) {
   const params = useParams()
@@ -41,6 +42,7 @@ export default function EventPage({ eventId, user }: { eventId?: string; user: U
 
   const tabs = [
     { id: 'inscritos' as const, label: 'Inscritos', count: s.ps.length },
+    { id: 'modalidades' as const, label: 'Modalidades e acompanhantes', count: s.ps.filter((p) => p.hostId).length },
     ...(isAdmin ? [{ id: 'financas' as const, label: 'Finanças' }] : []),
     ...(isAdmin || isChief ? [{ id: 'premios' as const, label: 'Prémios' }] : []),
     ...(!isCom ? [{ id: 'recebimentos' as const, label: user.role === 'promotor' ? 'Os meus recebimentos' : 'Recebimentos' }] : []),
@@ -163,6 +165,7 @@ export default function EventPage({ eventId, user }: { eventId?: string; user: U
       <Tabs tabs={tabs} value={tab} onChange={setTab} />
 
       {tab === 'inscritos' && <Registrations participants={s.all} user={user} exportName={`inscritos-${ev.code}`} eventId={isCom ? undefined : ev.id} />}
+      {tab === 'modalidades' && <GuestsTotals events={[ev]} />}
       {tab === 'financas' && isAdmin && <FinanceTab ev={ev} />}
       {tab === 'premios' && (isAdmin || isChief) && <AwardsTab ev={ev} mode={isAdmin ? 'full' : 'settings'} />}
       {tab === 'recebimentos' && <ReceiptsTab ev={ev} user={user} />}

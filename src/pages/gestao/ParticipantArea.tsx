@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Icon } from '../../components/icons'
 import { ChoicesEditor, applyChoices } from '../../components/Registrations'
+import { GuestsCard } from '../../components/Guests'
 import { QR, StatusPill, toast } from '../../components/ui'
 import {
+  canHost,
   cashIn,
   dateLong,
   dateShort,
@@ -13,6 +15,7 @@ import {
   eventPast,
   eventWhen,
   fullyPaid,
+  guestsOf,
   instAmount,
   instStatus,
   isCancelled,
@@ -65,7 +68,7 @@ export default function ParticipantArea({ p }: { p: Participant }) {
       {sp.get('novo') && <div className="alert alert-ok">Inscrição feita! 🎉 Guarda o teu email e palavra-passe: é com eles que voltas a esta área.</div>}
       <div>
         <h1 className="page-title">A minha área</h1>
-        <p className="muted">Aqui vês as tuas prestações, a tua mesa e os teus dados. Com tudo pago, desbloqueias o QR e a app do evento.</p>
+        <p className="muted">Aqui vês as tuas prestações, os teus acompanhantes, a tua mesa e os teus dados. Com tudo pago, desbloqueias o QR e a app do evento.</p>
       </div>
       <div className="card" style={{ background: 'linear-gradient(135deg, rgba(226, 166, 92, 0.18), rgba(255,255,255,0.03))', borderColor: 'rgba(226, 166, 92, 0.35)' }}>
         <span className="badge">{ev.code}</span>
@@ -210,6 +213,8 @@ export default function ParticipantArea({ p }: { p: Participant }) {
           )}
         </div>
       )}
+
+      {!cancelled && (canHost(p) || guestsOf(db, p).length > 0) && <GuestsCard host={p} ev={ev} past={past} />}
 
       {!cancelled && (
         <div className="card stack" style={{ textAlign: 'center', alignItems: 'center' }}>

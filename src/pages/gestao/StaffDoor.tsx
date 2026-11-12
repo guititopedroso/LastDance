@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../components/icons'
 import { Kpi, Modal, Tabs, toast } from '../../components/ui'
-import { ageAt, dateLong, dateTime, eur, eventWhen, fullyPaid, isCancelled, missing, normalize } from '../../data/logic'
+import { ageAt, dateLong, dateTime, eur, eventWhen, fullyPaid, isCancelled, missing, normalize, typeLabel } from '../../data/logic'
 import { update, useDB } from '../../data/store'
-import { PTYPE_LONG, type Participant, type User } from '../../data/types'
+import { type Participant, type User } from '../../data/types'
 import { AwardsTab } from './EventTabs'
 
 type Result = { kind: 'ok' | 'used' | 'unpaid' | 'cancelled' | 'notfound' | 'other'; p?: Participant; msg?: string }
@@ -164,7 +164,7 @@ function StaffDoor({ user }: { user: User }) {
             <div className="grow">
               <div className="t">{p.name}</div>
               <div className="s">
-                {PTYPE_LONG[p.type]}
+                {typeLabel(db, p, true)}
                 {p.turma ? ` · ${p.turma}` : ''}
               </div>
             </div>
@@ -184,7 +184,7 @@ function StaffDoor({ user }: { user: User }) {
             <>
               <div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--white)' }}>{res.p.name}</div>
               <div style={{ color: 'var(--gray-300)' }}>
-                {PTYPE_LONG[res.p.type]}
+                {typeLabel(db, res.p, true)}
                 {res.p.turma ? ` · ${res.p.turma}` : ''} · nasceu a {res.p.birth ? dateLong(res.p.birth) : '—'}
               </div>
               <AgeBadge birth={res.p.birth} date={ev.date} />
@@ -220,7 +220,7 @@ function StaffDoor({ user }: { user: User }) {
                   <b>{p.name}</b>
                   <span className="muted">
                     {' '}
-                    · {PTYPE_LONG[p.type]}
+                    · {typeLabel(db, p, true)}
                     {p.turma ? ` · ${p.turma}` : ''}
                   </span>
                 </span>
@@ -305,7 +305,7 @@ function GuestList({ evId, onClose }: { evId: string; onClose: () => void }) {
             <div className="grow">
               <div className="t">{p.name}</div>
               <div className="s">
-                {PTYPE_LONG[p.type]}
+                {typeLabel(db, p, true)}
                 {p.turma ? ` · ${p.turma}` : ''}
               </div>
             </div>

@@ -251,8 +251,9 @@ export function buildSeed(): DB {
 
   // Modalidades e extras no evento principal de demonstração
   demoEv.modalities = [
-    { id: 'm-welcome', name: 'Só welcome drink', price: 25 },
     { id: 'm-jantar', name: 'Só jantar', price: 45 },
+    { id: 'm-welcome', name: 'Só cocktail', price: 25 },
+    { id: 'm-festa', name: 'Só festa', price: 30 },
   ]
   demoEv.extras = [
     { id: 'x-after', name: 'After-party', price: 10 },
@@ -387,6 +388,28 @@ export function buildSeed(): DB {
   }
   named(participants.filter((x) => x.eventId === sold.id && x.payments.length === 2)[0], 'Mafalda Sousa Pinto', 'votacao@lastdance.pt')
   void eventPrice
+
+  // Acompanhantes adicionados pelos alunos na sua área (sem conta; o aluno paga as prestações deles)
+  const guest = (host: Participant, name: string, birth: string, mod: string | undefined, paidUpTo: number) => {
+    const id = sid('p')
+    const g: Participant = {
+      id, eventId: host.eventId, name, birth, phone: '', email: '', password: '', type: 'convidado', diet: 'Nenhuma', consent: true, createdAt: iso(15),
+      offer: false, payments: [], qr: `LD-${demoEv.code}-${id.toUpperCase()}`, tableId: host.tableId, hostId: host.id, modalityId: mod,
+    }
+    g.customAmounts = recalcAmounts(g, demoEv, mod, [])
+    payAll(g, demoEv, 'u-prom-team', paidUpTo)
+    participants.push(g)
+    return g
+  }
+  guest(demo, 'Ricardo Moura Alves', '1974-04-12', 'm-welcome', demoEv.installments.length) // pago: QR disponível
+  guest(demo, 'Sofia Cunha Ribeiro', '2006-08-30', undefined, 1)
+  guest(pago, 'Teresa Lopes Ferreira', '1979-01-05', 'm-jantar', 0)
+  participants
+    .filter((x) => x.eventId === demoEv.id && x.type === 'finalista' && !x.addedBy && !x.hostId && !x.cancelledAt && !x.email.endsWith('@lastdance.pt'))
+    .slice(30, 42)
+    .forEach((h, k) =>
+      guest(h, `${pick(FIRST)} ${h.name.split(' ').slice(-1)[0]} ${pick(LAST)}`, k % 3 ? '1978-06-15' : '2007-03-21', [undefined, 'm-welcome', 'm-festa', 'm-jantar'][k % 4], k % 3),
+    )
 
   // Memórias (fotos da app) no evento com votação aberta e no evento já realizado
   const CAPTIONS: [string, string][] = [
