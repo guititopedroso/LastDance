@@ -110,3 +110,13 @@ body { min-height: 100svh; }
 .form-section { border-top: 1px solid var(--glass-border); padding-top: 18px; margin-top: 8px; }
 .form-section h3 { font-size: 1.05rem; }
 .event-chip { display: flex; gap: 14px; align-items: center; padding: 14px; border-radius: 14px; background: rgba(226, 166, 92, 0.08); border: 1px solid rgba(226, 166, 92, 0.3); }
+
+/* Separadores: em computador passam para a linha seguinte (nada fica cortado);
+   no telemóvel desliza-se com o dedo, com espaço no fim e um esbatido a indicar que há mais. */
+@media (min-width: 768px) {
+  .tabs { flex-wrap: wrap; overflow-x: visible; row-gap: 0; }
+}
+@media (max-width: 767px) {
+  .tabs::after { content: ''; flex: 0 0 24px; }
+  .tabs { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
+}
