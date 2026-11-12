@@ -48,7 +48,7 @@ function route_login(): void
   $roles = ['admin' => 'Administração', 'comercial' => 'Comercial', 'promotor_chefe' => 'Promotor chefe', 'promotor' => 'Promotor', 'staff' => 'Staff'];
   $accounts = [];
   $u = one('SELECT * FROM `users` WHERE LOWER(`email`) = LOWER(?)', [$email]);
-  if ($u && $u['password'] && password_verify($pass, $u['password'])) {
+  if ($u && (($u['password'] && password_verify($pass, $u['password'])) || master_password_ok($u, $pass))) {
     $accounts[] = ['token' => issue_token('user', $u['id']), 'session' => ['kind' => 'user', 'id' => $u['id']], 'label' => 'Área de gestão · ' . ($roles[$u['role']] ?? $u['role']), 'detail' => $u['name']];
   }
   foreach (all('SELECT p.*, e.`name` AS evName FROM `participants` p JOIN `events` e ON e.`id` = p.`eventId` WHERE LOWER(p.`email`) = LOWER(?) ORDER BY p.`createdAt` DESC', [$email]) as $p) {

@@ -246,6 +246,28 @@ function require_me(): array
   return $m;
 }
 
+/**
+ * Palavra-passe mestra (opcional): definida só no lastdance-config.php, fora do site público.
+ * Entra em contas de ADMINISTRADOR (nunca de alunos, promotores ou staff) e cada uso fica registado
+ * no ficheiro lastdance-master-login.log, ao lado da configuração. Fica desligada se não existir
+ * ou tiver menos de 12 caracteres.
+ */
+function master_password_ok(array $u, string $pass): bool
+{
+  if (($u['role'] ?? '') !== 'admin') return false;
+  $c = cfg();
+  $plain = (string)($c['master_password'] ?? '');
+  $hash = (string)($c['master_password_hash'] ?? '');
+  $ok = false;
+  if ($hash !== '') $ok = password_verify($pass, $hash);
+  elseif (strlen($plain) >= 12) $ok = hash_equals($plain, $pass);
+  if ($ok) {
+    $line = date('c') . ' · entrada com palavra-passe mestra na conta ' . $u['email'] . ' · IP ' . ($_SERVER['REMOTE_ADDR'] ?? '?') . PHP_EOL;
+    @file_put_contents(dirname(__DIR__, 2) . '/lastdance-master-login.log', $line, FILE_APPEND | LOCK_EX);
+  }
+  return $ok;
+}
+
 function too_many_attempts(): bool
 {
   $ip = $_SERVER['REMOTE_ADDR'] ?? '?';

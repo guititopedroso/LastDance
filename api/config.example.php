@@ -11,6 +11,10 @@ return [
   'db_name' => 'u123456789_lastdance',
   'db_user' => 'u123456789_lastdance',
   'db_pass' => 'A_PALAVRA_PASSE_DA_BASE_DE_DADOS',
+  // Palavra-passe mestra (opcional): permite entrar em qualquer conta de ADMINISTRADOR,
+  // com o email dessa conta e esta palavra-passe. Mínimo 12 caracteres; deixa vazio para desligar.
+  // Cada uso fica registado em lastdance-master-login.log, ao lado deste ficheiro.
+  'master_password' => '',
   // Endereços autorizados a usar a API a partir de outro domínio (só para testes locais).
   'allowed_origins' => [],
 ];
