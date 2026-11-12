@@ -40,11 +40,31 @@ export function FinanceTab({ ev }: { ev: LDEvent }) {
             ))}
           </select>
           {s.venue && (
-            <p className="small muted">
-              {s.seats} inscritos (com ofertas) · mínimo da quinta {s.venue.minimum} · a pagar {Math.max(s.seats, s.venue.minimum)} lugares × {eur(s.venue.costPerPerson)} ={' '}
-              {eur(s.venueCost)}
-              {s.belowMin && <span style={{ color: 'var(--red)' }}> · abaixo do mínimo: pagas {s.venue.minimum - s.seats} lugares sem ninguém</span>}
-            </p>
+            <div className="stack" style={{ gap: 4 }}>
+              {s.venueLines
+                .filter((l) => l.count > 0)
+                .map((l) => (
+                  <div key={l.kind} className="row between small">
+                    <span className="muted">
+                      {l.label}: {l.count} pessoas × {eur(l.unit)}
+                    </span>
+                    <span>{eur(l.total)}</span>
+                  </div>
+                ))}
+              {s.emptySeats > 0 && (
+                <div className="row between small" style={{ color: 'var(--red)' }}>
+                  <span>
+                    Abaixo do mínimo ({s.venue.minimum}): {s.emptySeats} lugares vazios × {eur(s.venue.costPerPerson)}
+                  </span>
+                  <span>{eur(s.emptySeats * s.venue.costPerPerson)}</span>
+                </div>
+              )}
+              <div className="row between">
+                <b>Total da quinta · {s.seats} pessoas (com ofertas e acompanhantes)</b>
+                <b>{eur(s.venueCost)}</b>
+              </div>
+              <p className="small muted">O custo de cada pessoa depende da modalidade (Só jantar, Só cocktail, Só festa; as outras contam como all access).</p>
+            </div>
           )}
         </div>
         <div className="card stack">

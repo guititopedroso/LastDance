@@ -44,7 +44,10 @@ export function buildSeed(): DB {
     ['Quinta Velha, Sesimbra', 37, 90, 220],
     ['Palácio do Grilo, Lisboa', 62, 150, 400],
     ['Herdade da Comporta (Salão)', 50, 130, 300],
-  ].map(([name, c, m, cap]) => ({ id: sid('v'), name: name as string, costPerPerson: c as number, minimum: m as number, capacity: cap as number }))
+  ].map(([name, c, m, cap]) => ({
+    id: sid('v'), name: name as string, costPerPerson: c as number, minimum: m as number, capacity: cap as number,
+    costDinner: Math.round((c as number) * 0.75), costCocktail: Math.round((c as number) * 0.3), costParty: Math.round((c as number) * 0.4),
+  }))
 
   const partners: DB['partners'] = (
     [

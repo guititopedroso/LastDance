@@ -20,7 +20,7 @@ const SPEC = [
   ],
   'payments' => ['id' => 's', 'participantId' => 's', 'installment' => 'n', 'amount' => 'n', 'receivedBy' => 's', 'at' => 's', 'kind' => 's'],
   'votes' => ['id' => 's', 'eventId' => 's', 'awardId' => 's', 'voterId' => 's', 'candidateId' => 's'],
-  'venues' => ['id' => 's', 'name' => 's', 'costPerPerson' => 'n', 'minimum' => 'n', 'capacity' => 'n'],
+  'venues' => ['id' => 's', 'name' => 's', 'costPerPerson' => 'n', 'costDinner' => 'n', 'costCocktail' => 'n', 'costParty' => 'n', 'minimum' => 'n', 'capacity' => 'n'],
   'partners' => ['id' => 's', 'type' => 's', 'name' => 's', 'baseCost' => 'n'],
   'expenses' => ['id' => 's', 'description' => 's', 'category' => 's', 'amount' => 'n', 'date' => 's', 'paidBy' => 's', 'reimbursed' => 'b'],
   'photos' => ['id' => 's', 'eventId' => 's', 'authorId' => 's', 'authorName' => 's', 'src' => 's', 'caption' => 's', 'emoji' => 's', 'createdAt' => 's', 'reported' => 'b'],
@@ -168,7 +168,7 @@ function fetch_row(string $t, string $id): ?array
   return one("SELECT * FROM `$t` WHERE `id` = ?", [$id]);
 }
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 /** Acrescenta colunas que faltem (instalações feitas com uma versão anterior). Corre uma vez por versão. */
 function migrate(): void

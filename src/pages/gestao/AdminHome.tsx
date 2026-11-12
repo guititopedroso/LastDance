@@ -300,7 +300,8 @@ function VenuesTab() {
         </button>
       </div>
       <p className="small muted" style={{ marginBottom: 14 }}>
-        Cada quinta serve qualquer categoria. O custo de um evento é lugares × custo por pessoa, com o mínimo da quinta.
+        Cada quinta serve qualquer categoria. O custo de um evento soma o custo de cada pessoa conforme a modalidade (all access, só jantar, só cocktail, só festa). Abaixo
+        do mínimo, os lugares vazios pagam-se ao preço all access.
       </p>
       <div className="list">
         {db.venues.map((v) => (
@@ -308,7 +309,8 @@ function VenuesTab() {
             <div className="grow">
               <div className="t">{v.name}</div>
               <div className="s">
-                {eur(v.costPerPerson)} por pessoa · mínimo {v.minimum} · capacidade {v.capacity}
+                All access {eur(v.costPerPerson)} · só jantar {eur(v.costDinner ?? v.costPerPerson)} · só cocktail {eur(v.costCocktail ?? v.costPerPerson)} · só festa{' '}
+                {eur(v.costParty ?? v.costPerPerson)} · mínimo {v.minimum} · capacidade {v.capacity}
               </div>
             </div>
             <span className="small muted">{db.events.filter((e) => e.venueId === v.id).length} evento(s)</span>
@@ -336,11 +338,33 @@ function VenuesTab() {
               <label>Nome</label>
               <input className="input" required value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
             </div>
-            <div className="grid-3">
+            <div className="grid-2">
               <div className="field">
-                <label>Custo por pessoa (€)</label>
-                <input className="input" type="number" step="0.5" value={edit.costPerPerson} onChange={(e) => setEdit({ ...edit, costPerPerson: +e.target.value })} />
+                <label>Custo por pessoa · all access (€)</label>
+                <input className="input" type="number" step="0.5" required value={edit.costPerPerson} onChange={(e) => setEdit({ ...edit, costPerPerson: +e.target.value })} />
               </div>
+              {(
+                [
+                  ['costDinner', 'Custo por pessoa · só jantar (€)'],
+                  ['costCocktail', 'Custo por pessoa · só cocktail (€)'],
+                  ['costParty', 'Custo por pessoa · só festa (€)'],
+                ] as const
+              ).map(([k, label]) => (
+                <div key={k} className="field">
+                  <label>{label}</label>
+                  <input
+                    className="input"
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    placeholder={`Igual ao all access (${edit.costPerPerson})`}
+                    value={edit[k] ?? ''}
+                    onChange={(e) => setEdit({ ...edit, [k]: e.target.value === '' ? undefined : +e.target.value })}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="grid-2">
               <div className="field">
                 <label>Mínimo de pessoas</label>
                 <input className="input" type="number" value={edit.minimum} onChange={(e) => setEdit({ ...edit, minimum: +e.target.value })} />

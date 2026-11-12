@@ -212,7 +212,12 @@ export interface Photo {
 export interface Venue {
   id: string
   name: string
+  /** Custo por pessoa all access (completo). Também é o que se paga pelos lugares vazios até ao mínimo. */
   costPerPerson: number
+  /** Custo por pessoa só jantar / só cocktail / só festa (vazio = igual ao all access) */
+  costDinner?: number
+  costCocktail?: number
+  costParty?: number
   minimum: number
   capacity: number
 }

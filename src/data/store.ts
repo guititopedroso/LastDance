@@ -17,7 +17,7 @@ export const API_MODE = API !== '' && !DEMO
 
 // A demonstração guarda tudo com outro prefixo: a sessão da demo nunca se mistura com a do site real.
 const NS = DEMO ? 'lastdance-demo' : 'lastdance'
-const DEMO_KEY = `${NS}-db-v5`
+const DEMO_KEY = `${NS}-db-v6`
 const SESSION_KEY = `${NS}-session`
 const TOKEN_KEY = `${NS}-token`
 const CACHE_KEY = `${NS}-cache`

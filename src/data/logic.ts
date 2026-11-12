@@ -1,4 +1,4 @@
-import { PTYPE_LABEL, PTYPE_LONG, type Award, type DB, type LDEvent, type Participant, type User } from './types'
+import { PTYPE_LABEL, PTYPE_LONG, type Award, type DB, type LDEvent, type Participant, type User, type Venue } from './types'
 
 // ---------- Formatação ----------
 
@@ -179,6 +179,27 @@ export const eventPast = (ev: LDEvent) => daysFromNow(ev.date) < -1
 
 // ---------- Estatísticas de evento ----------
 
+export type VenueKind = 'all' | 'dinner' | 'cocktail' | 'party'
+export const VENUE_KINDS: VenueKind[] = ['all', 'dinner', 'cocktail', 'party']
+export const VENUE_KIND_LABEL: Record<VenueKind, string> = { all: 'All access', dinner: 'Só jantar', cocktail: 'Só cocktail', party: 'Só festa' }
+
+/** Que custo da quinta conta para esta pessoa, pelo nome da modalidade (sem modalidade = all access). */
+export function venueKind(ev: LDEvent, p: Participant): VenueKind {
+  const m = ev.modalities?.find((x) => x.id === p.modalityId)
+  if (!m) return 'all'
+  const n = normalize(m.name)
+  if (n.includes('jantar')) return 'dinner'
+  if (n.includes('cocktail') || n.includes('welcome') || n.includes('drink')) return 'cocktail'
+  if (n.includes('festa') || n.includes('party') || n.includes('discoteca')) return 'party'
+  return 'all'
+}
+
+/** Custo por pessoa na quinta para cada tipo (sem valor próprio = custo all access). */
+export function venueUnit(v: Venue, k: VenueKind) {
+  const c = k === 'dinner' ? v.costDinner : k === 'cocktail' ? v.costCocktail : k === 'party' ? v.costParty : undefined
+  return c ?? v.costPerPerson
+}
+
 export function commissionShares(ev: LDEvent) {
   const s = [{ userId: ev.comercial1, pct: ev.comercial2 ? ev.share1 : 100 }]
   if (ev.comercial2) s.push({ userId: ev.comercial2, pct: 100 - ev.share1 })
@@ -208,7 +229,14 @@ export function eventStats(ev: LDEvent, db: DB) {
   }
   const venue = db.venues.find((v) => v.id === ev.venueId)
   const seats = ps.length
-  const venueCost = venue ? Math.max(seats, venue.minimum) * venue.costPerPerson : 0
+  // Quinta: cada pessoa paga o custo da sua modalidade; abaixo do mínimo, os lugares vazios pagam-se ao preço all access
+  const venueLines = VENUE_KINDS.map((k) => {
+    const count = ps.filter((p) => venueKind(ev, p) === k).length
+    const unit = venue ? venueUnit(venue, k) : 0
+    return { kind: k, label: VENUE_KIND_LABEL[k], count, unit, total: count * unit }
+  })
+  const emptySeats = venue ? Math.max(0, venue.minimum - seats) : 0
+  const venueCost = venue ? venueLines.reduce((s, l) => s + l.total, 0) + emptySeats * venue.costPerPerson : 0
   const belowMin = venue ? seats < venue.minimum : false
   const partnersCost = ev.partners.reduce((s, ep) => {
     const pa = db.partners.find((x) => x.id === ep.partnerId)
@@ -235,6 +263,8 @@ export function eventStats(ev: LDEvent, db: DB) {
     noVenue: !venue,
     seats,
     venueCost,
+    venueLines,
+    emptySeats,
     belowMin,
     partnersCost,
     margin: expected - venueCost - partnersCost - commissionToPay,
