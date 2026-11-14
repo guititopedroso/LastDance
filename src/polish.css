@@ -6,9 +6,11 @@ body { min-height: 100svh; }
 
 /* ---------- Navbar ---------- */
 .burger { display: none; place-items: center; width: 44px; height: 44px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--glass-border); border-radius: 12px; cursor: pointer; position: relative; z-index: 2; }
+.nav-login-m { display: none !important; }
 @media (max-width: 1020px) {
   .nav-links, .nav-cta { display: none !important; }
   .burger { display: grid; }
+  .nav-login-m { display: inline-flex !important; margin-left: auto; margin-right: -6px; }
 }
 .nav-links a { position: relative; padding: 6px 0; }
 .nav-links a::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--accent); transform: scaleX(0); transition: transform 0.3s; }

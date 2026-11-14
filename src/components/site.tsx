@@ -54,6 +54,9 @@ export function Navbar() {
               Inscrição
             </Link>
           </div>
+          <Link to="/entrar" className="btn btn-ghost btn-sm nav-login-m">
+            <Icon name="user" size={16} /> Log-in
+          </Link>
           <button className="burger" onClick={() => setOpen(!open)} aria-label={open ? 'Fechar menu' : 'Abrir menu'} aria-expanded={open}>
             <Icon name={open ? 'close' : 'menu'} />
           </button>
