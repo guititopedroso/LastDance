@@ -133,7 +133,7 @@ export function FinanceTab({ ev }: { ev: LDEvent }) {
           <b style={{ fontSize: '1.4rem', color: s.margin < 0 ? 'var(--red)' : 'var(--green)' }}>{eur(s.margin)}</b>
         </div>
         <p className="small muted">
-          Já recebido em mão: {eur(s.received)}. As comissões dos sócios ({eur(s.commissionKept)}) não são custo: ficam na empresa.
+          Já recebido: {eur(s.received)}. As comissões dos sócios ({eur(s.commissionKept)}) não são custo: ficam na empresa.
         </p>
       </div>
     </div>

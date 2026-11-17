@@ -153,7 +153,7 @@ export default function EventPage({ eventId, user }: { eventId?: string; user: U
 
       <div className="kpis" style={{ marginTop: 20 }}>
         <Kpi k="Inscritos" v={`${s.paying} + ${s.offers} ofertas`} />
-        <Kpi hl k="Recebido em mão" v={eur(s.received)} />
+        <Kpi hl k="Recebido" v={eur(s.received)} />
         <Kpi k="Falta receber" v={eur(s.toReceive)} />
         <Kpi k="Já entraram" v={`${s.entered} de ${s.ps.length}`} />
         {s.cancelled.length > 0 && <Kpi k={`Cancelados · ${eur(s.refundsPending)} por devolver`} v={s.cancelled.length} />}
