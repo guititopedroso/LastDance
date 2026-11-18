@@ -426,12 +426,13 @@ const MAX_GUESTS = 10;
 
 /**
  * Um aluno quer adicionar um acompanhante na sua área. Devolve o erro, ou null se pode.
- * Só quem se inscreveu sozinho com o código do evento (não adicionado à mão, não acompanhante, não cancelado).
+ * Só quem se inscreveu sozinho com o código do evento, ou quem recebeu a inscrição como oferta (não acompanhante, não cancelado).
  */
 function guest_create_error(array $me, array $new, array $changed): ?string
 {
   $host = fetch_row('participants', $me['id']);
-  if (!$host || !empty($host['hostId']) || !empty($host['addedBy']) || !empty($host['cancelledAt']))
+  // Exceção: quem recebeu a inscrição como oferta (adicionado pelo promotor-chefe) também pode
+  if (!$host || !empty($host['hostId']) || (!empty($host['addedBy']) && empty($host['offer'])) || !empty($host['cancelledAt']))
     return 'Só quem se inscreveu com o código do evento pode adicionar acompanhantes.';
   $ev = event_obj((string)$host['eventId']);
   if (!$ev || !empty($ev['archived'])) return 'Este evento já não aceita inscrições.';

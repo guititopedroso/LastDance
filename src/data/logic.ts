@@ -37,7 +37,8 @@ export const isCancelled = (p: Participant) => !!p.cancelledAt
 /** Acompanhante adicionado por um aluno (sem conta própria). */
 export const isGuest = (p: Participant) => !!p.hostId
 /** Pode adicionar acompanhantes: inscreveu-se sozinho com o código do evento e não cancelou. */
-export const canHost = (p: Participant) => !p.hostId && !p.addedBy && !isCancelled(p)
+/** Pode levar acompanhantes: quem se inscreveu com o código, ou quem recebeu a inscrição como oferta. */
+export const canHost = (p: Participant) => !p.hostId && (!p.addedBy || !!p.offer) && !isCancelled(p)
 /** Acompanhantes deste aluno (inclui cancelados). */
 export const guestsOf = (db: DB, p: Participant) => db.participants.filter((x) => x.hostId === p.id)
 /** Aluno que adicionou este acompanhante. */
