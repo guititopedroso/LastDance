@@ -27,7 +27,7 @@ import {
 } from '../data/logic'
 import { uid } from '../data/seed'
 import { getDB, update, useDB } from '../data/store'
-import { DIETS, PTYPES, PTYPE_LABEL, PTYPE_LONG, type LDEvent, type Participant, type ParticipantType, type User } from '../data/types'
+import { DIETS, PTYPES, PTYPE_LABEL, PTYPE_LONG, ROLE_LABEL, type LDEvent, type Participant, type ParticipantType, type User } from '../data/types'
 import { Modal, StatusPill, newPassword, toast } from './ui'
 
 export interface Perms {
@@ -797,6 +797,7 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
               Nova palavra-passe: <b>{newPass}</b> — envia-a ao participante.
             </div>
           )}
+          {perms.admin && !p.hostId && !cancelled && p.email && <TeamRole p={p} />}
           <div className="row" style={{ marginTop: 20 }}>
             {perms.receive && !p.offer && !cancelled && (
               <button className="btn btn-gold btn-sm" onClick={onPay}>
@@ -883,6 +884,68 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
         </>
       )}
     </Modal>
+  )
+}
+
+/** Administração: dar a um aluno o cargo de promotor(a) ou promotor(a) chefe do seu evento (conta ligada à inscrição). */
+function TeamRole({ p }: { p: Participant }) {
+  const db = useDB()
+  const acc = db.users.find((u) => u.email.toLowerCase() === p.email.trim().toLowerCase())
+  const ev = db.events.find((e) => e.id === p.eventId)
+  const first = p.name.split(' ')[0]
+  const setRole = (role: 'promotor' | 'promotor_chefe') => {
+    const other = db.users.find((u) => u.eventId === p.eventId && u.role === 'promotor_chefe' && u.id !== acc?.id)
+    if (role === 'promotor_chefe' && other && !confirm(`Este evento já tem promotor chefe (${other.name}). Queres que ${first} seja também promotor(a) chefe?`)) return
+    update((d) => {
+      const u = acc && d.users.find((x) => x.id === acc.id)
+      if (u) Object.assign(u, { role, eventId: p.eventId, studentId: p.id })
+      else d.users.push({ id: 'u' + uid(), name: p.name, email: p.email.trim(), phone: p.phone || undefined, password: '', role, eventId: p.eventId, studentId: p.id })
+    })
+    toast(`${first} agora é ${role === 'promotor_chefe' ? 'promotor(a) chefe' : 'promotor(a)'}. Entra com o email e a palavra-passe da inscrição e vê as abas Aluno e Promotor.`)
+  }
+  const remove = () => {
+    if (!acc || !confirm(`Retirar o cargo de ${acc.role === 'promotor_chefe' ? 'promotor(a) chefe' : 'promotor(a)'} a ${p.name}? A inscrição de aluno(a) mantém-se.`)) return
+    update((d) => {
+      d.users = d.users.filter((x) => x.id !== acc.id)
+    })
+    toast('Cargo retirado.')
+  }
+  // Email já usado por outra conta da equipa (administração, comercial, staff…): não mexemos aqui
+  if (acc && acc.role !== 'promotor' && acc.role !== 'promotor_chefe')
+    return (
+      <div className="alert alert-info small" style={{ marginTop: 14 }}>
+        Este email também tem acesso de {ROLE_LABEL[acc.role].toLowerCase()}. Gere-o em Equipa.
+      </div>
+    )
+  const sameEvent = acc && acc.eventId === p.eventId
+  return (
+    <div className="card stack" style={{ marginTop: 14, padding: 14, gap: 10 }}>
+      <div>
+        <div className="t" style={{ fontWeight: 600 }}>Cargo na equipa</div>
+        <div className="small muted">
+          {acc
+            ? `${first} é ${acc.role === 'promotor_chefe' ? 'promotor(a) chefe' : 'promotor(a)'}${sameEvent ? ' deste evento' : ` de ${db.events.find((e) => e.id === acc.eventId)?.name ?? 'outro evento'}`}. Entra com a mesma conta e vê as abas Aluno e Promotor.`
+            : `Dá a ${first} acesso à área de promotor de ${ev?.name ?? 'este evento'}. Entra com o mesmo email e palavra-passe da inscrição e fica com as abas Aluno e Promotor.`}
+        </div>
+      </div>
+      <div className="row" style={{ gap: 8 }}>
+        {(!acc || !sameEvent || acc.role !== 'promotor') && (
+          <button className="btn btn-ghost btn-sm" onClick={() => setRole('promotor')}>
+            {acc ? 'Passar a promotor(a)' : 'Tornar promotor(a)'}
+          </button>
+        )}
+        {(!acc || !sameEvent || acc.role !== 'promotor_chefe') && (
+          <button className="btn btn-ghost btn-sm" onClick={() => setRole('promotor_chefe')}>
+            {acc ? 'Passar a promotor(a) chefe' : 'Tornar promotor(a) chefe'}
+          </button>
+        )}
+        {acc && (
+          <button className="btn btn-danger btn-sm" onClick={remove}>
+            Retirar cargo
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 
