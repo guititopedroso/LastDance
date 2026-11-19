@@ -47,14 +47,17 @@ function route_login(): void
   // O mesmo email pode ser da equipa e/ou estar inscrito em vários eventos: devolvemos todas as contas e a pessoa escolhe.
   $roles = ['admin' => 'Administração', 'comercial' => 'Comercial', 'promotor_chefe' => 'Promotor chefe', 'promotor' => 'Promotor', 'staff' => 'Staff'];
   $accounts = [];
-  $u = one('SELECT * FROM `users` WHERE LOWER(`email`) = LOWER(?)', [$email]);
-  if ($u && (($u['password'] && password_verify($pass, $u['password'])) || master_password_ok($u, $pass))) {
-    $accounts[] = ['token' => issue_token('user', $u['id']), 'session' => ['kind' => 'user', 'id' => $u['id']], 'label' => 'Área de gestão · ' . ($roles[$u['role']] ?? $u['role']), 'detail' => $u['name']];
-  }
+  $okIds = [];
   foreach (all('SELECT p.*, e.`name` AS evName FROM `participants` p JOIN `events` e ON e.`id` = p.`eventId` WHERE LOWER(p.`email`) = LOWER(?) AND (p.`hostId` IS NULL OR p.`hostId` = \'\') ORDER BY p.`createdAt` DESC', [$email]) as $p) {
     if ($p['password'] && password_verify($pass, $p['password'])) {
+      $okIds[] = $p['id'];
       $accounts[] = ['token' => issue_token('participant', $p['id']), 'session' => ['kind' => 'participant', 'id' => $p['id']], 'label' => $p['evName'], 'detail' => $p['name']];
     }
+  }
+  // Conta da equipa: entra com a sua palavra-passe ou, se estiver ligada a uma inscrição de aluno com o mesmo email, com a palavra-passe dessa inscrição
+  $u = one('SELECT * FROM `users` WHERE LOWER(`email`) = LOWER(?)', [$email]);
+  if ($u && (($u['password'] && password_verify($pass, $u['password'])) || (!empty($u['studentId']) && in_array($u['studentId'], $okIds, true)) || master_password_ok($u, $pass))) {
+    $accounts[] = ['token' => issue_token('user', $u['id']), 'session' => ['kind' => 'user', 'id' => $u['id']], 'label' => 'Área de gestão · ' . ($roles[$u['role']] ?? $u['role']), 'detail' => $u['name']];
   }
   if ($accounts) out(['accounts' => $accounts]);
   record_attempt();
@@ -166,6 +169,7 @@ function route_bootstrap(): void
       $o = decode_row('users', $u);
       $o['password'] = '';
       if ($o['id'] !== $me['id']) unset($o['birth']);
+      if ($o['id'] !== $me['id'] && $role !== 'promotor_chefe') unset($o['studentId']);
       if ($o['id'] !== $me['id'] && $role !== 'promotor_chefe') $o['email'] = '';
       if ($o['id'] !== $me['id'] && $o['role'] !== 'promotor_chefe' && !in_array($role, ['promotor_chefe', 'promotor'], true)) unset($o['phone']);
       if ($role === 'participante' && $o['role'] !== 'promotor_chefe' && $o['id'] !== $me['id']) unset($o['eventId']);
@@ -315,6 +319,11 @@ function apply_op(array $me, array $op): ?string
   }
 
   if ($t === 'events' && $old && !in_array($me['role'], ['admin', 'staff'], true)) $new['awards'] = keep_winners($old['awards'] ?? null, $new['awards'] ?? null);
+  if ($t === 'users' && !empty($new['studentId'])) {
+    // Só se liga a uma inscrição de aluno (não acompanhante) com o mesmo email
+    $sp = fetch_row('participants', (string)$new['studentId']);
+    if (!$sp || !empty($sp['hostId']) || strtolower(trim((string)$sp['email'])) !== strtolower(trim((string)$new['email']))) return 'Essa inscrição de aluno não tem o mesmo email.';
+  }
   $changed = changed_fields($t, $old, $new);
   $pw = (isset(SPEC[$t]['password']) && isset($row['password']) && is_string($row['password']) && $row['password'] !== '') ? $row['password'] : null;
   if ($pw !== null) {
@@ -432,7 +441,7 @@ function can_write(array $me, string $t, ?array $old, array $new, array $changed
       if ($role !== 'promotor_chefe') return 'Sem permissão.';
       if ($old && $old['id'] === $me['id']) return only($changed, ['phone', 'password']);
       if ($new['role'] !== 'promotor' || $new['eventId'] !== $me['eventId'] || ($old && ($old['role'] !== 'promotor' || $old['eventId'] !== $me['eventId']))) return 'Só podes gerir os promotores da tua equipa.';
-      return only($changed, ['id', 'name', 'email', 'phone', 'password', 'role', 'eventId', 'isPartner', 'staffEventIds']);
+      return only($changed, ['id', 'name', 'email', 'phone', 'password', 'role', 'eventId', 'isPartner', 'staffEventIds', 'studentId']);
 
     case 'events':
       if ($prom && $old && $old['id'] === $me['eventId']) {

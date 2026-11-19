@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { BackLink, PasswordInput } from '../components/forms'
-import { Icon } from '../components/icons'
 import { Logo, toast } from '../components/ui'
 import { fullyPaid } from '../data/logic'
 import { API_MODE, chooseAccount, getDB, login, recoverPassword, resetDemo, type Account } from '../data/store'
@@ -50,7 +49,6 @@ export default function Login() {
   const [mode, setMode] = useState<'login' | 'recover'>('login')
   const [demo, setDemo] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [choices, setChoices] = useState<Account[] | null>(null)
   const [rec, setRec] = useState({ email: '', birth: '', pass: '', pass2: '' })
   const [recDone, setRecDone] = useState(false)
 
@@ -58,11 +56,11 @@ export default function Login() {
     setBusy(true)
     try {
       await chooseAccount(a, all)
-      // Quem já tem tudo pago entra diretamente na app do evento
+      // Quem já tem tudo pago entra diretamente na app do evento (com várias áreas fica na área, para ver as abas)
       const d = getDB()
       const p = a.session.kind === 'participant' ? d.participants.find((x) => x.id === a.session.id) : undefined
       const ev = p && d.events.find((e) => e.id === p.eventId)
-      nav(p && ev && fullyPaid(p, ev) ? '/app' : '/gestao')
+      nav(all.length === 1 && p && ev && fullyPaid(p, ev) ? '/app' : '/gestao')
     } finally {
       setBusy(false)
     }
@@ -75,8 +73,9 @@ export default function Login() {
     try {
       const found = await login(email, password)
       if (!found.length) return setErr('Email ou palavra-passe incorretos.')
-      if (found.length === 1) return await enter(found[0], found)
-      setChoices(found)
+      // Várias áreas com o mesmo email (ex.: aluna e promotora): entra na de aluno e as outras aparecem em abas
+      const sorted = [...found.filter((a) => a.session.kind === 'participant'), ...found.filter((a) => a.session.kind === 'user')]
+      return await enter(sorted[0], sorted)
     } catch (x) {
       setErr(x instanceof Error ? x.message : 'Não foi possível entrar. Tenta outra vez.')
     } finally {
@@ -108,29 +107,7 @@ export default function Login() {
       <div className="auth-card stack">
         <BackLink />
 
-        {choices ? (
-          <div className="card stack" style={{ padding: 28 }}>
-            <div className="auth-head">
-              <Logo h={48} />
-              <h1>Onde queres entrar?</h1>
-              <p className="muted small">Este email tem acesso a mais do que uma área.</p>
-            </div>
-            <div className="list">
-              {choices.map((a) => (
-                <button key={a.session.kind + a.session.id} className="list-item click" style={{ width: '100%', border: 0, textAlign: 'left', cursor: 'pointer' }} disabled={busy} onClick={() => enter(a, choices)}>
-                  <div className="grow">
-                    <div className="t">{a.label}</div>
-                    <div className="s">{a.detail}</div>
-                  </div>
-                  <Icon name="arrow" size={18} />
-                </button>
-              ))}
-            </div>
-            <button className="link small" style={{ alignSelf: 'center' }} onClick={() => setChoices(null)}>
-              Usar outro email
-            </button>
-          </div>
-        ) : mode === 'recover' ? (
+        {mode === 'recover' ? (
           <form className="card stack" onSubmit={recover} style={{ padding: 28 }}>
             <div className="auth-head">
               <Logo h={48} />
@@ -206,7 +183,7 @@ export default function Login() {
           </form>
         )}
 
-        {!API_MODE && !choices && mode === 'login' && (
+        {!API_MODE && mode === 'login' && (
           <div className="card stack" style={{ padding: 18 }}>
             <button type="button" className="row between" style={{ background: 'none', border: 0, cursor: 'pointer', padding: 0, width: '100%' }} onClick={() => setDemo(!demo)}>
               <span className="small">Contas de demonstração</span>

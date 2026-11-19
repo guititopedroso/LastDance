@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
 import type { InstStatus } from '../data/logic'
-import { chooseAccount, setSession, useAccounts, useSession, useSyncStatus } from '../data/store'
+import { accountTab, chooseAccount, setSession, useAccounts, useSession, useSyncStatus } from '../data/store'
 import { ROLE_LABEL } from '../data/types'
 import { Icon } from './icons'
 
@@ -133,11 +133,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <small>{role}</small>
               </span>
             )}
-            {accounts.length > 1 && (
-              <button className="btn btn-ghost btn-sm" onClick={() => setSwitching(true)} title="Trocar de área">
-                Trocar
-              </button>
-            )}
             <button
               className="btn btn-ghost btn-sm"
               aria-label="Terminar sessão"
@@ -153,6 +148,34 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
+      {accounts.length > 1 && (
+        <nav className="acct-tabs" aria-label="As minhas áreas">
+          <div className="container inner">
+            {accounts.map((a) => {
+              const on = a.session.id === current
+              return (
+                <button
+                  key={a.session.kind + a.session.id}
+                  className={on ? 'on' : ''}
+                  aria-current={on ? 'page' : undefined}
+                  disabled={on || switching}
+                  onClick={async () => {
+                    setSwitching(true)
+                    try {
+                      await chooseAccount(a, accounts)
+                      nav('/gestao')
+                    } finally {
+                      setSwitching(false)
+                    }
+                  }}
+                >
+                  {accountTab(a, accounts)}
+                </button>
+              )
+            })}
+          </div>
+        </nav>
+      )}
       {sync.offline && (
         <div className="sync-bar">
           Sem ligação à internet.{' '}
@@ -160,31 +183,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
       <main className="container app-main">{children}</main>
-      {switching && (
-        <Modal onClose={() => setSwitching(false)}>
-          <h3>Trocar de área</h3>
-          <div className="list" style={{ marginTop: 14 }}>
-            {accounts.map((a) => (
-              <button
-                key={a.session.kind + a.session.id}
-                className="list-item click"
-                style={{ width: '100%', border: 0, textAlign: 'left', cursor: 'pointer' }}
-                disabled={a.session.id === current}
-                onClick={async () => {
-                  setSwitching(false)
-                  await chooseAccount(a, accounts)
-                  nav('/gestao')
-                }}
-              >
-                <div className="grow">
-                  <div className="t">{a.label}</div>
-                  <div className="s">{a.session.id === current ? 'Estás aqui' : a.detail}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </Modal>
-      )}
     </div>
   )
 }

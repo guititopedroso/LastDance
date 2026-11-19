@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { eur, normalize } from '../data/logic'
+import { eur, normalize, studentByEmail } from '../data/logic'
 import { uid } from '../data/seed'
 import { getDB, update, useDB } from '../data/store'
 import { CATEGORIES, CATEGORY_LABEL, DEFAULT_SIGNUP_TYPES, PARTNER_TYPES, PTYPES, PTYPE_LONG, type Category, type Extra, type LDEvent, type Modality } from '../data/types'
@@ -121,17 +121,18 @@ export function EventForm({ existing, onDone }: { existing?: LDEvent; onDone?: (
       modalities: clean(ev.modalities),
       extras: clean(ev.extras),
     }
-    const promoterPass = newPassword()
+    const student = promoterEmail ? studentByEmail(getDB(), promoterEmail) : undefined
+    const promoterPass = student ? '' : newPassword()
     update((d) => {
       if (existing) d.events = d.events.map((x) => (x.id === final.id ? final : x))
       else {
         d.events.push(final)
         if (promoterEmail)
-          d.users.push({ id: 'u' + uid(), name: 'Promotor ' + code, email: promoterEmail.trim(), password: promoterPass, role: 'promotor_chefe', eventId: final.id })
+          d.users.push({ id: 'u' + uid(), name: student?.name ?? 'Promotor ' + code, email: promoterEmail.trim(), phone: student?.phone || undefined, password: promoterPass, role: 'promotor_chefe', eventId: final.id, studentId: student?.id })
       }
     })
     toast(
-      existing ? 'Evento atualizado.' : promoterEmail ? `Evento criado com o código ${code}. Palavra-passe do promotor: ${promoterPass}` : `Evento criado com o código ${code}.`,
+      existing ? 'Evento atualizado.' : student ? `Evento criado com o código ${code}. ${student.name} entra com a conta de aluno e fica com as abas Aluno e Promotor.` : promoterEmail ? `Evento criado com o código ${code}. Palavra-passe do promotor: ${promoterPass}` : `Evento criado com o código ${code}.`,
       promoterEmail && !existing ? 20000 : undefined,
     )
     if (!existing) {
@@ -323,7 +324,11 @@ export function EventForm({ existing, onDone }: { existing?: LDEvent; onDone?: (
         <div className="field">
           <label>Email do promotor chefe (para o login)</label>
           <input className="input" type="email" value={promoterEmail} onChange={(e) => setPromoterEmail(e.target.value)} placeholder="promotor@escola.pt" />
-          <span className="small muted">É criada a conta com uma palavra-passe aleatória, que aparece quando criares o evento.</span>
+          <span className="small muted">
+            {promoterEmail.includes('@') && studentByEmail(getDB(), promoterEmail)
+              ? 'Este email já tem inscrição de aluno: a pessoa entra com a palavra-passe da inscrição e vê as abas Aluno e Promotor.'
+              : 'É criada a conta com uma palavra-passe aleatória, que aparece quando criares o evento.'}
+          </span>
         </div>
       )}
 

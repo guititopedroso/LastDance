@@ -333,8 +333,9 @@ export function buildSeed(): DB {
   const ev2 = events[0]
   named(takeFrom(demoEv), 'Rita Almeida Santos', 'varios@lastdance.pt')
   payAll(named(takeFrom(ev2), 'Rita Almeida Santos', 'varios@lastdance.pt'), ev2, null, 1)
-  named(takeFrom(demoEv), 'Duarte Costa Faria', 'duplo@lastdance.pt')
-  users.push({ id: 'u-duplo', name: 'Duarte Costa Faria', email: 'duplo@lastdance.pt', password: 'demo1234', role: 'promotor', eventId: ev2.id })
+  // Aluno que também é promotor: a conta de promotor está ligada à inscrição (sem palavra-passe própria)
+  const duplo = named(takeFrom(demoEv), 'Duarte Costa Faria', 'duplo@lastdance.pt')
+  users.push({ id: 'u-duplo', name: 'Duarte Costa Faria', email: 'duplo@lastdance.pt', password: '', role: 'promotor', eventId: ev2.id, studentId: duplo.id })
 
   users.push({ id: 'u-staff2', name: 'Pedro Silva', email: 'staff2@lastdance.pt', password: 'demo1234', role: 'staff', staffEventIds: [demoEv.id] })
 

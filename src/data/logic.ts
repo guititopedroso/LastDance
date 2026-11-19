@@ -38,6 +38,13 @@ export const isCancelled = (p: Participant) => !!p.cancelledAt
 export const isGuest = (p: Participant) => !!p.hostId
 /** Pode adicionar acompanhantes: inscreveu-se sozinho com o código do evento e não cancelou. */
 /** Pode levar acompanhantes: quem se inscreveu com o código, ou quem recebeu a inscrição como oferta. */
+/** Inscrição de aluno com este email (para ligar uma conta da equipa à mesma pessoa). */
+export const studentByEmail = (d: DB, email: string) => {
+  const e = email.trim().toLowerCase()
+  if (!e) return undefined
+  return d.participants.filter((p) => !p.hostId && !isCancelled(p) && p.email.toLowerCase() === e).sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+}
+
 export const canHost = (p: Participant) => !p.hostId && (!p.addedBy || !!p.offer) && !isCancelled(p)
 /** Acompanhantes deste aluno (inclui cancelados). */
 export const guestsOf = (db: DB, p: Participant) => db.participants.filter((x) => x.hostId === p.id)

@@ -122,3 +122,11 @@ body { min-height: 100svh; }
   .tabs::after { content: ''; flex: 0 0 24px; }
   .tabs { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
 }
+
+/* Abas das áreas da mesma pessoa (ex.: Aluno / Promotor) */
+.acct-tabs { position: sticky; top: 68px; z-index: 29; background: rgba(33, 6, 10, 0.88); backdrop-filter: blur(14px); border-bottom: 1px solid var(--glass-border); }
+.acct-tabs .inner { display: flex; gap: 6px; padding-top: 10px; padding-bottom: 10px; overflow-x: auto; scrollbar-width: none; }
+.acct-tabs button { flex: 0 0 auto; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--glass-border); color: var(--gray-400); border-radius: 999px; padding: 8px 18px; font-weight: 600; font-size: 0.9rem; cursor: pointer; white-space: nowrap; transition: background 0.2s, color 0.2s, border-color 0.2s; }
+.acct-tabs button:hover:not(:disabled) { color: var(--white); border-color: rgba(254, 210, 137, 0.4); }
+.acct-tabs button.on { background: linear-gradient(135deg, rgba(226, 166, 92, 0.3), rgba(254, 210, 137, 0.12)); border-color: rgba(226, 166, 92, 0.6); color: var(--white); cursor: default; }
+.acct-tabs button:disabled:not(.on) { opacity: 0.6; cursor: wait; }

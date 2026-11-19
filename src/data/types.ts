@@ -28,6 +28,11 @@ export interface User {
   phone?: string
   /** Data de nascimento (AAAA-MM-DD): se estiver preenchida, a pessoa pode recuperar a palavra-passe com email + data */
   birth?: string
+  /**
+   * Inscrição de aluno ligada a esta conta (ex.: aluna que também é promotora).
+   * Entra com o email e a palavra-passe da inscrição e vê as duas áreas em abas.
+   */
+  studentId?: string
 }
 
 export type Category = '12' | '9' | 'uni' | 'outro'

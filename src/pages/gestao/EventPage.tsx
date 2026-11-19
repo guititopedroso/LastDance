@@ -4,7 +4,7 @@ import { EventForm } from '../../components/EventForm'
 import { Registrations } from '../../components/Registrations'
 import { GuestsTotals } from '../../components/Guests'
 import { Kpi, Modal, Tabs, newPassword, toast } from '../../components/ui'
-import { eur, eventPrice, eventStats, eventWhen, userCommission, commissionShares } from '../../data/logic'
+import { eur, eventPrice, eventStats, eventWhen, userCommission, commissionShares, studentByEmail } from '../../data/logic'
 import { uid } from '../../data/seed'
 import { update, useDB } from '../../data/store'
 import { CATEGORY_LABEL, type User } from '../../data/types'
@@ -250,6 +250,9 @@ export function PromoterTeamModal({ evId, chief, onClose }: { evId: string; chie
   const team = db.users.filter((u) => u.eventId === evId)
   const [n, setN] = useState({ name: '', email: '', phone: '', chief: false })
   const [pass, setPass] = useState<string | null>(null)
+  // Já é aluno(a)? A conta de promotor fica ligada à inscrição: mesmo email e palavra-passe, duas abas na área
+  const student = n.email.includes('@') ? studentByEmail(db, n.email) : undefined
+  const studentEv = student && db.events.find((e) => e.id === student.eventId)
   return (
     <Modal onClose={onClose}>
       <h3>{chief ? 'A minha equipa' : 'Equipa do promotor'}</h3>
@@ -264,7 +267,7 @@ export function PromoterTeamModal({ evId, chief, onClose }: { evId: string; chie
           <div key={u.id} className="list-item">
             <div className="grow">
               <div className="t">
-                {u.name} {u.role === 'promotor_chefe' && <span className="pill offer">chefe</span>}
+                {u.name} {u.role === 'promotor_chefe' && <span className="pill offer">chefe</span>} {u.studentId && <span className="pill">também aluno(a)</span>}
               </div>
               <div className="s">{u.email}</div>
               <input
@@ -319,20 +322,34 @@ export function PromoterTeamModal({ evId, chief, onClose }: { evId: string; chie
         onSubmit={(e) => {
           e.preventDefault()
           if (db.users.some((u) => u.email.toLowerCase() === n.email.toLowerCase())) return toast('Já existe uma conta com esse email.')
-          const pass = newPassword()
+          const pass = student ? '' : newPassword()
           update((d) => {
-            d.users.push({ id: 'u' + uid(), name: n.name, email: n.email, phone: n.phone || undefined, password: pass, role: n.chief && !chief ? 'promotor_chefe' : 'promotor', eventId: evId })
+            d.users.push({
+              id: 'u' + uid(),
+              name: n.name || student?.name || '',
+              email: n.email.trim(),
+              phone: n.phone || student?.phone || undefined,
+              password: pass,
+              role: n.chief && !chief ? 'promotor_chefe' : 'promotor',
+              eventId: evId,
+              studentId: student?.id,
+            })
           })
-          setPass(pass)
+          setPass(student ? null : pass)
           setN({ name: '', email: '', phone: '', chief: false })
-          toast('Promotor adicionado.')
+          toast(student ? `${student.name.split(' ')[0]} já pode entrar com a conta de aluno: vai ver as abas Aluno e Promotor.` : 'Promotor adicionado.')
         }}
       >
         <div className="grid-2">
-          <input className="input" placeholder="Nome" required value={n.name} onChange={(e) => setN({ ...n, name: e.target.value })} />
+          <input className="input" placeholder={student ? student.name : 'Nome'} required={!student} value={n.name} onChange={(e) => setN({ ...n, name: e.target.value })} />
           <input className="input" placeholder="Email" type="email" required value={n.email} onChange={(e) => setN({ ...n, email: e.target.value })} />
           <input className="input" placeholder="Telemóvel (os alunos veem o do chefe)" type="tel" value={n.phone} onChange={(e) => setN({ ...n, phone: e.target.value })} />
         </div>
+        {student && (
+          <div className="alert alert-info small">
+            <b>{student.name}</b> já está inscrito(a) como aluno(a){studentEv ? ` em ${studentEv.name}` : ''}. Não é criada palavra-passe nova: entra com o mesmo email e a palavra-passe da inscrição e fica com duas abas na área, Aluno e Promotor.
+          </div>
+        )}
         {!chief && (
           <label className="check">
             <input type="checkbox" checked={n.chief} onChange={(e) => setN({ ...n, chief: e.target.checked })} /> Promotor chefe

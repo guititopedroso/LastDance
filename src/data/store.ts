@@ -17,7 +17,7 @@ export const API_MODE = API !== '' && !DEMO
 
 // A demonstração guarda tudo com outro prefixo: a sessão da demo nunca se mistura com a do site real.
 const NS = DEMO ? 'lastdance-demo' : 'lastdance'
-const DEMO_KEY = `${NS}-db-v6`
+const DEMO_KEY = `${NS}-db-v7`
 const SESSION_KEY = `${NS}-session`
 const TOKEN_KEY = `${NS}-token`
 const CACHE_KEY = `${NS}-cache`
@@ -401,6 +401,12 @@ export interface Account {
 const ACCOUNTS_KEY = `${NS}-accounts`
 let accounts: Account[] = parse(ls.get(ACCOUNTS_KEY), [] as Account[])
 
+/** Nome curto de cada área, para as abas (Aluno / Promotor…). */
+export function accountTab(a: Account, all: Account[]) {
+  if (a.session.kind === 'user') return a.label.replace(/^Área de gestão · /, '')
+  return all.filter((x) => x.session.kind === 'participant').length > 1 ? `Aluno · ${a.label}` : 'Aluno'
+}
+
 export function useAccounts() {
   useSyncExternalStore(subscribe, () => tick)
   return accounts
@@ -413,12 +419,13 @@ export async function login(email: string, password: string): Promise<Account[]>
   if (!API_MODE) {
     const e = email.trim().toLowerCase()
     const found: Account[] = []
+    if (!password) return found
+    const ps = db.participants.filter((x) => !x.hostId && x.email.toLowerCase() === e && x.password === password)
+    ps.forEach((p) => found.push({ session: { kind: 'participant', id: p.id }, label: db.events.find((ev) => ev.id === p.eventId)?.name ?? 'Evento', detail: p.name }))
+    // Conta da equipa: a sua palavra-passe, ou a da inscrição de aluno a que está ligada
     db.users
-      .filter((x) => x.email.toLowerCase() === e && x.password === password)
+      .filter((x) => x.email.toLowerCase() === e && ((!!x.password && x.password === password) || (!!x.studentId && ps.some((p) => p.id === x.studentId))))
       .forEach((u) => found.push({ session: { kind: 'user', id: u.id }, label: `Área de gestão · ${ROLE_NAME[u.role]}`, detail: u.name }))
-    db.participants
-      .filter((x) => x.email.toLowerCase() === e && x.password === password)
-      .forEach((p) => found.push({ session: { kind: 'participant', id: p.id }, label: db.events.find((ev) => ev.id === p.eventId)?.name ?? 'Evento', detail: p.name }))
     return found
   }
   try {
