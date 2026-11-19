@@ -16,7 +16,7 @@ const SPEC = [
     'id' => 's', 'eventId' => 's', 'name' => 's', 'birth' => 's', 'phone' => 's', 'email' => 's', 'password' => 'pw', 'type' => 's', 'turma' => 's',
     'diet' => 's', 'health' => 's', 'consent' => 'b', 'createdAt' => 's', 'offer' => 'b', 'tableId' => 's', 'enteredAt' => 's', 'enteredBy' => 's', 'qr' => 's',
     'guardianName' => 's', 'guardianPhone' => 's', 'modalityId' => 's', 'extras' => 'j', 'customAmounts' => 'j', 'cancelledAt' => 's', 'cancelReason' => 's',
-    'refundDue' => 'n', 'addedBy' => 's', 'hostId' => 's',
+    'refundDue' => 'n', 'addedBy' => 's', 'hostId' => 's', 'payFull' => 'b',
   ],
   'payments' => ['id' => 's', 'participantId' => 's', 'installment' => 'n', 'amount' => 'n', 'receivedBy' => 's', 'at' => 's', 'kind' => 's'],
   'votes' => ['id' => 's', 'eventId' => 's', 'awardId' => 's', 'voterId' => 's', 'candidateId' => 's'],
@@ -168,7 +168,7 @@ function fetch_row(string $t, string $id): ?array
   return one("SELECT * FROM `$t` WHERE `id` = ?", [$id]);
 }
 
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 /** Acrescenta colunas que faltem (instalações feitas com uma versão anterior). Corre uma vez por versão. */
 function migrate(): void
@@ -336,13 +336,24 @@ function person_price(array $ev, ?string $modalityId, array $extras): float
   return $base;
 }
 
+/**
+ * Fração do preço de um acompanhante pela idade no dia do evento (igual a guestFactor em src/data/logic.ts):
+ * menos de 5 anos não paga, dos 5 aos 7 paga metade, a partir dos 8 paga tudo.
+ */
+function guest_factor(array $ev, ?string $birth): float
+{
+  if (!$birth || !preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $birth, $b) || !preg_match('/^(\d{4})-(\d{2})-(\d{2})/', (string)($ev['date'] ?? ''), $d)) return 1.0;
+  $age = (int)$d[1] - (int)$b[1] - (((int)$d[2] < (int)$b[2] || ((int)$d[2] === (int)$b[2] && (int)$d[3] < (int)$b[3])) ? 1 : 0);
+  return $age < 5 ? 0.0 : ($age < 8 ? 0.5 : 1.0);
+}
+
 /** Igual a recalcAmounts em src/data/logic.ts: as prestações com pagamentos ficam; a diferença reparte-se pelas outras. */
 function recalc_amounts(array $p, array $ev, array $payments, ?string $modalityId, array $extras): ?array
 {
   $inst = $ev['installments'] ?? [];
   $n = count($inst);
   if (!$n) return null;
-  $target = round(person_price($ev, $modalityId, $extras), 2);
+  $target = round(person_price($ev, $modalityId, $extras) * (!empty($p['hostId']) ? guest_factor($ev, $p['birth'] ?? null) : 1.0), 2);
   $cur = [];
   $open = [];
   for ($i = 0; $i < $n; $i++) {
@@ -354,6 +365,11 @@ function recalc_amounts(array $p, array $ev, array $payments, ?string $modalityI
   $out = $cur;
   if (!$open) {
     $out[$n - 1] = round($out[$n - 1] + $target - $locked, 2);
+  } elseif (!empty($p['payFull'])) {
+    // Paga tudo de uma vez: o que falta fica numa só prestação (a primeira ainda dentro do prazo)
+    $one = end($open);
+    foreach ($open as $i) if (empty($inst[$i]['due']) || $inst[$i]['due'] >= date('Y-m-d')) { $one = $i; break; }
+    foreach ($open as $i) $out[$i] = $i === $one ? round(max(0, $target - $locked), 2) : 0.0;
   } else {
     $rest = max(0, $target - $locked);
     $w = array_map(fn($i) => (float)$inst[$i]['amount'] ?: 1.0, $open);
@@ -444,7 +460,7 @@ function guest_create_error(array $me, array $new, array $changed): ?string
   }
   if (mb_strlen(trim((string)$new['name'])) < 3) return 'Indica o nome completo do acompanhante.';
   if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$new['birth'])) return 'Indica a data de nascimento do acompanhante.';
-  return only($changed, ['id', 'eventId', 'name', 'birth', 'phone', 'type', 'diet', 'health', 'consent', 'createdAt', 'offer', 'tableId', 'qr', 'modalityId', 'extras', 'customAmounts', 'hostId']);
+  return only($changed, ['id', 'eventId', 'name', 'birth', 'phone', 'type', 'diet', 'health', 'consent', 'createdAt', 'offer', 'tableId', 'qr', 'modalityId', 'extras', 'customAmounts', 'hostId', 'payFull']);
 }
 
 function staff_can(array $me, string $eventId): bool

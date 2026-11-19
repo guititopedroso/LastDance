@@ -291,11 +291,15 @@ function apply_op(array $me, array $op): ?string
     // Modalidade e extras: o preço de cada prestação é sempre recalculado aqui
     $ev = event_obj((string)($old['eventId'] ?? $new['eventId']));
     $oldP = $old ? decode_row('participants', $old) : ['customAmounts' => null];
-    $newChoices = [$new['modalityId'], json_decode((string)($new['extras'] ?? 'null'), true) ?: []];
-    $oldChoices = [$oldP['modalityId'] ?? null, $oldP['extras'] ?? []];
+    // Acompanhantes: o preço depende da idade (data de nascimento) e de pagar de uma vez ou em prestações
+    $isGuest = !empty($old ? $old['hostId'] : $new['hostId']);
+    if (!$isGuest) $new['payFull'] = $old['payFull'] ?? null;
+    $newChoices = [$new['modalityId'], json_decode((string)($new['extras'] ?? 'null'), true) ?: [], $isGuest ? (string)$new['birth'] : '', $isGuest ? (int)!empty($new['payFull']) : 0];
+    $oldChoices = [$oldP['modalityId'] ?? null, $oldP['extras'] ?? [], $isGuest ? (string)($oldP['birth'] ?? '') : '', $isGuest ? (int)!empty($oldP['payFull']) : 0];
     if ($ev && (!$old || $newChoices != $oldChoices)) {
       [$mod, $ext] = clean_choices($ev, $newChoices[0], $newChoices[1]);
-      $amounts = recalc_amounts($oldP, $ev, $old ? (payments_of([$old['id']])[$old['id']] ?? []) : [], $mod, $ext);
+      $calcP = array_merge($oldP, ['hostId' => $old ? ($old['hostId'] ?? null) : ($new['hostId'] ?? null), 'birth' => $new['birth'] ?? null, 'payFull' => !empty($new['payFull'])]);
+      $amounts = recalc_amounts($calcP, $ev, $old ? (payments_of([$old['id']])[$old['id']] ?? []) : [], $mod, $ext);
       $new['modalityId'] = $mod;
       $new['extras'] = $ext ? json_encode($ext) : null;
       $new['customAmounts'] = $amounts ? json_encode($amounts) : null;
@@ -381,7 +385,7 @@ function can_write(array $me, string $t, ?array $old, array $new, array $changed
         if (!empty($old['enteredAt'])) return 'Este acompanhante já entrou no evento.';
         if (mb_strlen(trim((string)$new['name'])) < 3) return 'Indica o nome completo do acompanhante.';
         if (in_array('birth', $changed, true) && !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$new['birth'])) return 'Data de nascimento inválida.';
-        return only($changed, ['name', 'birth', 'phone', 'diet', 'health', 'modalityId', 'extras', 'customAmounts']);
+        return only($changed, ['name', 'birth', 'phone', 'diet', 'health', 'modalityId', 'extras', 'customAmounts', 'payFull']);
       }
       if ($me['kind'] === 'participant') {
         if ($old['id'] !== $me['id']) return 'Sem permissão.';

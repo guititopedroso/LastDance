@@ -172,6 +172,8 @@ export interface Participant {
   extras?: string[]
   /** Valor de cada prestação desta pessoa, quando difere do evento (modalidade/extras) */
   customAmounts?: number[]
+  /** Acompanhante que paga tudo de uma vez (em vez de prestações) */
+  payFull?: boolean
   cancelledAt?: string
   cancelReason?: string
   /** Valor a devolver na desistência */

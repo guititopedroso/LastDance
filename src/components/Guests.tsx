@@ -9,6 +9,8 @@ import {
   eventPrice,
   exportCSV,
   fullyPaid,
+  guestFactor,
+  guestFactorLabel,
   guestsOf,
   isCancelled,
   isGuest,
@@ -17,6 +19,7 @@ import {
   ordinal,
   personPrice,
   plan,
+  priceFor,
   recalcAmounts,
   totalDue,
   totalPaid,
@@ -26,8 +29,11 @@ import { update, useDB } from '../data/store'
 import { DIETS, MAX_GUESTS, type LDEvent, type Participant } from '../data/types'
 import { Kpi, QR, StatusPill, toast } from './ui'
 
-type GuestForm = { name: string; birth: string; phone: string; diet: string; mod: string; consent: boolean }
-const blank = (): GuestForm => ({ name: '', birth: '', phone: '', diet: 'Nenhuma', mod: '', consent: false })
+type GuestForm = { name: string; birth: string; phone: string; diet: string; mod: string; consent: boolean; pay: '' | 'inst' | 'full' }
+const blank = (): GuestForm => ({ name: '', birth: '', phone: '', diet: 'Nenhuma', mod: '', consent: false, pay: '' })
+const validBirth = (b: string) => /^\d{4}-\d{2}-\d{2}$/.test(b)
+/** Preço do acompanhante com o que está no formulário (desconto por idade incluído). */
+const formPrice = (ev: LDEvent, f: GuestForm) => priceFor({ hostId: 'x', birth: f.birth }, ev, f.mod || undefined, [])
 
 /** Escolha da modalidade (com preço total de cada uma). */
 function ModalityPicker({ ev, value, onChange }: { ev: LDEvent; value: string; onChange: (v: string) => void }) {
@@ -58,6 +64,7 @@ function GuestFields({ ev, f, setF, isNew }: { ev: LDEvent; f: GuestForm; setF: 
         <div className="field">
           <label>Data de nascimento *</label>
           <input className="input" type="date" value={f.birth} onChange={(e) => setF({ ...f, birth: e.target.value })} />
+          {validBirth(f.birth) && guestFactorLabel(ev, f.birth) && <span className="small gold">{guestFactorLabel(ev, f.birth)}</span>}
         </div>
         <div className="field">
           <label>Telemóvel (opcional)</label>
@@ -65,6 +72,21 @@ function GuestFields({ ev, f, setF, isNew }: { ev: LDEvent; f: GuestForm; setF: 
         </div>
       </div>
       {!!ev.modalities?.length && <ModalityPicker ev={ev} value={f.mod} onChange={(mod) => setF({ ...f, mod })} />}
+      {validBirth(f.birth) && formPrice(ev, f) > 0 && (
+        <div className="field">
+          <label>Como vai pagar? *</label>
+          <div className="stack" style={{ gap: 6 }}>
+            <label className="check">
+              <input type="radio" name={`guest-pay-${isNew ? 'n' : 'e'}`} checked={f.pay === 'full'} onChange={() => setF({ ...f, pay: 'full' })} />
+              Tudo de uma vez · {eur(formPrice(ev, f))}
+            </label>
+            <label className="check">
+              <input type="radio" name={`guest-pay-${isNew ? 'n' : 'e'}`} checked={f.pay === 'inst'} onChange={() => setF({ ...f, pay: 'inst' })} />
+              Em {ev.installments.length} prestações
+            </label>
+          </div>
+        </div>
+      )}
       <div className="field">
         <label>Restrições alimentares</label>
         <select className="input" value={f.diet} onChange={(e) => setF({ ...f, diet: e.target.value })}>
@@ -89,19 +111,22 @@ function GuestFields({ ev, f, setF, isNew }: { ev: LDEvent; f: GuestForm; setF: 
   )
 }
 
-const valid = (f: GuestForm, isNew: boolean) => f.name.trim().length >= 3 && /^\d{4}-\d{2}-\d{2}$/.test(f.birth) && (!isNew || f.consent)
+const valid = (f: GuestForm, isNew: boolean, ev: LDEvent) =>
+  f.name.trim().length >= 3 && validBirth(f.birth) && (!isNew || f.consent) && (f.pay !== '' || formPrice(ev, f) <= 0)
 
 /** Prestações de um acompanhante (separadas das do aluno). */
 function GuestInstallments({ g, ev }: { g: Participant; ev: LDEvent }) {
   const rows = plan(g, ev)
   return (
     <div className="list">
+      {totalDue(g, ev) <= 0 && <div className="list-item small">Não paga (menos de 5 anos no dia do evento).</div>}
       {ev.installments.map((inst, i) => {
         const st = rows[i].status
+        if (rows[i].amount <= 0.001 && rows[i].paid <= 0.001) return null
         return (
           <div key={i} className="list-item small">
             <div className="grow">
-              <div className="t">{ordinal(i)} prestação</div>
+              <div className="t">{g.payFull ? 'Pagamento único' : `${ordinal(i)} prestação`}</div>
               <div className="s">{inst.due ? `Até ${dateShort(inst.due)}` : 'Sem data-limite'}</div>
             </div>
             <b>{eur(rows[i].amount)}</b>
@@ -154,11 +179,13 @@ export function GuestsCard({ host, ev, past }: { host: Participant; ev: LDEvent;
         tableId: host.tableId,
         hostId: host.id,
         modalityId: f.mod || undefined,
+        payFull: f.pay === 'full' && formPrice(ev, f) > 0,
       }
       g.customAmounts = recalcAmounts(g, ev, f.mod || undefined, [])
       d.participants.push(g)
     })
-    toast(`${f.name.trim()} adicionado. Paga as prestações ao teu promotor.`)
+    const pr = formPrice(ev, f)
+    toast(pr <= 0 ? `${f.name.trim()} adicionado. Não paga (menos de 5 anos).` : `${f.name.trim()} adicionado. Entregas o pagamento ao teu promotor.`)
     setF(blank())
     setAdding(false)
     setOpen(id)
@@ -172,7 +199,9 @@ export function GuestsCard({ host, ev, past }: { host: Participant; ev: LDEvent;
       x.phone = ef.phone.trim()
       x.diet = ef.diet
       const mod = ef.mod || undefined
-      if (mod !== x.modalityId) {
+      const payFull = ef.pay === 'full' && formPrice(ev, ef) > 0
+      if (mod !== x.modalityId || ef.birth !== g.birth || payFull !== !!g.payFull) {
+        x.payFull = payFull
         x.customAmounts = recalcAmounts(x, ev, mod, x.extras ?? [])
         x.modalityId = mod
       }
@@ -200,8 +229,9 @@ export function GuestsCard({ host, ev, past }: { host: Participant; ev: LDEvent;
         </span>
       </div>
       <p className="muted small">
-        Leva quem quiseres (até {MAX_GUESTS} pessoas). Não precisam de conta: ficam associados a ti e és tu que pagas as prestações de cada um ao promotor, separadas das
-        tuas. Os acompanhantes não votam nem podem ser votados nos prémios.
+        Leva quem quiseres (até {MAX_GUESTS} pessoas). Não precisam de conta: ficam associados a ti e és tu que entregas o pagamento de cada um ao promotor, separado do
+        teu. O preço depende da idade no dia do evento: menos de 5 anos não paga, dos 5 aos 7 anos paga metade, a partir dos 8 paga o preço normal. Podem pagar tudo de uma
+        vez ou em prestações. Os acompanhantes não votam nem podem ser votados nos prémios.
       </p>
       {active.length > 0 && owed > 0.001 && (
         <div className="alert alert-info small">
@@ -221,7 +251,9 @@ export function GuestsCard({ host, ev, past }: { host: Participant; ev: LDEvent;
                   <div className="grow">
                     <div className="t">{g.name}</div>
                     <div className="s">
-                      {modalityName(ev, g)} · {eur(totalDue(g, ev))}
+                      {modalityName(ev, g)} · {totalDue(g, ev) > 0 ? eur(totalDue(g, ev)) : 'não paga'}
+                      {guestFactor(ev, g.birth) === 0.5 ? ' (metade, 5–7 anos)' : ''}
+                      {g.payFull && totalDue(g, ev) > 0 ? ' · de uma vez' : ''}
                       {g.enteredAt ? ' · ✓ já entrou' : ''}
                     </div>
                   </div>
@@ -233,7 +265,7 @@ export function GuestsCard({ host, ev, past }: { host: Participant; ev: LDEvent;
                   <div className="stack">
                     <GuestInstallments g={g} ev={ev} />
                     <p className="small muted">
-                      Pagas as prestações de {g.name.split(' ')[0]} ao promotor, como as tuas. Pago até agora: {eur(totalPaid(g))} de {eur(totalDue(g, ev))}.
+                      {totalDue(g, ev) > 0 ? <>Entregas o pagamento de {g.name.split(' ')[0]} ao promotor, como o teu. Pago até agora: {eur(totalPaid(g))} de {eur(totalDue(g, ev))}.</> : null}
                     </p>
                     {g.enteredAt ? null : fullyPaid(g, ev) ? (
                       <div className="stack" style={{ alignItems: 'center', textAlign: 'center' }}>
@@ -250,7 +282,7 @@ export function GuestsCard({ host, ev, past }: { host: Participant; ev: LDEvent;
                         <button
                           className="btn btn-ghost btn-sm"
                           onClick={() => {
-                            setEf({ name: g.name, birth: g.birth, phone: g.phone ?? '', diet: g.diet, mod: g.modalityId ?? '', consent: true })
+                            setEf({ name: g.name, birth: g.birth, phone: g.phone ?? '', diet: g.diet, mod: g.modalityId ?? '', consent: true, pay: g.payFull ? 'full' : 'inst' })
                             setEditing(g.id)
                           }}
                         >
@@ -271,11 +303,11 @@ export function GuestsCard({ host, ev, past }: { host: Participant; ev: LDEvent;
                 {editing === g.id && (
                   <div className="stack">
                     <GuestFields ev={ev} f={ef} setF={setEf} isNew={false} />
-                    {(ef.mod || '') !== (g.modalityId ?? '') && (
-                      <div className="alert alert-info small">Novo total: {eur(personPrice(ev, ef.mod || undefined, g.extras))}. As prestações em falta são recalculadas.</div>
+                    {((ef.mod || '') !== (g.modalityId ?? '') || ef.birth !== g.birth || (ef.pay === 'full') !== !!g.payFull) && (
+                      <div className="alert alert-info small">Novo total: {eur(formPrice(ev, ef))}. Os pagamentos em falta são recalculados.</div>
                     )}
                     <div className="row">
-                      <button className="btn btn-gold btn-sm" disabled={!valid(ef, false)} onClick={() => saveEdit(g)}>
+                      <button className="btn btn-gold btn-sm" disabled={!valid(ef, false, ev)} onClick={() => saveEdit(g)}>
                         Guardar
                       </button>
                       <button className="btn btn-ghost btn-sm" onClick={() => setEditing(null)}>
@@ -295,11 +327,14 @@ export function GuestsCard({ host, ev, past }: { host: Participant; ev: LDEvent;
           <b>Novo acompanhante</b>
           <GuestFields ev={ev} f={f} setF={setF} isNew />
           <div className="alert alert-info small">
-            {f.name.trim().split(' ')[0] || 'O acompanhante'} paga {eur(personPrice(ev, f.mod || undefined, []))} em {ev.installments.length} prestações, que tu entregas ao
-            promotor.
+            {!validBirth(f.birth)
+              ? `Indica a data de nascimento: menos de 5 anos não paga, dos 5 aos 7 anos paga metade, a partir dos 8 paga o preço normal.`
+              : formPrice(ev, f) <= 0
+                ? `${f.name.trim().split(' ')[0] || 'O acompanhante'} tem menos de 5 anos no dia do evento: não paga.`
+                : `${f.name.trim().split(' ')[0] || 'O acompanhante'} paga ${eur(formPrice(ev, f))}${f.pay === 'full' ? ' de uma vez' : f.pay === 'inst' ? ` em ${ev.installments.length} prestações` : ''}, que tu entregas ao promotor.`}
           </div>
           <div className="row">
-            <button className="btn btn-gold btn-sm" disabled={!valid(f, true)} onClick={add}>
+            <button className="btn btn-gold btn-sm" disabled={!valid(f, true, ev)} onClick={add}>
               Adicionar acompanhante
             </button>
             <button className="btn btn-ghost btn-sm" onClick={() => (setAdding(false), setF(blank()))}>

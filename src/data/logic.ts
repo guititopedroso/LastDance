@@ -64,6 +64,36 @@ export function personPrice(ev: LDEvent, modalityId?: string, extras?: string[])
   return base + (extras ?? []).reduce((s, id) => s + (ev.extras?.find((x) => x.id === id)?.price ?? 0), 0)
 }
 
+/** Idade (anos completos) numa data. */
+export function ageOn(birth: string, date: string) {
+  const [by, bm, bd] = birth.split('-').map(Number)
+  const [y, m, d] = date.split('-').map(Number)
+  return y - by - (m < bm || (m === bm && d < bd) ? 1 : 0)
+}
+
+/**
+ * Fração do preço que um acompanhante paga, pela idade no dia do evento:
+ * menos de 5 anos não paga, dos 5 aos 7 paga metade, a partir dos 8 paga tudo.
+ * A mesma regra existe no servidor (api/lib.php → guest_factor).
+ */
+export function guestFactor(ev: LDEvent, birth?: string) {
+  if (!birth || !/^\d{4}-\d{2}-\d{2}$/.test(birth) || !ev.date) return 1
+  const a = ageOn(birth, ev.date)
+  return a < 5 ? 0 : a < 8 ? 0.5 : 1
+}
+
+/** Texto curto da regra de idade para um acompanhante (ou null se paga tudo). */
+export function guestFactorLabel(ev: LDEvent, birth?: string) {
+  const f = guestFactor(ev, birth)
+  return f === 0 ? 'Menos de 5 anos: não paga' : f === 0.5 ? 'Dos 5 aos 7 anos: paga metade' : null
+}
+
+/** Preço desta pessoa em concreto (os acompanhantes têm o desconto por idade). */
+export function priceFor(p: Pick<Participant, 'hostId' | 'birth'>, ev: LDEvent, modalityId?: string, extras?: string[]) {
+  const v = personPrice(ev, modalityId, extras) * (p.hostId ? guestFactor(ev, p.birth) : 1)
+  return Math.round(v * 100) / 100
+}
+
 /**
  * Plano base da prestação i para esta pessoa (o que o evento definiu, ou o plano depois de mudar modalidade/extras).
  * Serve só para saber o preço total e a proporção entre prestações; o valor a pagar em cada uma é calculado em `plan`.
@@ -82,13 +112,18 @@ export function paidFor(p: Participant, idx: number) {
  * A mesma conta existe no servidor (api/lib.php → recalc_amounts).
  */
 export function recalcAmounts(p: Participant, ev: LDEvent, modalityId?: string, extras?: string[]): number[] | undefined {
-  const target = Math.round(personPrice(ev, modalityId, extras) * 100) / 100
+  const target = priceFor(p, ev, modalityId, extras)
   const cur = ev.installments.map((_, i) => instBase(p, ev, i))
   const open = ev.installments.map((_, i) => i).filter((i) => paidFor(p, i) <= 0.001)
   const locked = cur.reduce((s, v, i) => (open.includes(i) ? s : s + v), 0)
   const out = [...cur]
   if (!open.length) {
     out[out.length - 1] = Math.round((out[out.length - 1] + target - locked) * 100) / 100
+  } else if (p.payFull) {
+    // Paga tudo de uma vez: o que falta fica numa só prestação (a primeira ainda dentro do prazo)
+    const rest = Math.round(Math.max(0, target - locked) * 100) / 100
+    const one = open.find((i) => !ev.installments[i].due || daysFromNow(ev.installments[i].due) >= 0) ?? open[open.length - 1]
+    open.forEach((i) => (out[i] = i === one ? rest : 0))
   } else {
     const rest = Math.max(0, target - locked)
     const weights = open.map((i) => ev.installments[i].amount || 1)
