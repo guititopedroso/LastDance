@@ -32,6 +32,13 @@ export const eventPrice = (ev: LDEvent) => ev.installments.reduce((s, i) => s + 
 
 export const isCancelled = (p: Participant) => !!p.cancelledAt
 
+/** Outra inscrição ativa com este email (não conta acompanhantes, inscrições canceladas nem eventos arquivados). */
+export const emailInUse = (d: DB, email: string, exceptId?: string) => {
+  const e = email.trim().toLowerCase()
+  if (!e) return undefined
+  return d.participants.find((p) => p.id !== exceptId && !p.hostId && !isCancelled(p) && p.email.trim().toLowerCase() === e && !d.events.find((x) => x.id === p.eventId)?.archived)
+}
+
 // ---------- Acompanhantes ----------
 
 /** Acompanhante adicionado por um aluno (sem conta própria). */

@@ -4,6 +4,7 @@ import {
   dateLong,
   dateShort,
   dateTime,
+  emailInUse,
   eur,
   exportCSV,
   fullyPaid,
@@ -555,6 +556,10 @@ export function FichaModal({ pid, user, onClose, onPay }: { pid: string; user: U
   const hasChoices = !!(ev.modalities?.length || ev.extras?.length)
 
   const save = () => {
+    if (!p.hostId && f.email.trim().toLowerCase() !== p.email.trim().toLowerCase()) {
+      const msg = emailTakenMsg(f.email, p.id)
+      if (msg) return toast(msg, 6000)
+    }
     update((d) => {
       const x = d.participants.find((y) => y.id === pid)!
       Object.assign(x, {
@@ -961,6 +966,8 @@ function AddPersonModal({ eventId, user, onClose }: { eventId: string; user: Use
 
   const save = (e: React.FormEvent) => {
     e.preventDefault()
+    const msg = emailTakenMsg(f.email)
+    if (msg) return toast(msg, 6000)
     const id = 'p' + uid()
     update((d) => {
       const p: Participant = {
@@ -1078,4 +1085,13 @@ function AddPersonModal({ eventId, user, onClose }: { eventId: string; user: Use
       </form>
     </Modal>
   )
+}
+
+/** Não pode haver duas inscrições ativas com o mesmo email. */
+function emailTakenMsg(email: string, exceptId?: string) {
+  const d = getDB()
+  const o = emailInUse(d, email, exceptId)
+  if (!o) return null
+  const ev = d.events.find((x) => x.id === o.eventId)
+  return `Este email já está inscrito: ${o.name}${ev ? ` (${ev.name})` : ''}. Não pode haver duas inscrições com o mesmo email.`
 }

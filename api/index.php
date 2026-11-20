@@ -318,6 +318,10 @@ function apply_op(array $me, array $op): ?string
     } else $new['enteredBy'] = null;
   }
 
+  if ($t === 'participants' && empty($new['hostId']) && trim((string)($new['email'] ?? '')) !== ''
+      && (!$old || strtolower(trim((string)$old['email'])) !== strtolower(trim((string)$new['email'])))
+      && ($dup = email_in_use((string)$new['email'], (string)$new['id'])))
+    return 'Este email já está inscrito (' . $dup['name'] . ', ' . $dup['evName'] . '). Não pode haver duas inscrições com o mesmo email.';
   if ($t === 'events' && $old && !in_array($me['role'], ['admin', 'staff'], true)) $new['awards'] = keep_winners($old['awards'] ?? null, $new['awards'] ?? null);
   if ($t === 'users' && !empty($new['studentId'])) {
     // Só se liga a uma inscrição de aluno (não acompanhante) com o mesmo email
@@ -618,6 +622,16 @@ function route_event(): void
   out(['event' => public_event($e)]);
 }
 
+/** Outra inscrição ativa com este email (sem acompanhantes, canceladas nem eventos arquivados). */
+function email_in_use(string $email, string $exceptId = ''): ?array
+{
+  $email = trim($email);
+  if ($email === '') return null;
+  return one('SELECT p.`name`, e.`name` AS evName FROM `participants` p JOIN `events` e ON e.`id` = p.`eventId`'
+    . ' WHERE LOWER(TRIM(p.`email`)) = LOWER(?) AND p.`id` <> ? AND (p.`hostId` IS NULL OR p.`hostId` = \'\')'
+    . ' AND (p.`cancelledAt` IS NULL OR p.`cancelledAt` = \'\') AND (e.`archived` = 0 OR e.`archived` IS NULL) LIMIT 1', [$email, $exceptId]) ?: null;
+}
+
 function route_register(): void
 {
   if (too_many_attempts()) fail(429, 'Demasiadas tentativas. Espera 15 minutos.');
@@ -649,8 +663,8 @@ function route_register(): void
   if ($turma && !in_array($turma, $ev['classes'] ?? [], true)) $turma = '';
   if (strlen($pass) < 6) fail(400, 'A palavra-passe tem de ter pelo menos 6 caracteres.');
   if (empty($b['consent'])) fail(400, 'Tens de aceitar a política de privacidade.');
-  if (one('SELECT 1 FROM `participants` WHERE `eventId` = ? AND LOWER(`email`) = LOWER(?)', [$e['id'], $email]))
-    fail(409, 'Já existe uma inscrição com este email neste evento. Faz log-in para entrares na tua área.');
+  if (email_in_use($email))
+    fail(409, 'Já existe uma inscrição com este email. Faz log-in para entrares na tua área.');
 
   $id = new_id('p');
   $row = encode_row('participants', [

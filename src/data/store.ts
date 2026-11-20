@@ -8,7 +8,7 @@
 import { useSyncExternalStore } from 'react'
 import type { DB, LDEvent, Participant, ParticipantType, User } from './types'
 import { buildSeed, uid } from './seed'
-import { recalcAmounts } from './logic'
+import { emailInUse, recalcAmounts } from './logic'
 import { DEMO } from '../mode'
 
 const API = ((import.meta.env.VITE_API_URL as string | undefined) || '').replace(/\/$/, '')
@@ -509,8 +509,8 @@ export async function findEventByCode(code: string): Promise<{ event: LDEvent; f
 /** Cria a inscrição e entra logo na área do participante. Lança um erro com a mensagem a mostrar. */
 export async function registerParticipant(ev: LDEvent, f: RegisterData): Promise<void> {
   if (!API_MODE) {
-    if (db.participants.some((p) => p.eventId === ev.id && p.email.toLowerCase() === f.email.toLowerCase()))
-      throw new Error('Já existe uma inscrição com este email neste evento. Faz log-in para entrares na tua área.')
+    if (emailInUse(db, f.email))
+      throw new Error('Já existe uma inscrição com este email. Faz log-in para entrares na tua área.')
     const id = 'p' + uid()
     update((d) => {
       const base: Participant = {
