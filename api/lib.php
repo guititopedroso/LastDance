@@ -340,6 +340,22 @@ function person_price(array $ev, ?string $modalityId, array $extras): float
  * Fração do preço de um acompanhante pela idade no dia do evento (igual a guestFactor em src/data/logic.ts):
  * menos de 5 anos não paga, dos 5 aos 7 paga metade, a partir dos 8 paga tudo.
  */
+/** Idade no dia do evento (null se faltar a data). */
+function guest_age(array $ev, ?string $birth): ?int
+{
+  if (!$birth || !preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $birth, $b) || !preg_match('/^(\d{4})-(\d{2})-(\d{2})/', (string)($ev['date'] ?? ''), $d)) return null;
+  return (int)$d[1] - (int)$b[1] - (((int)$d[2] < (int)$b[2] || ((int)$d[2] === (int)$b[2] && (int)$d[3] < (int)$b[3])) ? 1 : 0);
+}
+
+/** Acompanhante com menos de 16 anos no dia do baile: só pode ir ao cocktail (igual a src/data/logic.ts → guestModOk). */
+function cocktail_only_error(array $ev, ?string $birth, $modalityId): ?string
+{
+  $age = guest_age($ev, $birth);
+  if ($age === null || $age >= 16) return null;
+  foreach ($ev['modalities'] ?? [] as $m) if ($m['id'] === $modalityId && stripos((string)$m['name'], 'cocktail') !== false) return null;
+  return 'Menores de 16 anos (no dia do baile) só podem ir ao cocktail.';
+}
+
 function guest_factor(array $ev, ?string $birth): float
 {
   if (!$birth || !preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $birth, $b) || !preg_match('/^(\d{4})-(\d{2})-(\d{2})/', (string)($ev['date'] ?? ''), $d)) return 1.0;

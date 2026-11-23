@@ -10,7 +10,11 @@ import {
   exportCSV,
   fullyPaid,
   guestFactor,
+  cocktailModality,
+  cocktailOnly,
+  COCKTAIL_MIN_AGE,
   guestAge,
+  guestModOk,
   guestPriceReason,
   guestsOf,
   isCancelled,
@@ -37,8 +41,9 @@ const validBirth = (b: string) => /^\d{4}-\d{2}-\d{2}$/.test(b)
 const formPrice = (ev: LDEvent, f: GuestForm) => priceFor({ hostId: 'x', birth: f.birth }, ev, f.mod || undefined, [])
 
 /** Escolha da modalidade (com preço total de cada uma). */
-function ModalityPicker({ ev, value, onChange }: { ev: LDEvent; value: string; onChange: (v: string) => void }) {
-  const opts = [{ id: '', name: BASE_MODALITY, price: eventPrice(ev) }, ...(ev.modalities ?? [])]
+function ModalityPicker({ ev, value, onChange, onlyCocktail }: { ev: LDEvent; value: string; onChange: (v: string) => void; onlyCocktail?: boolean }) {
+  const all = [{ id: '', name: BASE_MODALITY, price: eventPrice(ev) }, ...(ev.modalities ?? [])]
+  const opts = onlyCocktail ? all.filter((m) => m.id && /cocktail/i.test(m.name)) : all
   return (
     <div className="field">
       <label>O que inclui *</label>
@@ -55,6 +60,14 @@ function ModalityPicker({ ev, value, onChange }: { ev: LDEvent; value: string; o
 }
 
 function GuestFields({ ev, f, setF, isNew }: { ev: LDEvent; f: GuestForm; setF: (f: GuestForm) => void; isNew: boolean }) {
+  const young = validBirth(f.birth) && cocktailOnly(ev, f.birth)
+  const cocktail = cocktailModality(ev)
+  // Menor de 16 no dia do baile: passa logo para «Só cocktail»
+  const setBirth = (birth: string) => {
+    const nf = { ...f, birth }
+    if (validBirth(birth) && cocktailOnly(ev, birth) && cocktail && !guestModOk(ev, birth, nf.mod || undefined)) nf.mod = cocktail.id
+    setF(nf)
+  }
   return (
     <div className="stack">
       <div className="field">
@@ -64,7 +77,7 @@ function GuestFields({ ev, f, setF, isNew }: { ev: LDEvent; f: GuestForm; setF: 
       <div className="grid-2">
         <div className="field">
           <label>Data de nascimento *</label>
-          <input className="input" type="date" value={f.birth} onChange={(e) => setF({ ...f, birth: e.target.value })} />
+          <input className="input" type="date" value={f.birth} onChange={(e) => setBirth(e.target.value)} />
           {validBirth(f.birth) && guestPriceReason(ev, f.birth, f.mod || undefined) && <span className="small gold">{guestPriceReason(ev, f.birth, f.mod || undefined)}</span>}
         </div>
         <div className="field">
@@ -72,7 +85,14 @@ function GuestFields({ ev, f, setF, isNew }: { ev: LDEvent; f: GuestForm; setF: 
           <input className="input" type="tel" inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
         </div>
       </div>
-      {!!ev.modalities?.length && <ModalityPicker ev={ev} value={f.mod} onChange={(mod) => setF({ ...f, mod })} />}
+      {!!ev.modalities?.length && (!young || cocktail) && <ModalityPicker ev={ev} value={f.mod} onChange={(mod) => setF({ ...f, mod })} onlyCocktail={young} />}
+      {young && (
+        <div className={`alert small ${cocktail ? 'alert-info' : 'alert-err'}`}>
+          {cocktail
+            ? `Menores de ${COCKTAIL_MIN_AGE} anos (no dia do baile) só podem ir ao cocktail: não podem ter all access, jantar nem festa.`
+            : `Menores de ${COCKTAIL_MIN_AGE} anos (no dia do baile) só podem ir ao cocktail, e este baile não tem a modalidade «Só cocktail». Fala com o teu promotor.`}
+        </div>
+      )}
       {validBirth(f.birth) && formPrice(ev, f) > 0 && (
         <div className="field">
           <label>Como vai pagar? *</label>
@@ -113,7 +133,7 @@ function GuestFields({ ev, f, setF, isNew }: { ev: LDEvent; f: GuestForm; setF: 
 }
 
 const valid = (f: GuestForm, isNew: boolean, ev: LDEvent) =>
-  f.name.trim().length >= 3 && validBirth(f.birth) && (!isNew || f.consent) && (f.pay !== '' || formPrice(ev, f) <= 0)
+  f.name.trim().length >= 3 && validBirth(f.birth) && guestModOk(ev, f.birth, f.mod || undefined) && (!isNew || f.consent) && (f.pay !== '' || formPrice(ev, f) <= 0)
 
 /** Prestações de um acompanhante (separadas das do aluno). */
 function GuestInstallments({ g, ev }: { g: Participant; ev: LDEvent }) {

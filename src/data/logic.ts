@@ -102,6 +102,18 @@ export function guestAge(ev: LDEvent, birth?: string) {
   return ageOn(birth, ev.date.slice(0, 10))
 }
 
+/** Menores de 16 anos no dia do baile só podem ir ao cocktail (a mesma regra existe no servidor: api/lib.php → cocktail_only). */
+export const COCKTAIL_MIN_AGE = 16
+export const isCocktail = (m: { name: string }) => /cocktail/i.test(m.name)
+export const cocktailModality = (ev: LDEvent) => ev.modalities?.find(isCocktail)
+export const cocktailOnly = (ev: LDEvent, birth?: string) => {
+  const a = guestAge(ev, birth)
+  return a !== null && a < COCKTAIL_MIN_AGE
+}
+/** A modalidade escolhida é permitida para esta idade? */
+export const guestModOk = (ev: LDEvent, birth: string | undefined, modalityId?: string) =>
+  !cocktailOnly(ev, birth) || !!ev.modalities?.find((m) => m.id === modalityId && isCocktail(m))
+
 const anos = (a: number) => (a < 1 ? 'menos de 1 ano' : a === 1 ? '1 ano' : `${a} anos`)
 
 /** Porque é que o acompanhante paga este preço: idade no dia do baile e a regra que se aplica. */

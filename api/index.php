@@ -302,6 +302,7 @@ function apply_op(array $me, array $op): ?string
     $oldChoices = [$oldP['modalityId'] ?? null, $oldP['extras'] ?? [], $isGuest ? (string)($oldP['birth'] ?? '') : '', $isGuest ? (int)!empty($oldP['payFull']) : 0];
     if ($ev && (!$old || $newChoices != $oldChoices)) {
       [$mod, $ext] = clean_choices($ev, $newChoices[0], $newChoices[1]);
+      if ($isGuest && ($err = cocktail_only_error($ev, (string)$new['birth'], $mod))) return $err;
       $calcP = array_merge($oldP, ['hostId' => $old ? ($old['hostId'] ?? null) : ($new['hostId'] ?? null), 'birth' => $new['birth'] ?? null, 'payFull' => !empty($new['payFull'])]);
       $amounts = recalc_amounts($calcP, $ev, $old ? (payments_of([$old['id']])[$old['id']] ?? []) : [], $mod, $ext);
       $new['modalityId'] = $mod;
