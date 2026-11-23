@@ -96,10 +96,24 @@ export function guestFactor(ev: LDEvent, birth?: string) {
   return a < 5 ? 0 : a < 8 ? 0.5 : 1
 }
 
-/** Texto curto da regra de idade para um acompanhante (ou null se paga tudo). */
-export function guestFactorLabel(ev: LDEvent, birth?: string) {
+/** Idade que o acompanhante terá no dia do evento (null se faltar a data). */
+export function guestAge(ev: LDEvent, birth?: string) {
+  if (!birth || !/^\d{4}-\d{2}-\d{2}$/.test(birth) || !ev.date) return null
+  return ageOn(birth, ev.date.slice(0, 10))
+}
+
+const anos = (a: number) => (a < 1 ? 'menos de 1 ano' : a === 1 ? '1 ano' : `${a} anos`)
+
+/** Porque é que o acompanhante paga este preço: idade no dia do baile e a regra que se aplica. */
+export function guestPriceReason(ev: LDEvent, birth?: string, modalityId?: string) {
+  const a = guestAge(ev, birth)
+  if (a === null) return null
+  const full = personPrice(ev, modalityId)
+  const quando = `No dia do baile (${dateLong(ev.date.slice(0, 10))}) vai ter ${anos(a)}.`
   const f = guestFactor(ev, birth)
-  return f === 0 ? 'Menos de 5 anos: não paga' : f === 0.5 ? 'Dos 5 aos 7 anos: paga metade' : null
+  if (f === 0) return `${quando} Menos de 5 anos: não paga.`
+  if (f === 0.5) return `${quando} Dos 5 aos 7 anos paga metade: ${eur(Math.round(full * 50) / 100)} em vez de ${eur(full)}.`
+  return `${quando} A partir dos 8 anos paga o preço normal: ${eur(full)}.`
 }
 
 /** Preço desta pessoa em concreto (os acompanhantes têm o desconto por idade). */

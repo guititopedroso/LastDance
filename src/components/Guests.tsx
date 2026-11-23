@@ -10,7 +10,8 @@ import {
   exportCSV,
   fullyPaid,
   guestFactor,
-  guestFactorLabel,
+  guestAge,
+  guestPriceReason,
   guestsOf,
   isCancelled,
   isGuest,
@@ -64,7 +65,7 @@ function GuestFields({ ev, f, setF, isNew }: { ev: LDEvent; f: GuestForm; setF: 
         <div className="field">
           <label>Data de nascimento *</label>
           <input className="input" type="date" value={f.birth} onChange={(e) => setF({ ...f, birth: e.target.value })} />
-          {validBirth(f.birth) && guestFactorLabel(ev, f.birth) && <span className="small gold">{guestFactorLabel(ev, f.birth)}</span>}
+          {validBirth(f.birth) && guestPriceReason(ev, f.birth, f.mod || undefined) && <span className="small gold">{guestPriceReason(ev, f.birth, f.mod || undefined)}</span>}
         </div>
         <div className="field">
           <label>Telemóvel (opcional)</label>
@@ -252,7 +253,8 @@ export function GuestsCard({ host, ev, past }: { host: Participant; ev: LDEvent;
                     <div className="t">{g.name}</div>
                     <div className="s">
                       {modalityName(ev, g)} · {totalDue(g, ev) > 0 ? eur(totalDue(g, ev)) : 'não paga'}
-                      {guestFactor(ev, g.birth) === 0.5 ? ' (metade, 5–7 anos)' : ''}
+                      {guestAge(ev, g.birth) !== null ? ` · ${guestAge(ev, g.birth) === 1 ? '1 ano' : `${guestAge(ev, g.birth)} anos`} no dia do baile` : ''}
+                      {guestFactor(ev, g.birth) === 0.5 ? ' (paga metade, 5–7 anos)' : guestFactor(ev, g.birth) === 0 ? ' (menos de 5 anos)' : ''}
                       {g.payFull && totalDue(g, ev) > 0 ? ' · de uma vez' : ''}
                       {g.enteredAt ? ' · ✓ já entrou' : ''}
                     </div>
@@ -330,7 +332,7 @@ export function GuestsCard({ host, ev, past }: { host: Participant; ev: LDEvent;
             {!validBirth(f.birth)
               ? `Indica a data de nascimento: menos de 5 anos não paga, dos 5 aos 7 anos paga metade, a partir dos 8 paga o preço normal.`
               : formPrice(ev, f) <= 0
-                ? `${f.name.trim().split(' ')[0] || 'O acompanhante'} tem menos de 5 anos no dia do evento: não paga.`
+                ? `${f.name.trim().split(' ')[0] || 'O acompanhante'} não paga: vai ter menos de 5 anos no dia do baile.`
                 : `${f.name.trim().split(' ')[0] || 'O acompanhante'} paga ${eur(formPrice(ev, f))}${f.pay === 'full' ? ' de uma vez' : f.pay === 'inst' ? ` em ${ev.installments.length} prestações` : ''}, que tu entregas ao promotor.`}
           </div>
           <div className="row">
