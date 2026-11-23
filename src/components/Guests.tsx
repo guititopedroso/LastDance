@@ -15,6 +15,7 @@ import {
   COCKTAIL_MIN_AGE,
   guestAge,
   guestModOk,
+  isDinnerOnly,
   guestPriceReason,
   guestsOf,
   isCancelled,
@@ -42,7 +43,7 @@ const formPrice = (ev: LDEvent, f: GuestForm) => priceFor({ hostId: 'x', birth: 
 
 /** Escolha da modalidade (com preço total de cada uma). */
 function ModalityPicker({ ev, value, onChange, onlyCocktail }: { ev: LDEvent; value: string; onChange: (v: string) => void; onlyCocktail?: boolean }) {
-  const all = [{ id: '', name: BASE_MODALITY, price: eventPrice(ev) }, ...(ev.modalities ?? [])]
+  const all = [{ id: '', name: BASE_MODALITY, price: eventPrice(ev) }, ...(ev.modalities ?? []).filter((m) => !isDinnerOnly(m))]
   const opts = onlyCocktail ? all.filter((m) => m.id && /cocktail/i.test(m.name)) : all
   return (
     <div className="field">
@@ -85,7 +86,7 @@ function GuestFields({ ev, f, setF, isNew }: { ev: LDEvent; f: GuestForm; setF: 
           <input className="input" type="tel" inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
         </div>
       </div>
-      {!!ev.modalities?.length && (!young || cocktail) && <ModalityPicker ev={ev} value={f.mod} onChange={(mod) => setF({ ...f, mod })} onlyCocktail={young} />}
+      {!!ev.modalities?.some((m) => !isDinnerOnly(m)) && (!young || cocktail) && <ModalityPicker ev={ev} value={f.mod} onChange={(mod) => setF({ ...f, mod })} onlyCocktail={young} />}
       {young && (
         <div className={`alert small ${cocktail ? 'alert-info' : 'alert-err'}`}>
           {cocktail

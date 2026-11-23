@@ -110,9 +110,12 @@ export const cocktailOnly = (ev: LDEvent, birth?: string) => {
   const a = guestAge(ev, birth)
   return a !== null && a < COCKTAIL_MIN_AGE
 }
+/** «Só jantar» não está disponível para acompanhantes (a mesma regra existe no servidor: api/lib.php → cocktail_only_error). */
+export const isDinnerOnly = (m: { name: string }) => /s[óo]\s+jantar/i.test(m.name)
 /** A modalidade escolhida é permitida para esta idade? */
 export const guestModOk = (ev: LDEvent, birth: string | undefined, modalityId?: string) =>
-  !cocktailOnly(ev, birth) || !!ev.modalities?.find((m) => m.id === modalityId && isCocktail(m))
+  !ev.modalities?.find((m) => m.id === modalityId && isDinnerOnly(m)) &&
+  (!cocktailOnly(ev, birth) || !!ev.modalities?.find((m) => m.id === modalityId && isCocktail(m)))
 
 const anos = (a: number) => (a < 1 ? 'menos de 1 ano' : a === 1 ? '1 ano' : `${a} anos`)
 

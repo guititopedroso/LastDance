@@ -350,6 +350,8 @@ function guest_age(array $ev, ?string $birth): ?int
 /** Acompanhante com menos de 16 anos no dia do baile: só pode ir ao cocktail (igual a src/data/logic.ts → guestModOk). */
 function cocktail_only_error(array $ev, ?string $birth, $modalityId): ?string
 {
+  // «Só jantar» não está disponível para acompanhantes
+  foreach ($ev['modalities'] ?? [] as $m) if ($m['id'] === $modalityId && preg_match('/s[óo]\s+jantar/iu', (string)$m['name'])) return 'O «Só jantar» não está disponível para acompanhantes.';
   $age = guest_age($ev, $birth);
   if ($age === null || $age >= 16) return null;
   foreach ($ev['modalities'] ?? [] as $m) if ($m['id'] === $modalityId && stripos((string)$m['name'], 'cocktail') !== false) return null;
