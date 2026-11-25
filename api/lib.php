@@ -338,7 +338,7 @@ function person_price(array $ev, ?string $modalityId, array $extras): float
 
 /**
  * Fração do preço de um acompanhante pela idade no dia do evento (igual a guestFactor em src/data/logic.ts):
- * menos de 5 anos não paga, dos 5 aos 7 paga metade, a partir dos 8 paga tudo.
+ * até aos 5 anos (inclusive) não paga, dos 6 aos 8 paga metade, a partir dos 9 paga tudo.
  */
 /** Idade no dia do evento (null se faltar a data). */
 function guest_age(array $ev, ?string $birth): ?int
@@ -362,7 +362,7 @@ function guest_factor(array $ev, ?string $birth): float
 {
   if (!$birth || !preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $birth, $b) || !preg_match('/^(\d{4})-(\d{2})-(\d{2})/', (string)($ev['date'] ?? ''), $d)) return 1.0;
   $age = (int)$d[1] - (int)$b[1] - (((int)$d[2] < (int)$b[2] || ((int)$d[2] === (int)$b[2] && (int)$d[3] < (int)$b[3])) ? 1 : 0);
-  return $age < 5 ? 0.0 : ($age < 8 ? 0.5 : 1.0);
+  return $age <= 5 ? 0.0 : ($age <= 8 ? 0.5 : 1.0);
 }
 
 /** Igual a recalcAmounts em src/data/logic.ts: as prestações com pagamentos ficam; a diferença reparte-se pelas outras. */

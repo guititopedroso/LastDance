@@ -87,13 +87,13 @@ export function ageOn(birth: string, date: string) {
 
 /**
  * Fração do preço que um acompanhante paga, pela idade no dia do evento:
- * menos de 5 anos não paga, dos 5 aos 7 paga metade, a partir dos 8 paga tudo.
+ * até aos 5 anos (inclusive) não paga, dos 6 aos 8 paga metade, a partir dos 9 paga tudo.
  * A mesma regra existe no servidor (api/lib.php → guest_factor).
  */
 export function guestFactor(ev: LDEvent, birth?: string) {
   if (!birth || !/^\d{4}-\d{2}-\d{2}$/.test(birth) || !ev.date) return 1
   const a = ageOn(birth, ev.date)
-  return a < 5 ? 0 : a < 8 ? 0.5 : 1
+  return a <= 5 ? 0 : a <= 8 ? 0.5 : 1
 }
 
 /** Idade que o acompanhante terá no dia do evento (null se faltar a data). */
@@ -126,9 +126,9 @@ export function guestPriceReason(ev: LDEvent, birth?: string, modalityId?: strin
   const full = personPrice(ev, modalityId)
   const quando = `No dia do baile (${dateLong(ev.date.slice(0, 10))}) vai ter ${anos(a)}.`
   const f = guestFactor(ev, birth)
-  if (f === 0) return `${quando} Menos de 5 anos: não paga.`
-  if (f === 0.5) return `${quando} Dos 5 aos 7 anos paga metade: ${eur(Math.round(full * 50) / 100)} em vez de ${eur(full)}.`
-  return `${quando} A partir dos 8 anos paga o preço normal: ${eur(full)}.`
+  if (f === 0) return `${quando} Até aos 5 anos: não paga.`
+  if (f === 0.5) return `${quando} Dos 6 aos 8 anos paga metade: ${eur(Math.round(full * 50) / 100)} em vez de ${eur(full)}.`
+  return `${quando} A partir dos 9 anos paga o preço normal: ${eur(full)}.`
 }
 
 /** Preço desta pessoa em concreto (os acompanhantes têm o desconto por idade). */

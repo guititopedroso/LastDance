@@ -141,7 +141,7 @@ function GuestInstallments({ g, ev }: { g: Participant; ev: LDEvent }) {
   const rows = plan(g, ev)
   return (
     <div className="list">
-      {totalDue(g, ev) <= 0 && <div className="list-item small">Não paga (menos de 5 anos no dia do evento).</div>}
+      {totalDue(g, ev) <= 0 && <div className="list-item small">Não paga (até aos 5 anos no dia do evento).</div>}
       {ev.installments.map((inst, i) => {
         const st = rows[i].status
         if (rows[i].amount <= 0.001 && rows[i].paid <= 0.001) return null
@@ -207,7 +207,7 @@ export function GuestsCard({ host, ev, past }: { host: Participant; ev: LDEvent;
       d.participants.push(g)
     })
     const pr = formPrice(ev, f)
-    toast(pr <= 0 ? `${f.name.trim()} adicionado. Não paga (menos de 5 anos).` : `${f.name.trim()} adicionado. Entregas o pagamento ao teu promotor.`)
+    toast(pr <= 0 ? `${f.name.trim()} adicionado. Não paga (até aos 5 anos).` : `${f.name.trim()} adicionado. Entregas o pagamento ao teu promotor.`)
     setF(blank())
     setAdding(false)
     setOpen(id)
@@ -252,7 +252,7 @@ export function GuestsCard({ host, ev, past }: { host: Participant; ev: LDEvent;
       </div>
       <p className="muted small">
         Leva quem quiseres (até {MAX_GUESTS} pessoas). Não precisam de conta: ficam associados a ti e és tu que entregas o pagamento de cada um ao promotor, separado do
-        teu. O preço depende da idade no dia do evento: menos de 5 anos não paga, dos 5 aos 7 anos paga metade, a partir dos 8 paga o preço normal. Podem pagar tudo de uma
+        teu. O preço depende da idade no dia do evento: até aos 5 anos não paga, dos 6 aos 8 anos paga metade, a partir dos 9 paga o preço normal. Podem pagar tudo de uma
         vez ou em prestações. Os acompanhantes não votam nem podem ser votados nos prémios.
       </p>
       {active.length > 0 && owed > 0.001 && (
@@ -275,7 +275,7 @@ export function GuestsCard({ host, ev, past }: { host: Participant; ev: LDEvent;
                     <div className="s">
                       {modalityName(ev, g)} · {totalDue(g, ev) > 0 ? eur(totalDue(g, ev)) : 'não paga'}
                       {guestAge(ev, g.birth) !== null ? ` · ${guestAge(ev, g.birth) === 1 ? '1 ano' : `${guestAge(ev, g.birth)} anos`} no dia do baile` : ''}
-                      {guestFactor(ev, g.birth) === 0.5 ? ' (paga metade, 5–7 anos)' : guestFactor(ev, g.birth) === 0 ? ' (menos de 5 anos)' : ''}
+                      {guestFactor(ev, g.birth) === 0.5 ? ' (paga metade, 6–8 anos)' : guestFactor(ev, g.birth) === 0 ? ' (até 5 anos, não paga)' : ''}
                       {g.payFull && totalDue(g, ev) > 0 ? ' · de uma vez' : ''}
                       {g.enteredAt ? ' · ✓ já entrou' : ''}
                     </div>
@@ -351,9 +351,9 @@ export function GuestsCard({ host, ev, past }: { host: Participant; ev: LDEvent;
           <GuestFields ev={ev} f={f} setF={setF} isNew />
           <div className="alert alert-info small">
             {!validBirth(f.birth)
-              ? `Indica a data de nascimento: menos de 5 anos não paga, dos 5 aos 7 anos paga metade, a partir dos 8 paga o preço normal.`
+              ? `Indica a data de nascimento: até aos 5 anos não paga, dos 6 aos 8 anos paga metade, a partir dos 9 paga o preço normal.`
               : formPrice(ev, f) <= 0
-                ? `${f.name.trim().split(' ')[0] || 'O acompanhante'} não paga: vai ter menos de 5 anos no dia do baile.`
+                ? `${f.name.trim().split(' ')[0] || 'O acompanhante'} não paga: vai ter até 5 anos no dia do baile.`
                 : `${f.name.trim().split(' ')[0] || 'O acompanhante'} paga ${eur(formPrice(ev, f))}${f.pay === 'full' ? ' de uma vez' : f.pay === 'inst' ? ` em ${ev.installments.length} prestações` : ''}, que tu entregas ao promotor.`}
           </div>
           <div className="row">
